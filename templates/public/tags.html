@@ -1,0 +1,20 @@
+{% extends "base.html" %} {% block title %}Tags - {{ site.title }}{% endblock %}
+{% block content %}
+<header class="post-header">
+    <h1>Tags</h1>
+</header>
+
+{% if tags | length > 0 %}
+<div class="tags-list">
+    {% for tag in tags %}
+    <a href="/tags/{{ tag.tag.slug }}" class="tag"
+        >{{ tag.tag.name }}
+        <span style="opacity: 0.6">({{ tag.count }})</span></a
+    >
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No tags yet.</p>
+</div>
+{% endif %} {% endblock %}

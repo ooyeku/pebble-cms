@@ -1,0 +1,71 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Settings</h2>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 1rem;">Site Information</h3>
+    <table>
+        <tr>
+            <td style="font-weight: 500; width: 200px;">Site Title</td>
+            <td>{{ site.title }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Description</td>
+            <td>{{ site.description }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">URL</td>
+            <td>{{ site.url }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Language</td>
+            <td>{{ site.language }}</td>
+        </tr>
+    </table>
+
+    <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.875rem;">
+        Edit <code>pebble.toml</code> to change these settings and restart the server.
+    </p>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 1rem;">Content Settings</h3>
+    <table>
+        <tr>
+            <td style="font-weight: 500; width: 200px;">Posts per page</td>
+            <td>{{ config.content.posts_per_page }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Excerpt length</td>
+            <td>{{ config.content.excerpt_length }} characters</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Auto excerpt</td>
+            <td>{{ config.content.auto_excerpt }}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 1rem;">Current User</h3>
+    <table>
+        <tr>
+            <td style="font-weight: 500; width: 200px;">Username</td>
+            <td>{{ user.username }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Email</td>
+            <td>{{ user.email }}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Role</td>
+            <td>{{ user.role }}</td>
+        </tr>
+    </table>
+</div>
+{% endblock %}

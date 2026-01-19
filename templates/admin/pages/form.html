@@ -1,0 +1,68 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_new %}New Page{% else %}Edit Page{% endif %}{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>{% if is_new %}New Page{% else %}Edit Page{% endif %}</h2>
+    <div>
+        {% if not is_new %}
+        <a href="/pages/{{ content.slug }}" target="_blank" class="btn btn-secondary">View</a>
+        {% endif %}
+    </div>
+</div>
+
+<form
+    method="post"
+    action="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}"
+    hx-post="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}"
+    hx-target="#flash-container"
+    hx-swap="innerHTML">
+    {% if not is_new %}<input type="hidden" name="_method" value="PUT">{% endif %}
+
+    <div class="card">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" value="{{ content.title | default(value='') }}" required>
+            </div>
+            <div class="form-group">
+                <label for="slug">Slug</label>
+                <input type="text" id="slug" name="slug" value="{{ content.slug | default(value='') }}" placeholder="auto-generated">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="body_markdown">Content</label>
+            <div class="editor-layout">
+                <textarea
+                    id="body_markdown"
+                    name="body_markdown"
+                    hx-post="/htmx/preview"
+                    hx-trigger="input changed delay:500ms"
+                    hx-target="#preview">{{ content.body_markdown | default(value='') }}</textarea>
+                <div id="preview" class="preview content">
+                    {% if content.body_html %}{{ content.body_html | safe }}{% else %}<p style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="draft" {% if content.status == "draft" %}selected{% endif %}>Draft</option>
+                <option value="published" {% if content.status == "published" %}selected{% endif %}>Published</option>
+                <option value="archived" {% if content.status == "archived" %}selected{% endif %}>Archived</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary">
+                <span class="htmx-indicator">Saving...</span>
+                <span>{% if is_new %}Create Page{% else %}Save Changes{% endif %}</span>
+            </button>
+            <a href="/admin/pages" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+{% endblock %}

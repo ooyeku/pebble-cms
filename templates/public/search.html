@@ -1,0 +1,38 @@
+{% extends "base.html" %} {% block title %}Search - {{ site.title }}{% endblock
+%} {% block content %}
+<header class="post-header">
+    <h1>Search</h1>
+</header>
+
+<form class="search-form" action="/search" method="get">
+    <input
+        type="search"
+        name="q"
+        value="{{ query | default(value='') }}"
+        placeholder="Search posts..."
+        autofocus
+    />
+    <button type="submit">Search</button>
+</form>
+
+{% if query %}
+<section class="post-list">
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem">
+        {{ results | length }} result{% if results | length != 1 %}s{% endif %}
+        for "{{ query }}"
+    </p>
+
+    {% for result in results %}
+    <article class="post-card">
+        <h2><a href="/posts/{{ result.slug }}">{{ result.title }}</a></h2>
+        {% if result.excerpt %}
+        <p class="post-excerpt">{{ result.excerpt }}</p>
+        {% endif %}
+    </article>
+    {% else %}
+    <div class="empty-state">
+        <p>No results found. Try a different search term.</p>
+    </div>
+    {% endfor %}
+</section>
+{% endif %} {% endblock %}

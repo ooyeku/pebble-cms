@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Media{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Media Library</h2>
+</div>
+
+<div class="card">
+    <form method="post" action="/admin/media" enctype="multipart/form-data" style="margin-bottom: 1.5rem;">
+        <div class="form-group">
+            <label for="files">Upload Files</label>
+            <input type="file" id="files" name="files" multiple accept="image/*,application/pdf">
+        </div>
+        <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+
+    {% if media | length > 0 %}
+    <div class="media-grid">
+        {% for item in media %}
+        <div class="media-item">
+            {% if item.mime_type is starting_with("image/") %}
+            <img src="/media/{{ item.filename }}" alt="{{ item.alt_text }}">
+            {% else %}
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: var(--bg-tertiary);">
+                {{ item.original_name }}
+            </div>
+            {% endif %}
+            <div class="overlay">
+                <div>{{ item.original_name | truncate(length=20) }}</div>
+                <button
+                    class="btn btn-danger btn-sm"
+                    style="margin-top: 0.25rem;"
+                    hx-delete="/admin/media/{{ item.id }}"
+                    hx-confirm="Delete this file?">
+                    Delete
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted);">No media files yet. Upload some files above.</p>
+    {% endif %}
+</div>
+{% endblock %}

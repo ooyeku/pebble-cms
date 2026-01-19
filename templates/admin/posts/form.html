@@ -1,0 +1,54 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_new %}New Post{% else %}Edit Post{% endif %}{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>{% if is_new %}New Post{% else %}Edit Post{% endif %}</h2>
+</div>
+
+<form method="post" action="{% if is_new %}/admin/posts{% else %}/admin/posts/{{ content.id }}{% endif %}">
+    <div class="card">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" value="{% if content %}{{ content.title }}{% endif %}" required>
+            </div>
+            <div class="form-group">
+                <label for="slug">Slug</label>
+                <input type="text" id="slug" name="slug" value="{% if content %}{{ content.slug }}{% endif %}" placeholder="auto-generated">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="body_markdown">Content (Markdown)</label>
+            <textarea id="body_markdown" name="body_markdown">{% if content %}{{ content.body_markdown }}{% endif %}</textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="excerpt">Excerpt</label>
+                <input type="text" id="excerpt" name="excerpt" value="{% if content %}{{ content.excerpt }}{% endif %}" placeholder="auto-generated">
+            </div>
+            <div class="form-group">
+                <label for="tags">Tags (comma separated)</label>
+                <input type="text" id="tags" name="tags" value="">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary">{% if is_new %}Create Post{% else %}Save Changes{% endif %}</button>
+            <a href="/admin/posts" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,65 @@
+[package]
+name = "pebble"
+version = "0.1.0"
+edition = "2021"
+description = "A lightweight personal CMS"
+license = "MIT"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["multipart", "macros"] }
+axum-extra = { version = "0.9", features = ["typed-header", "cookie"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "cors"] }
+tokio = { version = "1", features = ["full"] }
+
+# Database
+rusqlite = { version = "0.32", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.25"
+
+# Templating
+tera = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Markdown
+pulldown-cmark = { version = "0.12", default-features = false, features = ["simd", "html"] }
+syntect = "5"
+
+# Authentication
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+rpassword = "7"
+
+# Cookie time
+time = "0.3"
+
+# Utilities
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+slug = "0.1"
+uuid = { version = "1", features = ["v4"] }
+mime_guess = "2"
+regex = "1"
+
+# Embed assets
+rust-embed = "8"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

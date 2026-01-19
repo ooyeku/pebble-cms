@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Posts{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Posts</h2>
+    <a href="/admin/posts/new" class="btn btn-primary">New Post</a>
+</div>
+
+<div class="card">
+    {% if posts | length > 0 %}
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in posts %}
+            <tr>
+                <td><a href="/admin/posts/{{ post.id }}/edit">{{ post.title }}</a></td>
+                <td>
+                    <span class="status status-{{ post.status }}">{{ post.status }}</span>
+                </td>
+                <td>{{ post.created_at }}</td>
+                <td>
+                    <a href="/admin/posts/{{ post.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                    <button
+                        class="btn btn-danger btn-sm"
+                        hx-delete="/admin/posts/{{ post.id }}"
+                        hx-confirm="Delete this post?">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted);">No posts yet. <a href="/admin/posts/new">Create your first post</a></p>
+    {% endif %}
+</div>
+{% endblock %}

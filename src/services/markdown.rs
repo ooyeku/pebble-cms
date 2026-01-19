@@ -1,0 +1,110 @@
+use pulldown_cmark::{html, Options, Parser};
+use syntect::highlighting::ThemeSet;
+use syntect::html::highlighted_html_for_string;
+use syntect::parsing::SyntaxSet;
+
+pub struct MarkdownRenderer {
+    syntax_set: SyntaxSet,
+    theme_set: ThemeSet,
+}
+
+impl Default for MarkdownRenderer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MarkdownRenderer {
+    pub fn new() -> Self {
+        Self {
+            syntax_set: SyntaxSet::load_defaults_newlines(),
+            theme_set: ThemeSet::load_defaults(),
+        }
+    }
+
+    pub fn render(&self, markdown: &str) -> String {
+        let options = Options::ENABLE_TABLES
+            | Options::ENABLE_FOOTNOTES
+            | Options::ENABLE_STRIKETHROUGH
+            | Options::ENABLE_TASKLISTS;
+
+        let parser = Parser::new_ext(markdown, options);
+        let mut events: Vec<pulldown_cmark::Event> = Vec::new();
+        let mut in_code_block = false;
+        let mut code_lang = String::new();
+        let mut code_content = String::new();
+
+        for event in parser {
+            match event {
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::CodeBlock(kind)) => {
+                    in_code_block = true;
+                    code_lang = match kind {
+                        pulldown_cmark::CodeBlockKind::Fenced(lang) => lang.to_string(),
+                        _ => String::new(),
+                    };
+                    code_content.clear();
+                }
+                pulldown_cmark::Event::End(pulldown_cmark::TagEnd::CodeBlock) => {
+                    in_code_block = false;
+                    let highlighted = self.highlight_code(&code_content, &code_lang);
+                    events.push(pulldown_cmark::Event::Html(highlighted.into()));
+                }
+                pulldown_cmark::Event::Text(text) if in_code_block => {
+                    code_content.push_str(&text);
+                }
+                _ => events.push(event),
+            }
+        }
+
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, events.into_iter());
+        html_output
+    }
+
+    fn highlight_code(&self, code: &str, lang: &str) -> String {
+        let syntax = self
+            .syntax_set
+            .find_syntax_by_token(lang)
+            .unwrap_or_else(|| self.syntax_set.find_syntax_plain_text());
+
+        let theme = &self.theme_set.themes["base16-ocean.dark"];
+
+        match highlighted_html_for_string(code, &self.syntax_set, syntax, theme) {
+            Ok(html) => format!(
+                r#"<pre class="code-block"><code class="language-{}">{}</code></pre>"#,
+                lang, html
+            ),
+            Err(_) => format!(
+                r#"<pre class="code-block"><code class="language-{}">{}</code></pre>"#,
+                lang,
+                html_escape(code)
+            ),
+        }
+    }
+
+    pub fn generate_excerpt(&self, markdown: &str, max_len: usize) -> String {
+        let text: String = markdown
+            .lines()
+            .filter(|line| !line.starts_with('#') && !line.starts_with("```") && !line.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        if text.len() <= max_len {
+            text
+        } else {
+            let truncated: String = text.chars().take(max_len).collect();
+            if let Some(last_space) = truncated.rfind(' ') {
+                format!("{}...", &truncated[..last_space])
+            } else {
+                format!("{}...", truncated)
+            }
+        }
+    }
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}

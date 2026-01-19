@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Pages{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Pages</h2>
+    <a href="/admin/pages/new" class="btn btn-primary">New Page</a>
+</div>
+
+<div class="card">
+    {% if pages | length > 0 %}
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for page in pages %}
+            <tr>
+                <td><a href="/admin/pages/{{ page.id }}/edit">{{ page.title }}</a></td>
+                <td>
+                    <span class="status status-{{ page.status }}">{{ page.status }}</span>
+                </td>
+                <td>{{ page.created_at }}</td>
+                <td>
+                    <a href="/admin/pages/{{ page.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                    <button
+                        class="btn btn-danger btn-sm"
+                        hx-delete="/admin/pages/{{ page.id }}"
+                        hx-confirm="Delete this page?">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted);">No pages yet. <a href="/admin/pages/new">Create your first page</a></p>
+    {% endif %}
+</div>
+{% endblock %}

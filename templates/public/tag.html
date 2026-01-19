@@ -1,0 +1,33 @@
+{% extends "base.html" %} {% block title %}{{ tag.name }} - {{ site.title }}{%
+endblock %} {% block content %}
+<header class="post-header">
+    <h1>Posts tagged "{{ tag.name }}"</h1>
+</header>
+
+<section class="post-list">
+    {% for post in posts %}
+    <article class="post-card">
+        <h2>
+            <a href="/posts/{{ post.content.slug }}"
+                >{{ post.content.title }}</a
+            >
+        </h2>
+        <div class="post-meta">
+            {% if post.content.published_at %}
+            <time>{{ post.content.published_at | format_date }}</time>
+            {% endif %} {% if post.author %}
+            <span class="separator">&middot;</span>
+            <span>{{ post.author.username }}</span>
+            {% endif %}
+        </div>
+        {% if post.content.excerpt %}
+        <p class="post-excerpt">{{ post.content.excerpt }}</p>
+        {% endif %}
+    </article>
+    {% else %}
+    <div class="empty-state">
+        <p>No posts with this tag.</p>
+    </div>
+    {% endfor %}
+</section>
+{% endblock %}
