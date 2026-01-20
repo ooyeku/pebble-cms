@@ -13,6 +13,7 @@ use tera::Context;
 fn make_context(state: &AppState, user: &Option<User>) -> Context {
     let mut ctx = Context::new();
     ctx.insert("site", &state.config.site);
+    ctx.insert("theme", &state.config.theme);
     ctx.insert("user", user);
     ctx.insert("production_mode", &state.production_mode);
     ctx

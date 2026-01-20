@@ -58,6 +58,25 @@ pub struct ThemeConfig {
     pub name: String,
 }
 
+impl ThemeConfig {
+    pub const AVAILABLE_THEMES: [&'static str; 3] = ["default", "minimal", "magazine"];
+
+    pub fn validate(&self) -> Result<()> {
+        if !Self::AVAILABLE_THEMES.contains(&self.name.as_str()) {
+            anyhow::bail!(
+                "Invalid theme '{}'. Available themes: {}",
+                self.name,
+                Self::AVAILABLE_THEMES.join(", ")
+            );
+        }
+        Ok(())
+    }
+
+    pub fn is_valid_theme(name: &str) -> bool {
+        Self::AVAILABLE_THEMES.contains(&name)
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AuthConfig {
     #[serde(default = "default_session_lifetime")]
@@ -67,27 +86,35 @@ pub struct AuthConfig {
 fn default_language() -> String {
     "en".to_string()
 }
+
 fn default_host() -> String {
     "127.0.0.1".to_string()
 }
+
 fn default_port() -> u16 {
     3000
 }
+
 fn default_posts_per_page() -> usize {
     10
 }
+
 fn default_excerpt_length() -> usize {
     200
 }
+
 fn default_true() -> bool {
     true
 }
+
 fn default_max_upload() -> String {
     "10MB".to_string()
 }
+
 fn default_theme() -> String {
     "default".to_string()
 }
+
 fn default_session_lifetime() -> String {
     "7d".to_string()
 }

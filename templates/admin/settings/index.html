@@ -52,6 +52,23 @@
 </div>
 
 <div class="card">
+    <h3 style="margin-bottom: 1rem;">Theme</h3>
+    <table>
+        <tr>
+            <td style="font-weight: 500; width: 200px;">Current Theme</td>
+            <td><strong>{{ config.theme.name }}</strong></td>
+        </tr>
+        <tr>
+            <td style="font-weight: 500;">Available Themes</td>
+            <td>default, minimal, magazine</td>
+        </tr>
+    </table>
+    <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.875rem;">
+        Change <code>[theme] name = "..."</code> in <code>pebble.toml</code> to switch themes.
+    </p>
+</div>
+
+<div class="card">
     <h3 style="margin-bottom: 1rem;">Current User</h3>
     <table>
         <tr>

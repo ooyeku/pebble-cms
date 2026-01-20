@@ -21,91 +21,30 @@ impl AppState {
         templates.register_filter("format_date", format_date_filter);
 
         templates.add_raw_templates(vec![
+            ("css/bundle.css", include_str!("../../templates/css/bundle.css")),
+            ("css/bundle-admin.css", include_str!("../../templates/css/bundle-admin.css")),
             ("base.html", include_str!("../../templates/base.html")),
-            (
-                "admin/base.html",
-                include_str!("../../templates/admin/base.html"),
-            ),
-            (
-                "admin/login.html",
-                include_str!("../../templates/admin/login.html"),
-            ),
-            (
-                "admin/setup.html",
-                include_str!("../../templates/admin/setup.html"),
-            ),
-            (
-                "admin/dashboard.html",
-                include_str!("../../templates/admin/dashboard.html"),
-            ),
-            (
-                "admin/posts/index.html",
-                include_str!("../../templates/admin/posts/index.html"),
-            ),
-            (
-                "admin/posts/form.html",
-                include_str!("../../templates/admin/posts/form.html"),
-            ),
-            (
-                "admin/pages/index.html",
-                include_str!("../../templates/admin/pages/index.html"),
-            ),
-            (
-                "admin/pages/form.html",
-                include_str!("../../templates/admin/pages/form.html"),
-            ),
-            (
-                "admin/media/index.html",
-                include_str!("../../templates/admin/media/index.html"),
-            ),
-            (
-                "admin/tags/index.html",
-                include_str!("../../templates/admin/tags/index.html"),
-            ),
-            (
-                "admin/settings/index.html",
-                include_str!("../../templates/admin/settings/index.html"),
-            ),
-            (
-                "admin/users/index.html",
-                include_str!("../../templates/admin/users/index.html"),
-            ),
-            (
-                "public/index.html",
-                include_str!("../../templates/public/index.html"),
-            ),
-            (
-                "public/post.html",
-                include_str!("../../templates/public/post.html"),
-            ),
-            (
-                "public/page.html",
-                include_str!("../../templates/public/page.html"),
-            ),
-            (
-                "public/tag.html",
-                include_str!("../../templates/public/tag.html"),
-            ),
-            (
-                "public/tags.html",
-                include_str!("../../templates/public/tags.html"),
-            ),
-            (
-                "public/search.html",
-                include_str!("../../templates/public/search.html"),
-            ),
-            (
-                "public/404.html",
-                include_str!("../../templates/public/404.html"),
-            ),
-            (
-                "htmx/preview.html",
-                include_str!("../../templates/htmx/preview.html"),
-            ),
-            (
-                "htmx/flash.html",
-                include_str!("../../templates/htmx/flash.html"),
-            ),
+            ("admin/base.html", include_str!("../../templates/admin/base.html")),
+            ("admin/login.html", include_str!("../../templates/admin/login.html")),
+            ("admin/setup.html", include_str!("../../templates/admin/setup.html")),
+            ("admin/dashboard.html", include_str!("../../templates/admin/dashboard.html")),
+            ("admin/posts/index.html", include_str!("../../templates/admin/posts/index.html")),
+            ("admin/posts/form.html", include_str!("../../templates/admin/posts/form.html")),
+            ("admin/pages/index.html", include_str!("../../templates/admin/pages/index.html")),
+            ("admin/pages/form.html", include_str!("../../templates/admin/pages/form.html")),
+            ("admin/media/index.html", include_str!("../../templates/admin/media/index.html")),
+            ("admin/tags/index.html", include_str!("../../templates/admin/tags/index.html")),
+            ("admin/settings/index.html", include_str!("../../templates/admin/settings/index.html")),
+            ("admin/users/index.html", include_str!("../../templates/admin/users/index.html")),
+            ("public/index.html", include_str!("../../templates/public/index.html")),
+            ("public/post.html", include_str!("../../templates/public/post.html")),
+            ("public/page.html", include_str!("../../templates/public/page.html")),
+            ("public/tag.html", include_str!("../../templates/public/tag.html")),
+            ("public/tags.html", include_str!("../../templates/public/tags.html")),
+            ("public/search.html", include_str!("../../templates/public/search.html")),
+            ("public/404.html", include_str!("../../templates/public/404.html")),
+            ("htmx/preview.html", include_str!("../../templates/htmx/preview.html")),
+            ("htmx/flash.html", include_str!("../../templates/htmx/flash.html")),
         ])?;
 
         let media_dir = PathBuf::from(&config.media.upload_dir);
