@@ -9,7 +9,8 @@
 
 <div class="card">
     <form method="post" action="/admin/tags" style="margin-bottom: 1.5rem; display: flex; gap: 1rem;">
-        <input type="text" name="name" placeholder="Tag name" required style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius);">
+        <input type="text" name="name" placeholder="Tag name" required
+            style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius);">
         <button type="submit" class="btn btn-primary">Add Tag</button>
     </form>
 
@@ -26,14 +27,12 @@
         <tbody>
             {% for tag in tags %}
             <tr>
-                <td>{{ tag.tag.name }}</td>
-                <td>{{ tag.tag.slug }}</td>
+                <td>{{ tag.name }}</td>
+                <td>{{ tag.slug }}</td>
                 <td>{{ tag.count }}</td>
                 <td>
-                    <a href="/tags/{{ tag.tag.slug }}" target="_blank" class="btn btn-secondary btn-sm">View</a>
-                    <button
-                        class="btn btn-danger btn-sm"
-                        hx-delete="/admin/tags/{{ tag.tag.id }}"
+                    <a href="/tags/{{ tag.slug }}" target="_blank" class="btn btn-secondary btn-sm">View</a>
+                    <button class="btn btn-danger btn-sm" hx-delete="/admin/tags/{{ tag.id }}"
                         hx-confirm="Delete this tag?">
                         Delete
                     </button>

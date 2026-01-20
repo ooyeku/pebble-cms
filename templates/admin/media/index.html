@@ -23,19 +23,23 @@
             {% if item.mime_type is starting_with("image/") %}
             <img src="/media/{{ item.filename }}" alt="{{ item.alt_text }}">
             {% else %}
-            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: var(--bg-tertiary);">
+            <div
+                style="display: flex; align-items: center; justify-content: center; height: 100%; background: var(--bg-tertiary);">
                 {{ item.original_name }}
             </div>
             {% endif %}
             <div class="overlay">
                 <div>{{ item.original_name | truncate(length=20) }}</div>
-                <button
-                    class="btn btn-danger btn-sm"
-                    style="margin-top: 0.25rem;"
-                    hx-delete="/admin/media/{{ item.id }}"
-                    hx-confirm="Delete this file?">
-                    Delete
-                </button>
+                <div style="display: flex; gap: 0.25rem; margin-top: 0.25rem;">
+                    <button class="btn btn-secondary btn-sm"
+                        onclick="navigator.clipboard.writeText('/media/{{ item.filename }}'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy URL', 1500);">
+                        Copy URL
+                    </button>
+                    <button class="btn btn-danger btn-sm" hx-delete="/admin/media/{{ item.id }}"
+                        hx-confirm="Delete this file?">
+                        Delete
+                    </button>
+                </div>
             </div>
         </div>
         {% endfor %}

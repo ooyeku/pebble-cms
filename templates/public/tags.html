@@ -7,10 +7,8 @@
 {% if tags | length > 0 %}
 <div class="tags-list">
     {% for tag in tags %}
-    <a href="/tags/{{ tag.tag.slug }}" class="tag"
-        >{{ tag.tag.name }}
-        <span style="opacity: 0.6">({{ tag.count }})</span></a
-    >
+    <a href="/tags/{{ tag.slug }}" class="tag">{{ tag.name }}
+        <span style="opacity: 0.6">({{ tag.count }})</span></a>
     {% endfor %}
 </div>
 {% else %}
