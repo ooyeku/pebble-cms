@@ -74,6 +74,30 @@ pub struct ContentForm {
     status: String,
     #[serde(default)]
     tags: String,
+    // SEO fields
+    meta_title: Option<String>,
+    meta_description: Option<String>,
+    canonical_url: Option<String>,
+}
+
+fn build_seo_metadata(form: &ContentForm) -> serde_json::Value {
+    let mut metadata = serde_json::json!({});
+    if let Some(ref mt) = form.meta_title {
+        if !mt.is_empty() {
+            metadata["meta_title"] = serde_json::json!(mt);
+        }
+    }
+    if let Some(ref md) = form.meta_description {
+        if !md.is_empty() {
+            metadata["meta_description"] = serde_json::json!(md);
+        }
+    }
+    if let Some(ref cu) = form.canonical_url {
+        if !cu.is_empty() {
+            metadata["canonical_url"] = serde_json::json!(cu);
+        }
+    }
+    metadata
 }
 
 pub async fn create_post(
@@ -90,15 +114,15 @@ pub async fn create_post(
         .collect();
 
     let input = CreateContent {
-        title: form.title,
-        slug: form.slug.filter(|s| !s.is_empty()),
+        title: form.title.clone(),
+        slug: form.slug.clone().filter(|s| !s.is_empty()),
         content_type: ContentType::Post,
-        body_markdown: form.body_markdown,
-        excerpt: form.excerpt.filter(|s| !s.is_empty()),
+        body_markdown: form.body_markdown.clone(),
+        excerpt: form.excerpt.clone().filter(|s| !s.is_empty()),
         featured_image: None,
         status: form.status.parse().unwrap_or(ContentStatus::Draft),
         tags,
-        metadata: None,
+        metadata: Some(build_seo_metadata(&form)),
     };
 
     content::create_content(
@@ -152,14 +176,14 @@ pub async fn update_post(
         .collect();
 
     let input = UpdateContent {
-        title: Some(form.title),
-        slug: form.slug.filter(|s| !s.is_empty()),
-        body_markdown: Some(form.body_markdown),
-        excerpt: form.excerpt,
+        title: Some(form.title.clone()),
+        slug: form.slug.clone().filter(|s| !s.is_empty()),
+        body_markdown: Some(form.body_markdown.clone()),
+        excerpt: form.excerpt.clone(),
         featured_image: None,
         status: Some(form.status.parse().unwrap_or(ContentStatus::Draft)),
         tags: Some(tags),
-        metadata: None,
+        metadata: Some(build_seo_metadata(&form)),
     };
 
     content::update_content(&state.db, id, input, state.config.content.excerpt_length)?;
@@ -226,15 +250,15 @@ pub async fn create_page(
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
     let input = CreateContent {
-        title: form.title,
-        slug: form.slug.filter(|s| !s.is_empty()),
+        title: form.title.clone(),
+        slug: form.slug.clone().filter(|s| !s.is_empty()),
         content_type: ContentType::Page,
-        body_markdown: form.body_markdown,
-        excerpt: form.excerpt.filter(|s| !s.is_empty()),
+        body_markdown: form.body_markdown.clone(),
+        excerpt: form.excerpt.clone().filter(|s| !s.is_empty()),
         featured_image: None,
         status: form.status.parse().unwrap_or(ContentStatus::Draft),
         tags: vec![],
-        metadata: None,
+        metadata: Some(build_seo_metadata(&form)),
     };
 
     let id = content::create_content(
@@ -289,14 +313,14 @@ pub async fn update_page(
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
     let input = UpdateContent {
-        title: Some(form.title),
-        slug: form.slug.filter(|s| !s.is_empty()),
-        body_markdown: Some(form.body_markdown),
-        excerpt: form.excerpt,
+        title: Some(form.title.clone()),
+        slug: form.slug.clone().filter(|s| !s.is_empty()),
+        body_markdown: Some(form.body_markdown.clone()),
+        excerpt: form.excerpt.clone(),
         featured_image: None,
         status: Some(form.status.parse().unwrap_or(ContentStatus::Draft)),
         tags: None,
-        metadata: None,
+        metadata: Some(build_seo_metadata(&form)),
     };
 
     content::update_content(&state.db, id, input, state.config.content.excerpt_length)?;

@@ -12,23 +12,27 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="title">Title</label>
-                <input type="text" id="title" name="title" value="{% if content %}{{ content.title }}{% endif %}" required>
+                <input type="text" id="title" name="title" value="{% if content %}{{ content.title }}{% endif %}"
+                    required>
             </div>
             <div class="form-group">
                 <label for="slug">Slug</label>
-                <input type="text" id="slug" name="slug" value="{% if content %}{{ content.slug }}{% endif %}" placeholder="auto-generated">
+                <input type="text" id="slug" name="slug" value="{% if content %}{{ content.slug }}{% endif %}"
+                    placeholder="auto-generated">
             </div>
         </div>
 
         <div class="form-group">
             <label for="body_markdown">Content (Markdown)</label>
-            <textarea id="body_markdown" name="body_markdown">{% if content %}{{ content.body_markdown }}{% endif %}</textarea>
+            <textarea id="body_markdown"
+                name="body_markdown">{% if content %}{{ content.body_markdown }}{% endif %}</textarea>
         </div>
 
         <div class="form-row">
             <div class="form-group">
                 <label for="excerpt">Excerpt</label>
-                <input type="text" id="excerpt" name="excerpt" value="{% if content %}{{ content.excerpt }}{% endif %}" placeholder="auto-generated">
+                <input type="text" id="excerpt" name="excerpt" value="{% if content %}{{ content.excerpt }}{% endif %}"
+                    placeholder="auto-generated">
             </div>
             <div class="form-group">
                 <label for="tags">Tags (comma separated)</label>
@@ -36,18 +40,57 @@
             </div>
         </div>
 
+        <details class="seo-section" style="margin-bottom: 1rem;">
+            <summary style="cursor: pointer; font-weight: 500; padding: 0.5rem 0;">SEO Settings</summary>
+            <div
+                style="padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); margin-top: 0.5rem;">
+                <div class="form-group">
+                    <label for="meta_title">Meta Title <small style="color: var(--text-muted);">(defaults to post
+                            title)</small></label>
+                    <input type="text" id="meta_title" name="meta_title"
+                        value="{% if content and content.metadata.meta_title %}{{ content.metadata.meta_title }}{% endif %}"
+                        placeholder="{{ content.title | default(value='') }}">
+                </div>
+                <div class="form-group">
+                    <label for="meta_description">Meta Description <small style="color: var(--text-muted);">(defaults to
+                            excerpt)</small></label>
+                    <textarea id="meta_description" name="meta_description" rows="2"
+                        style="min-height: 60px;">{% if content and content.metadata.meta_description %}{{ content.metadata.meta_description }}{% endif %}</textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="canonical_url">Canonical URL <small
+                            style="color: var(--text-muted);">(optional)</small></label>
+                    <input type="url" id="canonical_url" name="canonical_url"
+                        value="{% if content and content.metadata.canonical_url %}{{ content.metadata.canonical_url }}{% endif %}"
+                        placeholder="https://...">
+                </div>
+            </div>
+        </details>
+
         <div class="form-group">
             <label for="status">Status</label>
             <select id="status" name="status">
-                <option value="draft">Draft</option>
-                <option value="published">Published</option>
-                <option value="archived">Archived</option>
+                <option value="draft" {% if is_new %}selected{% elif content %}{% if content.status=="draft"
+                    %}selected{% endif %}{% endif %}>Draft</option>
+                <option value="published" {% if content %}{% if content.status=="published" %}selected{% endif %}{%
+                    endif %}>Published</option>
+                <option value="archived" {% if content %}{% if content.status=="archived" %}selected{% endif %}{% endif
+                    %}>Archived</option>
             </select>
         </div>
 
-        <div style="display: flex; gap: 1rem;">
-            <button type="submit" class="btn btn-primary">{% if is_new %}Create Post{% else %}Save Changes{% endif %}</button>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn btn-primary">{% if is_new %}Create Post{% else %}Save Changes{% endif
+                %}</button>
             <a href="/admin/posts" class="btn btn-secondary">Cancel</a>
+            <small style="color: var(--text-muted); margin-left: auto;">
+                Shortcuts: <kbd
+                    style="background: var(--bg-tertiary); padding: 0.1rem 0.4rem; border-radius: 0.25rem;">⌘/Ctrl+S</kbd>
+                Save &nbsp;
+                <kbd
+                    style="background: var(--bg-tertiary); padding: 0.1rem 0.4rem; border-radius: 0.25rem;">⌘/Ctrl+Shift+P</kbd>
+                Publish
+            </small>
         </div>
     </div>
 </form>

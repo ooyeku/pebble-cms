@@ -12,11 +12,8 @@
     </div>
 </div>
 
-<form
-    method="post"
-    action="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}"
-    hx-post="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}"
-    hx-target="#flash-container"
+<form method="post" action="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}"
+    hx-post="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}" hx-target="#flash-container"
     hx-swap="innerHTML">
     {% if not is_new %}<input type="hidden" name="_method" value="PUT">{% endif %}
 
@@ -28,31 +25,59 @@
             </div>
             <div class="form-group">
                 <label for="slug">Slug</label>
-                <input type="text" id="slug" name="slug" value="{{ content.slug | default(value='') }}" placeholder="auto-generated">
+                <input type="text" id="slug" name="slug" value="{{ content.slug | default(value='') }}"
+                    placeholder="auto-generated">
             </div>
         </div>
 
         <div class="form-group">
             <label for="body_markdown">Content</label>
             <div class="editor-layout">
-                <textarea
-                    id="body_markdown"
-                    name="body_markdown"
-                    hx-post="/htmx/preview"
+                <textarea id="body_markdown" name="body_markdown" hx-post="/htmx/preview"
                     hx-trigger="input changed delay:500ms"
                     hx-target="#preview">{{ content.body_markdown | default(value='') }}</textarea>
                 <div id="preview" class="preview content">
-                    {% if content.body_html %}{{ content.body_html | safe }}{% else %}<p style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}
+                    {% if content.body_html %}{{ content.body_html | safe }}{% else %}<p
+                        style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}
                 </div>
             </div>
         </div>
 
+        <details class="seo-section" style="margin-bottom: 1rem;">
+            <summary style="cursor: pointer; font-weight: 500; padding: 0.5rem 0;">SEO Settings</summary>
+            <div
+                style="padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); margin-top: 0.5rem;">
+                <div class="form-group">
+                    <label for="meta_title">Meta Title <small style="color: var(--text-muted);">(defaults to page
+                            title)</small></label>
+                    <input type="text" id="meta_title" name="meta_title"
+                        value="{% if content and content.metadata.meta_title %}{{ content.metadata.meta_title }}{% endif %}"
+                        placeholder="{{ content.title | default(value='') }}">
+                </div>
+                <div class="form-group">
+                    <label for="meta_description">Meta Description</label>
+                    <textarea id="meta_description" name="meta_description" rows="2"
+                        style="min-height: 60px;">{% if content and content.metadata.meta_description %}{{ content.metadata.meta_description }}{% endif %}</textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="canonical_url">Canonical URL <small
+                            style="color: var(--text-muted);">(optional)</small></label>
+                    <input type="url" id="canonical_url" name="canonical_url"
+                        value="{% if content and content.metadata.canonical_url %}{{ content.metadata.canonical_url }}{% endif %}"
+                        placeholder="https://...">
+                </div>
+            </div>
+        </details>
+
         <div class="form-group">
             <label for="status">Status</label>
             <select id="status" name="status">
-                <option value="draft" {% if content.status == "draft" %}selected{% endif %}>Draft</option>
-                <option value="published" {% if content.status == "published" %}selected{% endif %}>Published</option>
-                <option value="archived" {% if content.status == "archived" %}selected{% endif %}>Archived</option>
+                <option value="draft" {% if is_new %}selected{% elif content %}{% if content.status=="draft"
+                    %}selected{% endif %}{% endif %}>Draft</option>
+                <option value="published" {% if content %}{% if content.status=="published" %}selected{% endif %}{%
+                    endif %}>Published</option>
+                <option value="archived" {% if content %}{% if content.status=="archived" %}selected{% endif %}{% endif
+                    %}>Archived</option>
             </select>
         </div>
 

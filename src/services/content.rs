@@ -37,7 +37,10 @@ pub fn create_content(
         None
     };
 
-    let metadata = input.metadata.unwrap_or(serde_json::json!({}));
+    // Calculate reading time and merge with provided metadata
+    let reading_time = renderer.calculate_reading_time(&input.body_markdown);
+    let mut metadata = input.metadata.unwrap_or(serde_json::json!({}));
+    metadata["reading_time_minutes"] = serde_json::json!(reading_time);
 
     let conn = db.get()?;
     conn.execute(
@@ -107,7 +110,11 @@ pub fn update_content(
         .or_else(|| Some(renderer.generate_excerpt(&body_markdown, excerpt_length)));
     let featured_image = input.featured_image.or(current.featured_image);
     let status = input.status.unwrap_or(current.status);
-    let metadata = input.metadata.unwrap_or(current.metadata);
+    
+    // Calculate reading time and merge with provided metadata
+    let reading_time = renderer.calculate_reading_time(&body_markdown);
+    let mut metadata = input.metadata.unwrap_or(current.metadata);
+    metadata["reading_time_minutes"] = serde_json::json!(reading_time);
 
     let published_at = if status == ContentStatus::Published && current.published_at.is_none() {
         Some(chrono::Utc::now().to_rfc3339())

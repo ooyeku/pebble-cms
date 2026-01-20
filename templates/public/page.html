@@ -1,11 +1,22 @@
-{% extends "base.html" %} {% block title %}{{ content.content.title }} - {{
-site.title }}{% endblock %} {% block description %}{{ content.content.excerpt |
-default(value=site.description) }}{% endblock %} {% block content %}
+{% extends "base.html" %}
+
+{% block title %}{% if content.metadata.meta_title %}{{ content.metadata.meta_title }}{% else %}{{ content.title }}{%
+endif %} - {{ site.title }}{% endblock %}
+
+{% block description %}{% if content.metadata.meta_description %}{{ content.metadata.meta_description }}{% else %}{{
+content.excerpt | default(value=site.description) }}{% endif %}{% endblock %}
+
+{% block head %}
+{% if content.metadata.canonical_url %}
+<link rel="canonical" href="{{ content.metadata.canonical_url }}">{% endif %}
+{% endblock %}
+
+{% block content %}
 <article>
     <header class="post-header">
-        <h1>{{ content.content.title }}</h1>
+        <h1>{{ content.title }}</h1>
     </header>
 
-    <div class="content">{{ content.content.body_html | safe }}</div>
+    <div class="content">{{ content.body_html | safe }}</div>
 </article>
 {% endblock %}

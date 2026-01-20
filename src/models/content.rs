@@ -86,6 +86,7 @@ pub struct Content {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ContentWithTags {
+    #[serde(flatten)]
     pub content: Content,
     pub tags: Vec<Tag>,
     pub author: Option<UserSummary>,

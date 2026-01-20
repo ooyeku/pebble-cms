@@ -3,20 +3,18 @@
     {% for post in posts %}
     <article class="post-card">
         <h2>
-            <a href="/posts/{{ post.content.slug }}"
-                >{{ post.content.title }}</a
-            >
+            <a href="/posts/{{ post.slug }}">{{ post.title }}</a>
         </h2>
         <div class="post-meta">
-            {% if post.content.published_at %}
-            <time>{{ post.content.published_at | format_date }}</time>
+            {% if post.published_at %}
+            <time>{{ post.published_at | format_date }}</time>
             {% endif %} {% if post.author %}
             <span class="separator">&middot;</span>
             <span>{{ post.author.username }}</span>
             {% endif %}
         </div>
-        {% if post.content.excerpt %}
-        <p class="post-excerpt">{{ post.content.excerpt }}</p>
+        {% if post.excerpt %}
+        <p class="post-excerpt">{{ post.excerpt }}</p>
         {% endif %} {% if post.tags | length > 0 %}
         <div class="post-tags">
             {% for tag in post.tags %}
@@ -41,10 +39,9 @@
     <span></span>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
-    {% if page < total_pages %}
-    <a href="/posts?page={{ page + 1 }}">Older &rarr;</a>
-    {% else %}
-    <span></span>
-    {% endif %}
+    {% if page < total_pages %} <a href="/posts?page={{ page + 1 }}">Older &rarr;</a>
+        {% else %}
+        <span></span>
+        {% endif %}
 </nav>
 {% endif %} {% endblock %}

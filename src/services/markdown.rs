@@ -100,6 +100,18 @@ impl MarkdownRenderer {
             }
         }
     }
+
+    /// Calculate estimated reading time in minutes based on word count.
+    /// Uses 200 words per minute as average reading speed.
+    pub fn calculate_reading_time(&self, markdown: &str) -> u32 {
+        let word_count = markdown
+            .split_whitespace()
+            .filter(|word| !word.starts_with('#') && !word.starts_with("```"))
+            .count();
+        
+        // 200 words per minute, minimum 1 minute
+        ((word_count as f64 / 200.0).ceil() as u32).max(1)
+    }
 }
 
 fn html_escape(s: &str) -> String {
