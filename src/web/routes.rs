@@ -1,5 +1,6 @@
 use super::handlers;
 use super::state::AppState;
+use axum::extract::DefaultBodyLimit;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, post};
@@ -48,7 +49,10 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             post(handlers::admin::delete_page),
         )
         .route("/admin/media", get(handlers::admin::media))
-        .route("/admin/media", post(handlers::admin::upload_media))
+        .route(
+            "/admin/media",
+            post(handlers::admin::upload_media).layer(DefaultBodyLimit::max(15 * 1024 * 1024)),
+        )
         .route("/admin/media/:id", delete(handlers::admin::delete_media))
         .route("/admin/tags", get(handlers::admin::tags))
         .route("/admin/tags", post(handlers::admin::create_tag))

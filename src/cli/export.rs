@@ -95,9 +95,10 @@ created_at: "{}"
                 let entry = entry?;
                 let path = entry.path();
                 if path.is_file() {
-                    let filename = path.file_name().unwrap();
-                    fs::copy(&path, media_dest.join(filename))?;
-                    count += 1;
+                    if let Some(filename) = path.file_name() {
+                        fs::copy(&path, media_dest.join(filename))?;
+                        count += 1;
+                    }
                 }
             }
             tracing::info!("Exported {} media files", count);

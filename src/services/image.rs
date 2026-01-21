@@ -5,7 +5,6 @@ use std::io::Cursor;
 
 const MAX_WIDTH: u32 = 1600;
 const THUMBNAIL_SIZE: u32 = 200;
-const WEBP_QUALITY: u8 = 80;
 
 pub struct OptimizedImage {
     pub original: Vec<u8>,

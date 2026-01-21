@@ -1,8 +1,10 @@
 use crate::services::markdown::MarkdownRenderer;
+use crate::web::security::{CsrfManager, RateLimiter};
 use crate::{Config, Database};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tera::{Tera, Value};
 
 pub struct AppState {
@@ -12,6 +14,8 @@ pub struct AppState {
     pub markdown: MarkdownRenderer,
     pub media_dir: PathBuf,
     pub production_mode: bool,
+    pub csrf: Arc<CsrfManager>,
+    pub rate_limiter: Arc<RateLimiter>,
 }
 
 impl AppState {
@@ -56,6 +60,8 @@ impl AppState {
             markdown: MarkdownRenderer::new(),
             media_dir,
             production_mode,
+            csrf: Arc::new(CsrfManager::default()),
+            rate_limiter: Arc::new(RateLimiter::default()),
         })
     }
 }

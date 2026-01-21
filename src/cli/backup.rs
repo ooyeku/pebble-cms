@@ -52,7 +52,10 @@ fn create_backup(config: &Config, output_dir: &Path) -> Result<()> {
             let entry = entry?;
             let path = entry.path();
             if path.is_file() {
-                let filename = path.file_name().unwrap().to_string_lossy();
+                let filename = path
+                    .file_name()
+                    .ok_or_else(|| anyhow::anyhow!("Invalid filename"))?
+                    .to_string_lossy();
                 let archive_path = format!("media/{}", filename);
 
                 let mut file_data = Vec::new();
@@ -144,11 +147,9 @@ fn list_backups(dir: &Path) -> Result<()> {
         let path = entry.path();
         let metadata = fs::metadata(&path)?;
         let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
-        println!(
-            "  {} ({:.2} MB)",
-            path.file_name().unwrap().to_string_lossy(),
-            size_mb
-        );
+        if let Some(filename) = path.file_name() {
+            println!("  {} ({:.2} MB)", filename.to_string_lossy(), size_mb);
+        }
     }
 
     Ok(())

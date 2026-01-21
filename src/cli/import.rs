@@ -40,11 +40,12 @@ pub async fn run(config_path: &Path, import_dir: &Path, overwrite: bool) -> Resu
             let entry = entry?;
             let path = entry.path();
             if path.is_file() {
-                let filename = path.file_name().unwrap();
-                let dest = dest_media.join(filename);
-                if !dest.exists() || overwrite {
-                    fs::copy(&path, &dest)?;
-                    tracing::info!("Copied media: {}", filename.to_string_lossy());
+                if let Some(filename) = path.file_name() {
+                    let dest = dest_media.join(filename);
+                    if !dest.exists() || overwrite {
+                        fs::copy(&path, &dest)?;
+                        tracing::info!("Copied media: {}", filename.to_string_lossy());
+                    }
                 }
             }
         }
