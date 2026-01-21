@@ -23,7 +23,7 @@ impl AppState {
         let mut templates = Tera::default();
 
         templates.register_filter("format_date", format_date_filter);
-
+        templates.register_filter("truncate_str", truncate_str_filter);
         templates.add_raw_templates(vec![
             ("css/bundle.css", include_str!("../../templates/css/bundle.css")),
             ("css/bundle-admin.css", include_str!("../../templates/css/bundle-admin.css")),
@@ -89,4 +89,14 @@ fn format_date_filter(value: &Value, args: &HashMap<String, Value>) -> tera::Res
     }
 
     Ok(Value::String(date_str.to_string()))
+}
+
+fn truncate_str_filter(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
+    let s = value.as_str().ok_or_else(|| tera::Error::msg("truncate_str requires a string"))?;
+    let len = args.get("len").and_then(|v| v.as_u64()).unwrap_or(16) as usize;
+    if s.len() > len {
+        Ok(Value::String(s[..len].to_string()))
+    } else {
+        Ok(Value::String(s.to_string()))
+    }
 }

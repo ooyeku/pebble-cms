@@ -69,17 +69,34 @@
             </div>
         </details>
 
-        <div class="form-group">
-            <label for="status">Status</label>
-            <select id="status" name="status">
-                <option value="draft" {% if is_new %}selected{% elif content %}{% if content.status=="draft"
-                    %}selected{% endif %}{% endif %}>Draft</option>
-                <option value="published" {% if content %}{% if content.status=="published" %}selected{% endif %}{%
-                    endif %}>Published</option>
-                <option value="archived" {% if content %}{% if content.status=="archived" %}selected{% endif %}{% endif
-                    %}>Archived</option>
-            </select>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="status">Status</label>
+                <select id="status" name="status" onchange="toggleScheduled()">
+                    <option value="draft" {% if is_new %}selected{% elif content %}{% if content.status=="draft"
+                        %}selected{% endif %}{% endif %}>Draft</option>
+                    <option value="scheduled" {% if content %}{% if content.status=="scheduled" %}selected{% endif %}{%
+                        endif %}>Scheduled</option>
+                    <option value="published" {% if content %}{% if content.status=="published" %}selected{% endif %}{%
+                        endif %}>Published</option>
+                    <option value="archived" {% if content %}{% if content.status=="archived" %}selected{% endif %}{%
+                        endif %}>Archived</option>
+                </select>
+            </div>
+            <div class="form-group" id="scheduled-group" style="display: none;">
+                <label for="scheduled_at">Publish At</label>
+                <input type="datetime-local" id="scheduled_at" name="scheduled_at"
+                    value="{% if content and content.scheduled_at %}{{ content.scheduled_at | truncate_str(len=16) }}{% endif %}">
+            </div>
         </div>
+        <script>
+            function toggleScheduled() {
+                const status = document.getElementById('status').value;
+                const group = document.getElementById('scheduled-group');
+                group.style.display = status === 'scheduled' ? 'block' : 'none';
+            }
+            toggleScheduled();
+        </script>
 
         <div style="display: flex; gap: 1rem;">
             <button type="submit" class="btn btn-primary">

@@ -185,6 +185,7 @@ pub async fn tag(
                         excerpt: row.get(6)?,
                         featured_image: row.get(7)?,
                         status: row.get::<_, String>(8)?.parse().unwrap_or_default(),
+                        scheduled_at: None,
                         published_at: row.get(9)?,
                         author_id: row.get(10)?,
                         metadata: serde_json::from_str(&row.get::<_, String>(11)?)

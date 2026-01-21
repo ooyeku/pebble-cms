@@ -23,6 +23,7 @@ pub fn search_content(db: &Database, query: &str, limit: usize) -> Result<Vec<Co
                 title: row.get(2)?,
                 excerpt: row.get(3)?,
                 status: row.get::<_, String>(4)?.parse().unwrap_or_default(),
+                scheduled_at: None,
                 published_at: row.get(5)?,
                 created_at: row.get(6)?,
             })

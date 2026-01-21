@@ -72,6 +72,7 @@ pub struct ContentForm {
     body_markdown: String,
     excerpt: Option<String>,
     status: String,
+    scheduled_at: Option<String>,
     #[serde(default)]
     tags: String,
     // SEO fields
@@ -121,6 +122,7 @@ pub async fn create_post(
         excerpt: form.excerpt.clone().filter(|s| !s.is_empty()),
         featured_image: None,
         status: form.status.parse().unwrap_or(ContentStatus::Draft),
+        scheduled_at: form.scheduled_at.clone().filter(|s| !s.is_empty()),
         tags,
         metadata: Some(build_seo_metadata(&form)),
     };
@@ -182,6 +184,7 @@ pub async fn update_post(
         excerpt: form.excerpt.clone(),
         featured_image: None,
         status: Some(form.status.parse().unwrap_or(ContentStatus::Draft)),
+        scheduled_at: form.scheduled_at.clone().filter(|s| !s.is_empty()),
         tags: Some(tags),
         metadata: Some(build_seo_metadata(&form)),
     };
@@ -257,6 +260,7 @@ pub async fn create_page(
         excerpt: form.excerpt.clone().filter(|s| !s.is_empty()),
         featured_image: None,
         status: form.status.parse().unwrap_or(ContentStatus::Draft),
+        scheduled_at: form.scheduled_at.clone().filter(|s| !s.is_empty()),
         tags: vec![],
         metadata: Some(build_seo_metadata(&form)),
     };
@@ -319,6 +323,7 @@ pub async fn update_page(
         excerpt: form.excerpt.clone(),
         featured_image: None,
         status: Some(form.status.parse().unwrap_or(ContentStatus::Draft)),
+        scheduled_at: form.scheduled_at.clone().filter(|s| !s.is_empty()),
         tags: None,
         metadata: Some(build_seo_metadata(&form)),
     };

@@ -136,6 +136,7 @@ fn import_markdown_file(
         content_type: content_type.clone(),
         body_markdown: body.to_string(),
         status,
+        scheduled_at: None,
         excerpt: None,
         featured_image: None,
         tags: vec![],

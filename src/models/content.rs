@@ -39,6 +39,7 @@ impl std::fmt::Display for ContentType {
 pub enum ContentStatus {
     #[default]
     Draft,
+    Scheduled,
     Published,
     Archived,
 }
@@ -49,6 +50,7 @@ impl FromStr for ContentStatus {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "draft" => Ok(Self::Draft),
+            "scheduled" => Ok(Self::Scheduled),
             "published" => Ok(Self::Published),
             "archived" => Ok(Self::Archived),
             _ => Err(()),
@@ -60,6 +62,7 @@ impl std::fmt::Display for ContentStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Draft => write!(f, "draft"),
+            Self::Scheduled => write!(f, "scheduled"),
             Self::Published => write!(f, "published"),
             Self::Archived => write!(f, "archived"),
         }
@@ -77,6 +80,7 @@ pub struct Content {
     pub excerpt: Option<String>,
     pub featured_image: Option<String>,
     pub status: ContentStatus,
+    pub scheduled_at: Option<String>,
     pub published_at: Option<String>,
     pub author_id: Option<i64>,
     pub metadata: serde_json::Value,
@@ -104,6 +108,7 @@ pub struct CreateContent {
     pub featured_image: Option<String>,
     #[serde(default)]
     pub status: ContentStatus,
+    pub scheduled_at: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
     pub metadata: Option<serde_json::Value>,
@@ -117,6 +122,7 @@ pub struct UpdateContent {
     pub excerpt: Option<String>,
     pub featured_image: Option<String>,
     pub status: Option<ContentStatus>,
+    pub scheduled_at: Option<String>,
     pub tags: Option<Vec<String>>,
     pub metadata: Option<serde_json::Value>,
 }
@@ -128,6 +134,7 @@ pub struct ContentSummary {
     pub title: String,
     pub excerpt: Option<String>,
     pub status: ContentStatus,
+    pub scheduled_at: Option<String>,
     pub published_at: Option<String>,
     pub created_at: String,
 }

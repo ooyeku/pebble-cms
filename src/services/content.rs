@@ -37,6 +37,12 @@ pub fn create_content(
         None
     };
 
+    let scheduled_at = if input.status == ContentStatus::Scheduled {
+        input.scheduled_at.clone()
+    } else {
+        None
+    };
+
     // Calculate reading time and merge with provided metadata
     let reading_time = renderer.calculate_reading_time(&input.body_markdown);
     let mut metadata = input.metadata.unwrap_or(serde_json::json!({}));
@@ -45,8 +51,8 @@ pub fn create_content(
     let conn = db.get()?;
     conn.execute(
         r#"
-        INSERT INTO content (slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, published_at, author_id, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO content (slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         (
             &slug,
@@ -57,6 +63,7 @@ pub fn create_content(
             &excerpt,
             &input.featured_image,
             input.status.to_string(),
+            &scheduled_at,
             &published_at,
             author_id,
             serde_json::to_string(&metadata)?,
@@ -90,7 +97,7 @@ pub fn update_content(
     let conn = db.get()?;
 
     let current: Content = conn.query_row(
-        "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, published_at, author_id, metadata, created_at, updated_at FROM content WHERE id = ?",
+        "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata, created_at, updated_at FROM content WHERE id = ?",
         [id],
         row_to_content,
     )?;
@@ -122,9 +129,15 @@ pub fn update_content(
         current.published_at
     };
 
+    let scheduled_at = if status == ContentStatus::Scheduled {
+        input.scheduled_at.or(current.scheduled_at)
+    } else {
+        None
+    };
+
     conn.execute(
         r#"
-        UPDATE content SET slug = ?, title = ?, body_markdown = ?, body_html = ?, excerpt = ?, featured_image = ?, status = ?, published_at = ?, metadata = ?
+        UPDATE content SET slug = ?, title = ?, body_markdown = ?, body_html = ?, excerpt = ?, featured_image = ?, status = ?, scheduled_at = ?, published_at = ?, metadata = ?
         WHERE id = ?
         "#,
         (
@@ -135,6 +148,7 @@ pub fn update_content(
             &excerpt,
             &featured_image,
             status.to_string(),
+            &scheduled_at,
             &published_at,
             serde_json::to_string(&metadata)?,
             id,
@@ -169,7 +183,7 @@ pub fn get_content_by_id(db: &Database, id: i64) -> Result<Option<ContentWithTag
     let conn = db.get()?;
     let content: Option<Content> = conn
         .query_row(
-            "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, published_at, author_id, metadata, created_at, updated_at FROM content WHERE id = ?",
+            "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata, created_at, updated_at FROM content WHERE id = ?",
             [id],
             row_to_content,
         )
@@ -185,7 +199,7 @@ pub fn get_content_by_slug(db: &Database, slug: &str) -> Result<Option<ContentWi
     let conn = db.get()?;
     let content: Option<Content> = conn
         .query_row(
-            "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, published_at, author_id, metadata, created_at, updated_at FROM content WHERE slug = ?",
+            "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata, created_at, updated_at FROM content WHERE slug = ?",
             [slug],
             row_to_content,
         )
@@ -207,7 +221,7 @@ pub fn list_content(
     let conn = db.get()?;
 
     let mut sql = String::from(
-        "SELECT id, slug, title, excerpt, status, published_at, created_at FROM content WHERE 1=1",
+        "SELECT id, slug, title, excerpt, status, scheduled_at, published_at, created_at FROM content WHERE 1=1",
     );
     let mut params: Vec<String> = Vec::new();
 
@@ -242,8 +256,9 @@ pub fn list_content(
                     .get::<_, String>(4)?
                     .parse()
                     .unwrap_or(ContentStatus::Draft),
-                published_at: row.get(5)?,
-                created_at: row.get(6)?,
+                scheduled_at: row.get(5)?,
+                published_at: row.get(6)?,
+                created_at: row.get(7)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -259,7 +274,7 @@ pub fn list_published_content(
 ) -> Result<Vec<ContentWithTags>> {
     let conn = db.get()?;
     let mut stmt = conn.prepare(
-        "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, published_at, author_id, metadata, created_at, updated_at
+        "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata, created_at, updated_at
          FROM content WHERE content_type = ? AND status = 'published' ORDER BY published_at DESC LIMIT ? OFFSET ?",
     )?;
 
@@ -311,11 +326,12 @@ fn row_to_content(row: &rusqlite::Row) -> rusqlite::Result<Content> {
             .get::<_, String>(8)?
             .parse()
             .unwrap_or(ContentStatus::Draft),
-        published_at: row.get(9)?,
-        author_id: row.get(10)?,
-        metadata: serde_json::from_str(&row.get::<_, String>(11)?).unwrap_or(serde_json::json!({})),
-        created_at: row.get(12)?,
-        updated_at: row.get(13)?,
+        scheduled_at: row.get(9)?,
+        published_at: row.get(10)?,
+        author_id: row.get(11)?,
+        metadata: serde_json::from_str(&row.get::<_, String>(12)?).unwrap_or(serde_json::json!({})),
+        created_at: row.get(13)?,
+        updated_at: row.get(14)?,
     })
 }
 
@@ -355,4 +371,33 @@ fn enrich_content(db: &Database, content: Content) -> Result<ContentWithTags> {
         tags,
         author,
     })
+}
+
+pub fn publish_scheduled(db: &Database) -> Result<usize> {
+    let conn = db.get()?;
+    let now = chrono::Utc::now().to_rfc3339();
+
+    // Find all scheduled content that should be published
+    let mut stmt = conn.prepare(
+        "SELECT id FROM content WHERE status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= ?"
+    )?;
+
+    let ids: Vec<i64> = stmt
+        .query_map([&now], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if ids.is_empty() {
+        return Ok(0);
+    }
+
+    // Update each post to published
+    for id in &ids {
+        conn.execute(
+            "UPDATE content SET status = 'published', published_at = ?, scheduled_at = NULL WHERE id = ?",
+            (&now, id),
+        )?;
+        tracing::info!("Auto-published scheduled content id={}", id);
+    }
+
+    Ok(ids.len())
 }
