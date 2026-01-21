@@ -55,6 +55,9 @@ uuid = { version = "1", features = ["v4"] }
 mime_guess = "2"
 regex = "1"
 
+image = "0.25"
+zip = "2"
+
 # Embed assets
 rust-embed = "8"
 

@@ -10,6 +10,12 @@ pub struct Database {
     pool: DbPool,
 }
 
+impl Clone for Database {
+    fn clone(&self) -> Self {
+        Self { pool: self.pool.clone() }
+    }
+}
+
 impl Database {
     pub fn open(path: &str) -> Result<Self> {
         let path = Path::new(path);
@@ -58,6 +64,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let migrations: Vec<(i32, &str)> = vec![
         (1, include_str!("migrations/001_initial.sql")),
         (2, include_str!("migrations/002_fts.sql")),
+        (3, include_str!("migrations/003_media_optimization.sql")),
     ];
 
     for (version, sql) in migrations {

@@ -1,0 +1,4 @@
+ALTER TABLE media ADD COLUMN webp_filename TEXT;
+ALTER TABLE media ADD COLUMN width INTEGER;
+ALTER TABLE media ADD COLUMN height INTEGER;
+ALTER TABLE media ADD COLUMN thumbnail_filename TEXT;

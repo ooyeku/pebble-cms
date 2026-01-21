@@ -5,7 +5,7 @@ use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
-pub async fn run(config_path: &Path, output_dir: &Path, include_drafts: bool) -> Result<()> {
+pub async fn run(config_path: &Path, output_dir: &Path, include_drafts: bool, include_media: bool) -> Result<()> {
     let config = Config::load(config_path)?;
     let db = crate::Database::open(&config.database.path)?;
 
@@ -19,7 +19,7 @@ pub async fn run(config_path: &Path, output_dir: &Path, include_drafts: bool) ->
         Some(crate::models::ContentStatus::Published)
     };
 
-    let posts = content::list_content(&db, Some(ContentType::Post), status, 10000, 0)?;
+    let posts = content::list_content(&db, Some(ContentType::Post), status.clone(), 10000, 0)?;
     let pages = content::list_content(&db, Some(ContentType::Page), status, 10000, 0)?;
 
     tracing::info!("Exporting {} posts and {} pages", posts.len(), pages.len());
@@ -81,6 +81,26 @@ created_at: "{}"
             let content = format!("{}{}", frontmatter, c.content.body_markdown);
             fs::write(&filepath, content)?;
             tracing::info!("Exported: {}", filepath.display());
+        }
+    }
+
+    if include_media {
+        let media_src = Path::new(&config.media.upload_dir);
+        if media_src.exists() {
+            let media_dest = output_dir.join("media");
+            fs::create_dir_all(&media_dest)?;
+
+            let mut count = 0;
+            for entry in fs::read_dir(media_src)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_file() {
+                    let filename = path.file_name().unwrap();
+                    fs::copy(&path, media_dest.join(filename))?;
+                    count += 1;
+                }
+            }
+            tracing::info!("Exported {} media files", count);
         }
     }
 

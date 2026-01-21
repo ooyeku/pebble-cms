@@ -24,11 +24,21 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Deploy { host, port }) => {
             pebble::cli::deploy::run(&cli.config, &host, port).await?;
         }
+        Some(Commands::Build { output, base_url }) => {
+            pebble::cli::build::run(&cli.config, &output, base_url).await?;
+        }
         Some(Commands::Export {
             output,
             include_drafts,
+            include_media,
         }) => {
-            pebble::cli::export::run(&cli.config, &output, include_drafts).await?;
+            pebble::cli::export::run(&cli.config, &output, include_drafts, include_media).await?;
+        }
+        Some(Commands::Import { path, overwrite }) => {
+            pebble::cli::import::run(&cli.config, &path, overwrite).await?;
+        }
+        Some(Commands::Backup { command }) => {
+            pebble::cli::backup::run(&cli.config, command).await?;
         }
         Some(Commands::Migrate) => {
             pebble::cli::migrate::run(&cli.config).await?;
@@ -37,7 +47,6 @@ async fn main() -> anyhow::Result<()> {
             pebble::cli::user::run(&cli.config, command).await?;
         }
         None => {
-            // No subcommand provided, print help
             use clap::CommandFactory;
             Cli::command().print_help()?;
         }

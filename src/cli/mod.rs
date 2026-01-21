@@ -1,5 +1,8 @@
+pub mod backup;
+pub mod build;
 pub mod deploy;
 pub mod export;
+pub mod import;
 pub mod init;
 pub mod migrate;
 pub mod serve;
@@ -40,11 +43,29 @@ pub enum Commands {
         #[arg(short, long, default_value = "8080")]
         port: u16,
     },
+    Build {
+        #[arg(short, long, default_value = "./dist")]
+        output: PathBuf,
+        #[arg(long)]
+        base_url: Option<String>,
+    },
     Export {
         #[arg(short, long, default_value = "./export")]
         output: PathBuf,
         #[arg(long)]
         include_drafts: bool,
+        #[arg(long)]
+        include_media: bool,
+    },
+    Import {
+        #[arg(default_value = "./export")]
+        path: PathBuf,
+        #[arg(long)]
+        overwrite: bool,
+    },
+    Backup {
+        #[command(subcommand)]
+        command: BackupCommand,
     },
     Migrate,
     User {
@@ -71,5 +92,20 @@ pub enum UserCommand {
     },
     Passwd {
         username: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum BackupCommand {
+    Create {
+        #[arg(short, long, default_value = "./backups")]
+        output: PathBuf,
+    },
+    Restore {
+        file: PathBuf,
+    },
+    List {
+        #[arg(short, long, default_value = "./backups")]
+        dir: PathBuf,
     },
 }

@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod content;
+pub mod image;
 pub mod markdown;
 pub mod media;
 pub mod search;

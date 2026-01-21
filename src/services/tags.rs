@@ -95,3 +95,33 @@ pub fn update_tag(db: &Database, id: i64, name: &str, slug: Option<&str>) -> Res
     )?;
     Ok(())
 }
+
+pub fn get_posts_by_tag(db: &Database, tag_slug: &str) -> Result<Vec<crate::models::ContentWithTags>> {
+    use crate::services::content;
+
+    let conn = db.get()?;
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT c.id
+        FROM content c
+        JOIN content_tags ct ON c.id = ct.content_id
+        JOIN tags t ON ct.tag_id = t.id
+        WHERE t.slug = ? AND c.status = 'published'
+        ORDER BY c.published_at DESC, c.created_at DESC
+        "#,
+    )?;
+
+    let ids: Vec<i64> = stmt
+        .query_map([tag_slug], |row| row.get(0))?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let mut posts = Vec::new();
+    for id in ids {
+        if let Ok(Some(post)) = content::get_content_by_id(db, id) {
+            posts.push(post);
+        }
+    }
+
+    Ok(posts)
+}
