@@ -7,7 +7,56 @@
     <h2>Settings</h2>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom: 1.5rem;">
+    <h3 style="margin-bottom: 1rem;">Homepage Customization</h3>
+    <form method="post" action="/admin/settings/homepage">
+        <div class="form-group">
+            <label for="homepage_title">Homepage Title</label>
+            <input type="text" id="homepage_title" name="homepage_title" value="{{ homepage.title }}"
+                placeholder="Welcome to {{ site.title }}" style="background: var(--bg); color: var(--text);">
+            <p class="form-hint">Custom title for the hero section. Leave empty to use site title.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="homepage_subtitle">Homepage Subtitle</label>
+            <input type="text" id="homepage_subtitle" name="homepage_subtitle" value="{{ homepage.subtitle }}"
+                placeholder="{{ site.description }}" style="background: var(--bg); color: var(--text);">
+            <p class="form-hint">Custom subtitle/tagline. Leave empty to use site description.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="custom_content">Custom Content (HTML)</label>
+            <textarea id="custom_content" name="custom_content" rows="4"
+                placeholder="<p>Add buttons, links, or other custom content here...</p>"
+                style="min-height: 100px; background: var(--bg); color: var(--text);">{{ homepage.custom_content }}</textarea>
+            <p class="form-hint">Optional HTML content displayed below the subtitle (e.g., CTA buttons).</p>
+        </div>
+
+        <div class="form-row" style="margin-bottom: 1rem;">
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="show_pages" value="true" {% if homepage.show_pages %}checked{% endif %}
+                        style="width: auto;">
+                    Show Pages Section
+                </label>
+                <p class="form-hint">Display links to published pages on the homepage.</p>
+            </div>
+
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="show_posts" value="true" {% if homepage.show_posts %}checked{% endif %}
+                        style="width: auto;">
+                    Show Recent Posts
+                </label>
+                <p class="form-hint">Display recent blog posts on the homepage.</p>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Homepage Settings</button>
+    </form>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
     <h3 style="margin-bottom: 1rem;">Site Information</h3>
     <table>
         <tr>
@@ -33,7 +82,7 @@
     </p>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom: 1.5rem;">
     <h3 style="margin-bottom: 1rem;">Content Settings</h3>
     <table>
         <tr>
@@ -51,7 +100,7 @@
     </table>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom: 1.5rem;">
     <h3 style="margin-bottom: 1rem;">Theme</h3>
     <table>
         <tr>

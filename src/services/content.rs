@@ -117,7 +117,7 @@ pub fn update_content(
         .or_else(|| Some(renderer.generate_excerpt(&body_markdown, excerpt_length)));
     let featured_image = input.featured_image.or(current.featured_image);
     let status = input.status.unwrap_or(current.status);
-    
+
     // Calculate reading time and merge with provided metadata
     let reading_time = renderer.calculate_reading_time(&body_markdown);
     let mut metadata = input.metadata.unwrap_or(current.metadata);

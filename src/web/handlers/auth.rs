@@ -18,10 +18,7 @@ fn get_client_ip(jar: &CookieJar) -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-pub async fn login_form(
-    State(state): State<Arc<AppState>>,
-    jar: CookieJar,
-) -> AppResult<Response> {
+pub async fn login_form(State(state): State<Arc<AppState>>, jar: CookieJar) -> AppResult<Response> {
     if !auth::has_users(&state.db)? {
         return Ok(Redirect::to("/admin/setup").into_response());
     }
@@ -57,7 +54,10 @@ pub async fn login(
 
     if !state.rate_limiter.check(&client_key) {
         let mut ctx = Context::new();
-        ctx.insert("error", "Too many login attempts. Please try again in 15 minutes.");
+        ctx.insert(
+            "error",
+            "Too many login attempts. Please try again in 15 minutes.",
+        );
         ctx.insert("csrf_token", &state.csrf.generate());
         let html = state.templates.render("admin/login.html", &ctx)?;
         return Ok((StatusCode::TOO_MANY_REQUESTS, Html(html)).into_response());

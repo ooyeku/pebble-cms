@@ -66,7 +66,9 @@ pub fn upload_media(
                     std::fs::write(upload_dir.join(&filename), &optimized.original)?;
                     std::fs::write(upload_dir.join(&webp_name), &optimized.webp)?;
 
-                    if let Ok(thumb_data) = img_service::generate_thumbnail(&optimized.original, None) {
+                    if let Ok(thumb_data) =
+                        img_service::generate_thumbnail(&optimized.original, None)
+                    {
                         let thumb_name = format!("{}-thumb.webp", base_uuid);
                         std::fs::write(upload_dir.join(&thumb_name), thumb_data)?;
                     }
@@ -197,7 +199,10 @@ pub fn delete_media(db: &Database, upload_dir: &Path, id: i64) -> Result<()> {
         }
     }
 
-    let base_name = filename.rsplit_once('.').map(|(n, _)| n).unwrap_or(&filename);
+    let base_name = filename
+        .rsplit_once('.')
+        .map(|(n, _)| n)
+        .unwrap_or(&filename);
     let thumb_path = upload_dir.join(format!("{}-thumb.webp", base_name));
     if thumb_path.exists() {
         std::fs::remove_file(thumb_path)?;

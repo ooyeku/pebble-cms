@@ -4,5 +4,6 @@ pub mod image;
 pub mod markdown;
 pub mod media;
 pub mod search;
+pub mod settings;
 pub mod slug;
 pub mod tags;

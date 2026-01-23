@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Posts - {{ site.title }}{% endblock %}
+
+{% block content %}
+<header class="post-header">
+    <h1>Posts</h1>
+</header>
+
+{% if posts | length > 0 %}
+<div class="post-list">
+    {% for post in posts %}
+    <article class="post-card">
+        <h2>
+            <a href="/posts/{{ post.slug }}">{{ post.title }}</a>
+        </h2>
+        <div class="post-meta">
+            {% if post.published_at %}
+            <time>{{ post.published_at | format_date }}</time>
+            {% endif %}
+            {% if post.author %}
+            <span class="separator">&middot;</span>
+            <span>{{ post.author.username }}</span>
+            {% endif %}
+        </div>
+        {% if post.excerpt %}
+        <p class="post-excerpt">{{ post.excerpt }}</p>
+        {% endif %}
+        {% if post.tags | length > 0 %}
+        <div class="post-tags">
+            {% for tag in post.tags %}
+            <a href="/tags/{{ tag.slug }}" class="tag">{{ tag.name }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+
+{% if total_pages is defined and total_pages > 1 %}
+<nav class="pagination">
+    {% if page > 1 %}
+    <a href="/posts?page={{ page - 1 }}">&larr; Newer</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %} <a href="/posts?page={{ page + 1 }}">Older &rarr;</a>
+        {% else %}
+        <span></span>
+        {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <p>No posts published yet.</p>
+    <p class="empty-state-hint">Start creating content in the <a href="/admin">admin panel</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

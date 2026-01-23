@@ -12,7 +12,9 @@ pub struct Database {
 
 impl Clone for Database {
     fn clone(&self) -> Self {
-        Self { pool: self.pool.clone() }
+        Self {
+            pool: self.pool.clone(),
+        }
     }
 }
 
@@ -20,7 +22,9 @@ impl Database {
     pub fn open(path: &str) -> Result<Self> {
         let path = Path::new(path);
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)?;
+            if !parent.as_os_str().is_empty() {
+                std::fs::create_dir_all(parent)?;
+            }
         }
 
         let manager = SqliteConnectionManager::file(path);
@@ -28,6 +32,20 @@ impl Database {
 
         let conn = pool.get()?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+
+        Ok(Self { pool })
+    }
+
+    pub fn open_memory(name: &str) -> Result<Self> {
+        let uri = format!("file:{}?mode=memory&cache=shared", name);
+        let manager = SqliteConnectionManager::file(&uri);
+        let pool = Pool::builder()
+            .max_size(5)
+            .connection_timeout(std::time::Duration::from_secs(5))
+            .build(manager)?;
+
+        let conn = pool.get()?;
+        conn.execute_batch("PRAGMA foreign_keys=ON;")?;
 
         Ok(Self { pool })
     }

@@ -38,11 +38,28 @@ This creates:
 
 ### serve
 
-Start the web server:
+Start the development server:
 
 ```bash
 pebble serve                     # Default: 127.0.0.1:3000
 pebble serve -H 0.0.0.0 -p 8080  # Custom host/port
+```
+
+### deploy
+
+Start the production server (defaults to 0.0.0.0:8080):
+
+```bash
+pebble deploy
+pebble deploy -p 3000
+```
+
+### build
+
+Generate a static version of your site:
+
+```bash
+pebble build --output ./dist --base-url "https://example.com"
 ```
 
 ### migrate
@@ -65,6 +82,33 @@ pebble user remove alice
 ```
 
 Roles: `admin`, `author`, `viewer`
+
+### backup
+
+Manage system backups:
+
+```bash
+# Create a backup (defaults to ./backups)
+pebble backup create
+
+# List available backups
+pebble backup list
+
+# Restore from a backup file
+pebble backup restore backups/backup_20230101.tar.gz
+```
+
+### import / export
+
+Migrate content between Pebble instances:
+
+```bash
+# Export content to JSON
+pebble export --output ./export --include-drafts --include-media
+
+# Import content from export directory
+pebble import ./export --overwrite
+```
 
 ## Configuration
 
@@ -201,7 +245,8 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/mysite
-ExecStart=/usr/local/bin/pebble serve -H 0.0.0.0
+# Use 'deploy' for production defaults (0.0.0.0:8080)
+ExecStart=/usr/local/bin/pebble deploy
 Restart=on-failure
 
 [Install]
@@ -212,7 +257,7 @@ WantedBy=multi-user.target
 
 ```
 example.com {
-    reverse_proxy localhost:3000
+    reverse_proxy localhost:8080
 }
 ```
 
@@ -224,25 +269,28 @@ server {
     server_name example.com;
 
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
 ```
 
-## Backup
+## Backup & Recovery
 
-The entire site is contained in:
-- `pebble.toml` - Configuration
-- `data/pebble.db` - SQLite database (all content)
-- `data/media/` - Uploaded files
+Pebble includes built-in tools for backup and recovery.
 
-Back these up regularly:
-
+**Create a backup:**
 ```bash
-cp data/pebble.db data/pebble.db.backup
+pebble backup create
 ```
+This archives the database, configuration, and media files into the `backups/` directory.
+
+**Restore a backup:**
+```bash
+pebble backup restore ./backups/pebble_backup_2024-01-01_12-00-00.tar.gz
+```
+*Warning: This will overwrite current data.*
 
 ## Search
 
@@ -252,3 +300,5 @@ Full-text search is built-in using SQLite FTS5. It searches:
 - Tags
 
 Access via `/search` or the search box in navigation.
+
+

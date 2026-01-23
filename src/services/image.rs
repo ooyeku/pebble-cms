@@ -27,7 +27,11 @@ pub fn is_optimizable_image(mime_type: &str) -> bool {
     )
 }
 
-pub fn optimize_image(data: &[u8], mime_type: &str, max_width: Option<u32>) -> Result<OptimizedImage> {
+pub fn optimize_image(
+    data: &[u8],
+    mime_type: &str,
+    max_width: Option<u32>,
+) -> Result<OptimizedImage> {
     let format = match mime_type {
         "image/jpeg" => ImageFormat::Jpeg,
         "image/png" => ImageFormat::Png,

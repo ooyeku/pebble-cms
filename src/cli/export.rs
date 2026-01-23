@@ -5,7 +5,12 @@ use anyhow::Result;
 use std::fs;
 use std::path::Path;
 
-pub async fn run(config_path: &Path, output_dir: &Path, include_drafts: bool, include_media: bool) -> Result<()> {
+pub async fn run(
+    config_path: &Path,
+    output_dir: &Path,
+    include_drafts: bool,
+    include_media: bool,
+) -> Result<()> {
     let config = Config::load(config_path)?;
     let db = crate::Database::open(&config.database.path)?;
 

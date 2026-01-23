@@ -1,5 +1,5 @@
 use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, UserRole};
-use crate::services::{auth, content, media, tags};
+use crate::services::{auth, content, media, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::{CurrentUser, HxRequest};
 use crate::web::state::AppState;
@@ -495,13 +495,45 @@ pub async fn settings(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
 ) -> AppResult<Html<String>> {
+    let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
+
     let mut ctx = Context::new();
     ctx.insert("site", &state.config.site);
     ctx.insert("user", &user);
     ctx.insert("config", &state.config);
+    ctx.insert("homepage", &homepage_settings);
 
     let html = state.templates.render("admin/settings/index.html", &ctx)?;
     Ok(Html(html))
+}
+
+#[derive(Deserialize)]
+pub struct HomepageSettingsForm {
+    homepage_title: String,
+    homepage_subtitle: String,
+    #[serde(default)]
+    show_pages: Option<String>,
+    #[serde(default)]
+    show_posts: Option<String>,
+    custom_content: String,
+}
+
+pub async fn save_homepage_settings(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(_user): CurrentUser,
+    Form(form): Form<HomepageSettingsForm>,
+) -> AppResult<Response> {
+    let homepage = settings::HomepageSettings {
+        title: form.homepage_title,
+        subtitle: form.homepage_subtitle,
+        show_pages: form.show_pages.is_some(),
+        show_posts: form.show_posts.is_some(),
+        custom_content: form.custom_content,
+    };
+
+    settings::save_homepage_settings(&state.db, &homepage)?;
+
+    Ok(Redirect::to("/admin/settings").into_response())
 }
 
 pub async fn users(

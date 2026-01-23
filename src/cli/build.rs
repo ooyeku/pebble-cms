@@ -43,12 +43,17 @@ fn make_context(state: &AppState) -> Context {
 
 fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<()> {
     let posts_per_page = state.config.content.posts_per_page;
-    let total = content::count_content(&state.db, Some(ContentType::Post), Some(ContentStatus::Published))?;
+    let total = content::count_content(
+        &state.db,
+        Some(ContentType::Post),
+        Some(ContentStatus::Published),
+    )?;
     let total_pages = ((total as usize) + posts_per_page - 1) / posts_per_page;
 
     for page_num in 1..=total_pages.max(1) {
         let offset = (page_num - 1) * posts_per_page;
-        let posts = content::list_published_content(&state.db, ContentType::Post, posts_per_page, offset)?;
+        let posts =
+            content::list_published_content(&state.db, ContentType::Post, posts_per_page, offset)?;
 
         let mut ctx = make_context(state);
         ctx.insert("posts", &posts);
@@ -68,7 +73,10 @@ fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<(
         }
 
         if total_pages > 1 {
-            let page_dir = output_dir.join("posts").join("page").join(page_num.to_string());
+            let page_dir = output_dir
+                .join("posts")
+                .join("page")
+                .join(page_num.to_string());
             fs::create_dir_all(&page_dir)?;
             fs::write(page_dir.join("index.html"), &html)?;
         }
@@ -379,7 +387,11 @@ fn generate_sitemap(state: &AppState, site_url: &str) -> Result<String> {
             "<url><loc>{}/{}</loc><lastmod>{}</lastmod><changefreq>monthly</changefreq></url>\n",
             site_url,
             page.content.slug,
-            page.content.updated_at.split('T').next().unwrap_or(&page.content.updated_at)
+            page.content
+                .updated_at
+                .split('T')
+                .next()
+                .unwrap_or(&page.content.updated_at)
         ));
     }
 

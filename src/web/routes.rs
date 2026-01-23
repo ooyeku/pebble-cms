@@ -59,6 +59,10 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/tags/:id", post(handlers::admin::update_tag))
         .route("/admin/tags/:id/delete", post(handlers::admin::delete_tag))
         .route("/admin/settings", get(handlers::admin::settings))
+        .route(
+            "/admin/settings/homepage",
+            post(handlers::admin::save_homepage_settings),
+        )
         .route("/admin/users", get(handlers::admin::users))
         .route("/admin/users", post(handlers::admin::create_user))
         .route("/admin/users/:id", post(handlers::admin::update_user))

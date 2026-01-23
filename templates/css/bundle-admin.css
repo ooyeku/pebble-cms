@@ -189,7 +189,9 @@ html.theme-light {
     --shadow-alpha-sm: 0.05;
     --shadow-alpha-md: 0.1;
     --shadow-alpha-lg: 0.15;
-}*,
+}
+
+*,
 *::before,
 *::after {
     box-sizing: border-box;
@@ -279,7 +281,9 @@ table {
 ::selection {
     background: var(--color-primary-light);
     color: var(--text);
-}a {
+}
+
+a {
     color: var(--color-primary);
     text-decoration: none;
     transition: color var(--transition-base);
@@ -455,7 +459,9 @@ h6 {
     background: var(--bg-secondary);
     font-weight: 600;
     color: var(--text);
-}.container {
+}
+
+.container {
     max-width: var(--container-max);
     margin: 0 auto;
     padding: 0 var(--space-8);
@@ -616,6 +622,19 @@ h6 {
     font-size: var(--font-size-2xl);
 }
 
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+    gap: var(--space-4);
+}
+
+.header h2 {
+    font-size: var(--font-size-2xl);
+    margin: 0;
+}
+
 .grid {
     display: grid;
     gap: var(--space-6);
@@ -644,7 +663,9 @@ h6 {
     .grid-4 {
         grid-template-columns: 1fr;
     }
-}.btn {
+}
+
+.btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1081,6 +1102,47 @@ html.theme-light .theme-toggle .icon-sun {
     color: var(--text);
 }
 
+.theme-toggle-admin .icon-sun,
+.theme-toggle-admin .icon-moon {
+    display: none;
+}
+
+html.theme-dark .theme-toggle-admin .icon-sun {
+    display: inline;
+}
+
+html.theme-dark .theme-toggle-admin .icon-moon {
+    display: none;
+}
+
+html.theme-light .theme-toggle-admin .icon-moon {
+    display: inline;
+}
+
+html.theme-light .theme-toggle-admin .icon-sun {
+    display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    html:not(.theme-light):not(.theme-dark) .theme-toggle-admin .icon-sun {
+        display: inline;
+    }
+
+    html:not(.theme-light):not(.theme-dark) .theme-toggle-admin .icon-moon {
+        display: none;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    html:not(.theme-light):not(.theme-dark) .theme-toggle-admin .icon-moon {
+        display: inline;
+    }
+
+    html:not(.theme-light):not(.theme-dark) .theme-toggle-admin .icon-sun {
+        display: none;
+    }
+}
+
 .media-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1160,9 +1222,13 @@ html.theme-light .theme-toggle .icon-sun {
 
 .pagination .page-info {
     color: var(--text-muted);
-}.admin-body {
+}
+
+.admin-body {
     background: var(--bg-secondary);
-}html.site-theme-default {}
+}
+
+html.site-theme-default {}
 
 html.site-theme-minimal {
     --color-primary: #18181b;

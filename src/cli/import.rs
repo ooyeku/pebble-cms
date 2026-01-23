@@ -21,13 +21,25 @@ pub async fn run(config_path: &Path, import_dir: &Path, overwrite: bool) -> Resu
     let mut skipped = 0;
 
     if posts_dir.exists() {
-        let (i, s) = import_content_dir(&db, &posts_dir, ContentType::Post, overwrite, config.content.excerpt_length)?;
+        let (i, s) = import_content_dir(
+            &db,
+            &posts_dir,
+            ContentType::Post,
+            overwrite,
+            config.content.excerpt_length,
+        )?;
         imported += i;
         skipped += s;
     }
 
     if pages_dir.exists() {
-        let (i, s) = import_content_dir(&db, &pages_dir, ContentType::Page, overwrite, config.content.excerpt_length)?;
+        let (i, s) = import_content_dir(
+            &db,
+            &pages_dir,
+            ContentType::Page,
+            overwrite,
+            config.content.excerpt_length,
+        )?;
         imported += i;
         skipped += s;
     }
@@ -51,7 +63,11 @@ pub async fn run(config_path: &Path, import_dir: &Path, overwrite: bool) -> Resu
         }
     }
 
-    tracing::info!("Import complete: {} imported, {} skipped", imported, skipped);
+    tracing::info!(
+        "Import complete: {} imported, {} skipped",
+        imported,
+        skipped
+    );
     Ok(())
 }
 
@@ -169,7 +185,10 @@ fn parse_frontmatter(content: &str) -> Result<(serde_json::Map<String, serde_jso
                     let key = key.trim();
                     let value = value.trim().trim_matches('"').trim_matches('\'');
                     if !key.is_empty() {
-                        map.insert(key.to_string(), serde_json::Value::String(value.to_string()));
+                        map.insert(
+                            key.to_string(),
+                            serde_json::Value::String(value.to_string()),
+                        );
                     }
                 }
             }

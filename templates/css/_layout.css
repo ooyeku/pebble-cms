@@ -159,6 +159,19 @@
     font-size: var(--font-size-2xl);
 }
 
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+    gap: var(--space-4);
+}
+
+.header h2 {
+    font-size: var(--font-size-2xl);
+    margin: 0;
+}
+
 .grid {
     display: grid;
     gap: var(--space-6);

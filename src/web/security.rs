@@ -8,20 +8,11 @@ use std::time::{Duration, Instant};
 pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
     let headers = response.headers_mut();
 
-    headers.insert(
-        header::X_CONTENT_TYPE_OPTIONS,
-        "nosniff".parse().unwrap(),
-    );
+    headers.insert(header::X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
 
-    headers.insert(
-        header::X_FRAME_OPTIONS,
-        "DENY".parse().unwrap(),
-    );
+    headers.insert(header::X_FRAME_OPTIONS, "DENY".parse().unwrap());
 
-    headers.insert(
-        header::X_XSS_PROTECTION,
-        "1; mode=block".parse().unwrap(),
-    );
+    headers.insert(header::X_XSS_PROTECTION, "1; mode=block".parse().unwrap());
 
     headers.insert(
         header::REFERRER_POLICY,
@@ -154,10 +145,7 @@ impl CsrfManager {
     }
 }
 
-pub async fn apply_security_headers(
-    request: Request<Body>,
-    next: Next,
-) -> Response<Body> {
+pub async fn apply_security_headers(request: Request<Body>, next: Next) -> Response<Body> {
     let response = next.run(request).await;
     security_headers(response)
 }

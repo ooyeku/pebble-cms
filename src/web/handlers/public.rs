@@ -1,5 +1,5 @@
 use crate::models::{ContentType, User};
-use crate::services::{content, search, tags};
+use crate::services::{content, search, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::OptionalUser;
 use crate::web::state::AppState;
@@ -39,15 +39,19 @@ pub async fn index(
     State(state): State<Arc<AppState>>,
     OptionalUser(user): OptionalUser,
 ) -> AppResult<Html<String>> {
+    let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
     let posts = content::list_published_content(
         &state.db,
         ContentType::Post,
         state.config.content.posts_per_page,
         0,
     )?;
+    let pages = content::list_published_content(&state.db, ContentType::Page, 100, 0)?;
 
     let mut ctx = make_context(&state, &user);
     ctx.insert("posts", &posts);
+    ctx.insert("pages", &pages);
+    ctx.insert("homepage", &homepage_settings);
 
     let html = state.templates.render("public/index.html", &ctx)?;
     Ok(Html(html))
@@ -74,7 +78,7 @@ pub async fn posts(
     ctx.insert("page", &page);
     ctx.insert("total_pages", &total_pages);
 
-    let html = state.templates.render("public/index.html", &ctx)?;
+    let html = state.templates.render("public/posts.html", &ctx)?;
     Ok(Html(html))
 }
 

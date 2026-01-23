@@ -96,7 +96,10 @@ pub fn update_tag(db: &Database, id: i64, name: &str, slug: Option<&str>) -> Res
     Ok(())
 }
 
-pub fn get_posts_by_tag(db: &Database, tag_slug: &str) -> Result<Vec<crate::models::ContentWithTags>> {
+pub fn get_posts_by_tag(
+    db: &Database,
+    tag_slug: &str,
+) -> Result<Vec<crate::models::ContentWithTags>> {
     use crate::services::content;
 
     let conn = db.get()?;
