@@ -92,56 +92,26 @@ impl RateLimiter {
     }
 }
 
-pub struct CsrfManager {
-    tokens: RwLock<HashMap<String, Instant>>,
-    ttl: Duration,
-}
+pub struct CsrfManager;
 
 impl Default for CsrfManager {
     fn default() -> Self {
-        Self::new(Duration::from_secs(3600))
+        Self
     }
 }
 
 impl CsrfManager {
-    pub fn new(ttl: Duration) -> Self {
-        Self {
-            tokens: RwLock::new(HashMap::new()),
-            ttl,
-        }
-    }
-
     pub fn generate(&self) -> String {
         use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
         use rand::Rng;
 
         let mut bytes = [0u8; 32];
         rand::thread_rng().fill(&mut bytes);
-        let token = URL_SAFE_NO_PAD.encode(bytes);
-
-        let mut tokens = self.tokens.write().unwrap();
-        tokens.insert(token.clone(), Instant::now());
-
-        token
+        URL_SAFE_NO_PAD.encode(bytes)
     }
 
-    pub fn validate(&self, token: &str) -> bool {
-        let now = Instant::now();
-        let mut tokens = self.tokens.write().unwrap();
-
-        if let Some(created) = tokens.remove(token) {
-            if now.duration_since(created) < self.ttl {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    pub fn cleanup(&self) {
-        let now = Instant::now();
-        let mut tokens = self.tokens.write().unwrap();
-        tokens.retain(|_, created| now.duration_since(*created) < self.ttl);
+    pub fn validate(&self, form_token: &str, cookie_token: &str) -> bool {
+        !form_token.is_empty() && form_token == cookie_token
     }
 }
 

@@ -221,7 +221,7 @@ pub fn list_content(
     let conn = db.get()?;
 
     let mut sql = String::from(
-        "SELECT id, slug, title, excerpt, status, scheduled_at, published_at, created_at FROM content WHERE 1=1",
+        "SELECT id, slug, title, content_type, excerpt, status, scheduled_at, published_at, created_at FROM content WHERE 1=1",
     );
     let mut params: Vec<String> = Vec::new();
 
@@ -251,14 +251,18 @@ pub fn list_content(
                 id: row.get(0)?,
                 slug: row.get(1)?,
                 title: row.get(2)?,
-                excerpt: row.get(3)?,
+                content_type: row
+                    .get::<_, String>(3)?
+                    .parse()
+                    .unwrap_or(ContentType::Post),
+                excerpt: row.get(4)?,
                 status: row
-                    .get::<_, String>(4)?
+                    .get::<_, String>(5)?
                     .parse()
                     .unwrap_or(ContentStatus::Draft),
-                scheduled_at: row.get(5)?,
-                published_at: row.get(6)?,
-                created_at: row.get(7)?,
+                scheduled_at: row.get(6)?,
+                published_at: row.get(7)?,
+                created_at: row.get(8)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;

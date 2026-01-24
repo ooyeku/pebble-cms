@@ -132,6 +132,7 @@ pub struct ContentSummary {
     pub id: i64,
     pub slug: String,
     pub title: String,
+    pub content_type: ContentType,
     pub excerpt: Option<String>,
     pub status: ContentStatus,
     pub scheduled_at: Option<String>,

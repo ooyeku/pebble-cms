@@ -63,6 +63,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/settings/homepage",
             post(handlers::admin::save_homepage_settings),
         )
+        .route("/admin/analytics", get(handlers::admin::analytics))
         .route("/admin/users", get(handlers::admin::users))
         .route("/admin/users", post(handlers::admin::create_user))
         .route("/admin/users/:id", post(handlers::admin::update_user))
@@ -79,6 +80,10 @@ pub fn htmx_routes() -> Router<Arc<AppState>> {
         .route(
             "/htmx/tags/autocomplete",
             get(handlers::htmx::tag_autocomplete),
+        )
+        .route(
+            "/htmx/analytics/realtime",
+            get(handlers::admin::analytics_realtime),
         )
 }
 

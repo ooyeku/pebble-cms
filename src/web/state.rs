@@ -1,3 +1,4 @@
+use crate::services::analytics::Analytics;
 use crate::services::markdown::MarkdownRenderer;
 use crate::web::security::{CsrfManager, RateLimiter};
 use crate::{Config, Database};
@@ -16,6 +17,7 @@ pub struct AppState {
     pub production_mode: bool,
     pub csrf: Arc<CsrfManager>,
     pub rate_limiter: Arc<RateLimiter>,
+    pub analytics: Option<Arc<Analytics>>,
 }
 
 impl AppState {
@@ -24,6 +26,8 @@ impl AppState {
 
         templates.register_filter("format_date", format_date_filter);
         templates.register_filter("truncate_str", truncate_str_filter);
+        templates.register_filter("str_slice", str_slice_filter);
+        templates.register_filter("strip_md", strip_markdown_filter);
         templates.add_raw_templates(vec![
             (
                 "css/bundle.css",
@@ -122,6 +126,14 @@ impl AppState {
                 "htmx/flash.html",
                 include_str!("../../templates/htmx/flash.html"),
             ),
+            (
+                "htmx/analytics_realtime.html",
+                include_str!("../../templates/htmx/analytics_realtime.html"),
+            ),
+            (
+                "admin/analytics/index.html",
+                include_str!("../../templates/admin/analytics/index.html"),
+            ),
         ])?;
 
         let media_dir = PathBuf::from(&config.media.upload_dir);
@@ -135,7 +147,13 @@ impl AppState {
             production_mode,
             csrf: Arc::new(CsrfManager::default()),
             rate_limiter: Arc::new(RateLimiter::default()),
+            analytics: None,
         })
+    }
+
+    pub fn with_analytics(mut self, analytics: Arc<Analytics>) -> Self {
+        self.analytics = Some(analytics);
+        self
     }
 }
 
@@ -174,4 +192,114 @@ fn truncate_str_filter(value: &Value, args: &HashMap<String, Value>) -> tera::Re
     } else {
         Ok(Value::String(s.to_string()))
     }
+}
+
+fn str_slice_filter(value: &Value, args: &HashMap<String, Value>) -> tera::Result<Value> {
+    let s = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("str_slice requires a string"))?;
+    let start = args.get("start").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+    let end = args
+        .get("end")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as usize)
+        .unwrap_or(s.len());
+    let start = start.min(s.len());
+    let end = end.min(s.len());
+    Ok(Value::String(s[start..end].to_string()))
+}
+
+fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
+    let text = value
+        .as_str()
+        .ok_or_else(|| tera::Error::msg("strip_md requires a string"))?;
+
+    let mut result = text.to_string();
+
+    // Remove inline code
+    while let Some(start) = result.find('`') {
+        if let Some(end) = result[start + 1..].find('`') {
+            let code_content = &result[start + 1..start + 1 + end];
+            result = format!(
+                "{}{}{}",
+                &result[..start],
+                code_content,
+                &result[start + 2 + end..]
+            );
+        } else {
+            break;
+        }
+    }
+
+    // Remove images ![alt](url)
+    while let Some(img_start) = result.find("![") {
+        if let Some(bracket_end) = result[img_start + 2..].find("](") {
+            let abs_bracket_end = img_start + 2 + bracket_end;
+            if let Some(paren_end) = result[abs_bracket_end + 2..].find(')') {
+                result = format!(
+                    "{}{}",
+                    &result[..img_start],
+                    &result[abs_bracket_end + 3 + paren_end..]
+                );
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Remove links [text](url) -> text
+    while let Some(bracket_start) = result.find('[') {
+        if let Some(bracket_end) = result[bracket_start..].find("](") {
+            let abs_bracket_end = bracket_start + bracket_end;
+            if let Some(paren_end) = result[abs_bracket_end + 2..].find(')') {
+                let link_text = &result[bracket_start + 1..abs_bracket_end];
+                result = format!(
+                    "{}{}{}",
+                    &result[..bracket_start],
+                    link_text,
+                    &result[abs_bracket_end + 3 + paren_end..]
+                );
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Remove bold/italic markers
+    result = result.replace("***", "");
+    result = result.replace("**", "");
+    result = result.replace("__", "");
+    result = result.replace('*', "");
+    result = result.replace('_', " ");
+
+    // Remove list markers
+    result = result
+        .lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
+                trimmed[2..].to_string()
+            } else if trimmed.len() > 3 && trimmed.chars().next().unwrap().is_ascii_digit() {
+                if let Some(pos) = trimmed.find(". ") {
+                    trimmed[pos + 2..].to_string()
+                } else {
+                    line.to_string()
+                }
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    // Clean up multiple spaces
+    while result.contains("  ") {
+        result = result.replace("  ", " ");
+    }
+
+    Ok(Value::String(result.trim().to_string()))
 }

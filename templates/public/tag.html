@@ -19,7 +19,7 @@ endblock %} {% block content %}
             {% endif %}
         </div>
         {% if post.excerpt %}
-        <p class="post-excerpt">{{ post.excerpt }}</p>
+        <p class="post-excerpt">{{ post.excerpt | strip_md }}</p>
         {% endif %}
     </article>
     {% else %}

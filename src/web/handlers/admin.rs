@@ -3,7 +3,7 @@ use crate::services::{auth, content, media, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::{CurrentUser, HxRequest};
 use crate::web::state::AppState;
-use axum::extract::{Multipart, Path, State};
+use axum::extract::{Multipart, Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::Form;
@@ -619,4 +619,62 @@ pub async fn update_tag(
 ) -> AppResult<Response> {
     tags::update_tag(&state.db, id, &form.name, None)?;
     Ok(Redirect::to("/admin/tags").into_response())
+}
+
+#[derive(Deserialize)]
+pub struct AnalyticsQuery {
+    #[serde(default = "default_days")]
+    days: i64,
+}
+
+fn default_days() -> i64 {
+    7
+}
+
+pub async fn analytics(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<AnalyticsQuery>,
+) -> AppResult<Html<String>> {
+    let mut ctx = make_admin_context(&state, &user);
+
+    if let Some(ref analytics) = state.analytics {
+        let summary = analytics.get_summary(query.days)?;
+        let realtime = analytics.get_realtime()?;
+
+        tracing::info!(
+            "Analytics: {} pageviews, {} sessions",
+            summary.total_pageviews,
+            summary.unique_sessions
+        );
+
+        ctx.insert("summary", &summary);
+        ctx.insert("realtime", &realtime);
+        ctx.insert("days", &query.days);
+        ctx.insert("has_data", &(summary.total_pageviews > 0));
+    } else {
+        tracing::warn!("Analytics not available in state");
+        ctx.insert("has_data", &false);
+        ctx.insert("days", &query.days);
+    }
+
+    let html = state.templates.render("admin/analytics/index.html", &ctx)?;
+    Ok(Html(html))
+}
+
+pub async fn analytics_realtime(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(_user): CurrentUser,
+) -> AppResult<Html<String>> {
+    let mut ctx = Context::new();
+
+    if let Some(ref analytics) = state.analytics {
+        let realtime = analytics.get_realtime()?;
+        ctx.insert("realtime", &realtime);
+    }
+
+    let html = state
+        .templates
+        .render("htmx/analytics_realtime.html", &ctx)?;
+    Ok(Html(html))
 }

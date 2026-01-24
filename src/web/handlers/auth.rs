@@ -13,9 +13,13 @@ use tera::Context;
 use time::Duration;
 
 fn get_client_ip(jar: &CookieJar) -> String {
-    jar.get("_session_id")
+    jar.get("_client_id")
         .map(|c| c.value().to_string())
         .unwrap_or_else(|| "unknown".to_string())
+}
+
+fn get_csrf_cookie(jar: &CookieJar) -> Option<String> {
+    jar.get("_csrf").map(|c| c.value().to_string())
 }
 
 pub async fn login_form(State(state): State<Arc<AppState>>, jar: CookieJar) -> AppResult<Response> {
@@ -29,13 +33,14 @@ pub async fn login_form(State(state): State<Arc<AppState>>, jar: CookieJar) -> A
 
     let html = state.templates.render("admin/login.html", &ctx)?;
 
-    let session_cookie = Cookie::build(("_session_id", csrf_token.clone()))
+    let csrf_cookie = Cookie::build(("_csrf", csrf_token.clone()))
         .path("/")
         .http_only(true)
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
         .max_age(Duration::hours(1))
         .build();
 
-    Ok((jar.add(session_cookie), Html(html)).into_response())
+    Ok((jar.add(csrf_cookie), Html(html)).into_response())
 }
 
 #[derive(Deserialize)]
@@ -51,6 +56,15 @@ pub async fn login(
     Form(form): Form<LoginForm>,
 ) -> AppResult<Response> {
     let client_key = get_client_ip(&jar);
+    let csrf_cookie = get_csrf_cookie(&jar);
+
+    let new_csrf = state.csrf.generate();
+    let new_csrf_cookie = Cookie::build(("_csrf", new_csrf.clone()))
+        .path("/")
+        .http_only(true)
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .max_age(Duration::hours(1))
+        .build();
 
     if !state.rate_limiter.check(&client_key) {
         let mut ctx = Context::new();
@@ -58,23 +72,41 @@ pub async fn login(
             "error",
             "Too many login attempts. Please try again in 15 minutes.",
         );
-        ctx.insert("csrf_token", &state.csrf.generate());
+        ctx.insert("csrf_token", &new_csrf);
         let html = state.templates.render("admin/login.html", &ctx)?;
-        return Ok((StatusCode::TOO_MANY_REQUESTS, Html(html)).into_response());
+        return Ok((
+            StatusCode::TOO_MANY_REQUESTS,
+            jar.add(new_csrf_cookie),
+            Html(html),
+        )
+            .into_response());
     }
 
-    let csrf_valid = form
-        .csrf_token
-        .as_ref()
-        .map(|t| state.csrf.validate(t))
-        .unwrap_or(false);
+    let csrf_valid = match (&form.csrf_token, &csrf_cookie) {
+        (Some(form_token), Some(cookie_token)) => {
+            tracing::debug!(
+                "CSRF validation: form_token={}, cookie_token={}",
+                form_token,
+                cookie_token
+            );
+            state.csrf.validate(form_token, cookie_token)
+        }
+        _ => {
+            tracing::debug!(
+                "CSRF missing: form_token={:?}, cookie_token={:?}",
+                form.csrf_token,
+                csrf_cookie
+            );
+            false
+        }
+    };
 
     if !csrf_valid {
         let mut ctx = Context::new();
         ctx.insert("error", "Invalid form submission. Please try again.");
-        ctx.insert("csrf_token", &state.csrf.generate());
+        ctx.insert("csrf_token", &new_csrf);
         let html = state.templates.render("admin/login.html", &ctx)?;
-        return Ok((StatusCode::FORBIDDEN, Html(html)).into_response());
+        return Ok((StatusCode::FORBIDDEN, jar.add(new_csrf_cookie), Html(html)).into_response());
     }
 
     match auth::authenticate(&state.db, &form.username, &form.password)? {
@@ -82,22 +114,27 @@ pub async fn login(
             state.rate_limiter.clear(&client_key);
 
             let token = auth::create_session(&state.db, user.id, 7)?;
-            let cookie = Cookie::build(("session", token))
+            let session_cookie = Cookie::build(("session", token))
                 .path("/")
                 .http_only(true)
                 .max_age(Duration::days(7))
                 .build();
 
-            Ok((jar.add(cookie), Redirect::to("/admin")).into_response())
+            Ok((jar.add(session_cookie), Redirect::to("/admin")).into_response())
         }
         None => {
             state.rate_limiter.record_attempt(&client_key);
 
             let mut ctx = Context::new();
             ctx.insert("error", "Invalid username or password");
-            ctx.insert("csrf_token", &state.csrf.generate());
+            ctx.insert("csrf_token", &new_csrf);
             let html = state.templates.render("admin/login.html", &ctx)?;
-            Ok((StatusCode::UNAUTHORIZED, Html(html)).into_response())
+            Ok((
+                StatusCode::UNAUTHORIZED,
+                jar.add(new_csrf_cookie),
+                Html(html),
+            )
+                .into_response())
         }
     }
 }
@@ -115,7 +152,7 @@ pub async fn logout(State(state): State<Arc<AppState>>, jar: CookieJar) -> AppRe
     Ok((jar.remove(cookie), Redirect::to("/admin/login")).into_response())
 }
 
-pub async fn setup_form(State(state): State<Arc<AppState>>) -> AppResult<Response> {
+pub async fn setup_form(State(state): State<Arc<AppState>>, jar: CookieJar) -> AppResult<Response> {
     if auth::has_users(&state.db)? {
         return Ok(Redirect::to("/admin/login").into_response());
     }
@@ -125,7 +162,15 @@ pub async fn setup_form(State(state): State<Arc<AppState>>) -> AppResult<Respons
     ctx.insert("csrf_token", &csrf_token);
 
     let html = state.templates.render("admin/setup.html", &ctx)?;
-    Ok(Html(html).into_response())
+
+    let csrf_cookie = Cookie::build(("_csrf", csrf_token))
+        .path("/")
+        .http_only(true)
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .max_age(Duration::hours(1))
+        .build();
+
+    Ok((jar.add(csrf_cookie), Html(html)).into_response())
 }
 
 #[derive(Deserialize)]
@@ -146,26 +191,39 @@ pub async fn setup(
         return Ok(Redirect::to("/admin/login").into_response());
     }
 
-    let csrf_valid = form
-        .csrf_token
-        .as_ref()
-        .map(|t| state.csrf.validate(t))
-        .unwrap_or(false);
+    let csrf_cookie = get_csrf_cookie(&jar);
+    let new_csrf = state.csrf.generate();
+    let new_csrf_cookie = Cookie::build(("_csrf", new_csrf.clone()))
+        .path("/")
+        .http_only(true)
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .max_age(Duration::hours(1))
+        .build();
+
+    let csrf_valid = match (&form.csrf_token, &csrf_cookie) {
+        (Some(form_token), Some(cookie_token)) => state.csrf.validate(form_token, cookie_token),
+        _ => false,
+    };
 
     if !csrf_valid {
         let mut ctx = Context::new();
         ctx.insert("error", "Invalid form submission. Please try again.");
-        ctx.insert("csrf_token", &state.csrf.generate());
+        ctx.insert("csrf_token", &new_csrf);
         let html = state.templates.render("admin/setup.html", &ctx)?;
-        return Ok((StatusCode::FORBIDDEN, Html(html)).into_response());
+        return Ok((StatusCode::FORBIDDEN, jar.add(new_csrf_cookie), Html(html)).into_response());
     }
 
     if form.password != form.password_confirm {
         let mut ctx = Context::new();
         ctx.insert("error", "Passwords do not match");
-        ctx.insert("csrf_token", &state.csrf.generate());
+        ctx.insert("csrf_token", &new_csrf);
         let html = state.templates.render("admin/setup.html", &ctx)?;
-        return Ok((StatusCode::BAD_REQUEST, Html(html)).into_response());
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            jar.add(new_csrf_cookie),
+            Html(html),
+        )
+            .into_response());
     }
 
     let user_id = auth::create_user(

@@ -1,38 +1,437 @@
-{% extends "base.html" %} {% block title %}Search - {{ site.title }}{% endblock
-%} {% block content %}
-<header class="post-header">
-    <h1>Search</h1>
-</header>
+{% extends "base.html" %} {% block title %}{% if query %}{{ query }} - Search{%
+else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
+<div class="search-page">
+    <header class="search-header">
+        <h1>Search</h1>
+        <p class="search-hint">
+            Find posts, pages, and content across the site
+        </p>
+    </header>
 
-<form class="search-form" action="/search" method="get">
-    <input
-        type="search"
-        name="q"
-        value="{{ query | default(value='') }}"
-        placeholder="Search posts..."
-        autofocus
-    />
-    <button type="submit">Search</button>
-</form>
+    <form
+        class="search-form-large"
+        action="/search"
+        method="get"
+        id="search-form"
+    >
+        <div class="search-input-wrapper">
+            <svg
+                class="search-icon"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input
+                type="search"
+                name="q"
+                id="search-input"
+                value="{{ query | default(value='') }}"
+                placeholder="Type to search..."
+                autocomplete="off"
+                autofocus
+            />
+            {% if query %}
+            <button
+                type="button"
+                class="search-clear"
+                onclick="clearSearch()"
+                title="Clear search"
+            >
+                <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <path d="M18 6L6 18M6 6l12 12"></path>
+                </svg>
+            </button>
+            {% endif %}
+        </div>
+        <button type="submit" class="search-submit">Search</button>
+    </form>
 
-{% if query %}
-<section class="post-list">
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem">
-        {{ results | length }} result{% if results | length != 1 %}s{% endif %}
-        for "{{ query }}"
-    </p>
-
-    {% for result in results %}
-    <article class="post-card">
-        <h2><a href="/posts/{{ result.slug }}">{{ result.title }}</a></h2>
-        {% if result.excerpt %}
-        <p class="post-excerpt">{{ result.excerpt }}</p>
-        {% endif %}
-    </article>
-    {% else %}
-    <div class="empty-state">
-        <p>No results found. Try a different search term.</p>
+    <div class="search-shortcuts">
+        <kbd>Enter</kbd> to search
+        <span class="separator">|</span>
+        <kbd>Esc</kbd> to clear
     </div>
-    {% endfor %}
-</section>
-{% endif %} {% endblock %}
+
+    <section class="search-results" id="search-results">
+        {% if query %}
+        <div class="results-header">
+            <span class="results-count">
+                {{ results | length }} result{% if results | length != 1 %}s{%
+                endif %} for
+            </span>
+            <span class="results-query">"{{ query }}"</span>
+        </div>
+
+        {% if results | length > 0 %}
+        <div class="results-list">
+            {% for result in results %}
+            <article
+                class="search-result search-result--{{ result.content_type }}"
+            >
+                <a
+                    href="/{% if result.content_type == 'page' %}pages{% else %}posts{% endif %}/{{ result.slug }}"
+                    class="result-link"
+                >
+                    <span class="result-type">{{ result.content_type }}</span>
+                    <h2 class="result-title">{{ result.title }}</h2>
+                    {% if result.excerpt %}
+                    <p class="result-excerpt">
+                        {{ result.excerpt | strip_md }}
+                    </p>
+                    {% endif %}
+                    <div class="result-meta">
+                        {% if result.published_at %}
+                        <time>{{ result.published_at | format_date }}</time>
+                        {% endif %}
+                    </div>
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-results">
+            <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+            >
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+                <path d="M8 8l6 6M14 8l-6 6"></path>
+            </svg>
+            <h3>No results found</h3>
+            <p>We couldn't find anything matching "{{ query }}"</p>
+            <ul class="search-tips">
+                <li>Check your spelling</li>
+                <li>Try more general keywords</li>
+                <li>Try different keywords</li>
+            </ul>
+        </div>
+        {% endif %} {% else %}
+        <div class="search-empty">
+            <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1"
+            >
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <p>Enter a search term to find content</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+    .search-page {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .search-header {
+        text-align: center;
+        margin-bottom: var(--space-8);
+    }
+
+    .search-header h1 {
+        margin-bottom: var(--space-2);
+    }
+
+    .search-hint {
+        color: var(--text-muted);
+        font-size: var(--font-size-base);
+    }
+
+    .search-form-large {
+        display: flex;
+        gap: var(--space-3);
+        margin-bottom: var(--space-4);
+    }
+
+    .search-input-wrapper {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: var(--space-4);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    .search-form-large input {
+        width: 100%;
+        padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12);
+        font-size: var(--font-size-lg);
+        border: 2px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--bg);
+        color: var(--text);
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+    }
+
+    .search-form-large input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-light);
+    }
+
+    .search-form-large input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .search-clear {
+        position: absolute;
+        right: var(--space-3);
+        padding: var(--space-2);
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: var(--radius);
+        transition:
+            color 0.2s,
+            background 0.2s;
+    }
+
+    .search-clear:hover {
+        color: var(--text);
+        background: var(--bg-secondary);
+    }
+
+    .search-submit {
+        padding: var(--space-4) var(--space-6);
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        background: var(--color-primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition:
+            background 0.2s,
+            transform 0.1s;
+        white-space: nowrap;
+    }
+
+    .search-submit:hover {
+        background: var(--color-primary-hover);
+    }
+
+    .search-submit:active {
+        transform: scale(0.98);
+    }
+
+    .search-shortcuts {
+        display: flex;
+        justify-content: center;
+        gap: var(--space-2);
+        margin-bottom: var(--space-8);
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
+    }
+
+    .search-shortcuts kbd {
+        display: inline-block;
+        padding: 0.15em 0.4em;
+        font-family: var(--font-mono);
+        font-size: var(--font-size-xs);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+    }
+
+    .search-shortcuts .separator {
+        color: var(--border);
+    }
+
+    .results-header {
+        padding-bottom: var(--space-4);
+        margin-bottom: var(--space-6);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .results-count {
+        color: var(--text-muted);
+    }
+
+    .results-query {
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .results-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+    }
+
+    .search-result {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        transition:
+            border-color 0.2s,
+            box-shadow 0.2s;
+    }
+
+    .search-result:hover {
+        border-color: var(--color-primary);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .result-link {
+        display: block;
+        padding: var(--space-5);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .result-type {
+        display: inline-block;
+        padding: 0.15em 0.5em;
+        font-size: var(--font-size-xs);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-muted);
+        margin-bottom: var(--space-2);
+    }
+
+    .search-result--page .result-type {
+        background: var(--color-primary-light);
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+    }
+
+    .result-title {
+        font-size: var(--font-size-xl);
+        font-weight: 600;
+        margin-bottom: var(--space-2);
+        color: var(--text);
+        transition: color 0.2s;
+    }
+
+    .search-result:hover .result-title {
+        color: var(--color-primary);
+    }
+
+    .result-excerpt {
+        color: var(--text-muted);
+        font-size: var(--font-size-base);
+        line-height: 1.6;
+        margin-bottom: var(--space-3);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .result-meta {
+        font-size: var(--font-size-sm);
+        color: var(--text-muted);
+    }
+
+    .no-results,
+    .search-empty {
+        text-align: center;
+        padding: var(--space-12) var(--space-4);
+        color: var(--text-muted);
+    }
+
+    .no-results svg,
+    .search-empty svg {
+        margin: 0 auto var(--space-4);
+        opacity: 0.5;
+    }
+
+    .no-results h3 {
+        color: var(--text);
+        margin-bottom: var(--space-2);
+    }
+
+    .search-tips {
+        margin-top: var(--space-4);
+        text-align: left;
+        display: inline-block;
+        list-style: disc;
+        padding-left: var(--space-4);
+    }
+
+    .search-tips li {
+        margin-bottom: var(--space-1);
+    }
+
+    @media (max-width: 640px) {
+        .search-form-large {
+            flex-direction: column;
+        }
+
+        .search-submit {
+            width: 100%;
+        }
+
+        .search-shortcuts {
+            display: none;
+        }
+    }
+</style>
+
+<script>
+    (function () {
+        var input = document.getElementById("search-input");
+        var form = document.getElementById("search-form");
+
+        if (input) {
+            input.addEventListener("keydown", function (e) {
+                if (e.key === "Escape") {
+                    clearSearch();
+                }
+            });
+
+            // Select all text on focus
+            input.addEventListener("focus", function () {
+                this.select();
+            });
+        }
+    })();
+
+    function clearSearch() {
+        var input = document.getElementById("search-input");
+        if (input) {
+            input.value = "";
+            input.focus();
+        }
+        window.location.href = "/search";
+    }
+</script>
+{% endblock %}

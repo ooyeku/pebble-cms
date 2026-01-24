@@ -1,0 +1,59 @@
+{% if realtime %}
+<div class="realtime-stats">
+    <div class="realtime-stat">
+        <span class="realtime-dot"></span>
+        <div>
+            <div class="realtime-value">{{ realtime.active_sessions }}</div>
+            <div class="realtime-label">Active now</div>
+        </div>
+    </div>
+    <div class="realtime-stat">
+        <div>
+            <div class="realtime-value">{{ realtime.pageviews_30min }}</div>
+            <div class="realtime-label">Last 30 min</div>
+        </div>
+    </div>
+    {% if realtime.current_pages | length > 0 %}
+    <div class="realtime-pages">
+        <div class="realtime-label">Currently viewing:</div>
+        <div class="current-pages-list">
+            {% for page in realtime.current_pages | slice(end=3) %}
+            <span class="current-page">{{ page.path | truncate(length=30) }} ({{ page.visitors }})</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="realtime-stats">
+    <div class="realtime-stat">
+        <span class="realtime-dot" style="background: var(--text-muted);"></span>
+        <div>
+            <div class="realtime-value">0</div>
+            <div class="realtime-label">Active now</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.realtime-pages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.current-pages-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.current-page {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    background: var(--bg);
+    border-radius: 0.25rem;
+}
+</style>

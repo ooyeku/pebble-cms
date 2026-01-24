@@ -84,6 +84,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         (2, include_str!("migrations/002_fts.sql")),
         (3, include_str!("migrations/003_media_optimization.sql")),
         (4, include_str!("migrations/004_scheduled_publishing.sql")),
+        (5, include_str!("migrations/005_analytics.sql")),
     ];
 
     for (version, sql) in migrations {
