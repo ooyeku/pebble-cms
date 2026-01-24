@@ -1,7 +1,9 @@
 :root {
-    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-serif: Georgia, 'Times New Roman', serif;
-    --font-mono: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, monospace;
+    --font-sans:
+        system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        sans-serif;
+    --font-serif: Georgia, "Times New Roman", serif;
+    --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
 
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
@@ -100,11 +102,14 @@
     --shadow-alpha-lg: 0.15;
 
     --shadow-sm: 0 1px 2px 0 rgb(var(--shadow-color) / var(--shadow-alpha-sm));
-    --shadow: 0 1px 3px 0 rgb(var(--shadow-color) / var(--shadow-alpha-md)),
+    --shadow:
+        0 1px 3px 0 rgb(var(--shadow-color) / var(--shadow-alpha-md)),
         0 1px 2px -1px rgb(var(--shadow-color) / var(--shadow-alpha-md));
-    --shadow-md: 0 4px 6px -1px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
+    --shadow-md:
+        0 4px 6px -1px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
         0 2px 4px -2px rgb(var(--shadow-color) / var(--shadow-alpha-md));
-    --shadow-lg: 0 10px 15px -3px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
+    --shadow-lg:
+        0 10px 15px -3px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
         0 4px 6px -4px rgb(var(--shadow-color) / var(--shadow-alpha-md));
 }
 
@@ -335,7 +340,7 @@ h6 {
     max-width: var(--content-max-width);
 }
 
-.content>*+* {
+.content > * + * {
     margin-top: var(--space-6);
 }
 
@@ -427,7 +432,7 @@ h6 {
     font-size: 0.875em;
 }
 
-.content :not(pre)>code {
+.content :not(pre) > code {
     background: var(--bg-secondary);
     padding: 0.2em 0.4em;
     border-radius: var(--radius-sm);
@@ -657,7 +662,6 @@ h6 {
 }
 
 @media (max-width: 768px) {
-
     .grid-2,
     .grid-3,
     .grid-4 {
@@ -743,7 +747,9 @@ h6 {
 }
 
 .card-hover {
-    transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+    transition:
+        transform var(--transition-slow),
+        box-shadow var(--transition-slow);
 }
 
 .card-hover:hover {
@@ -773,7 +779,9 @@ h6 {
     color: var(--text);
     font-family: inherit;
     font-size: var(--font-size-base);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    transition:
+        border-color var(--transition-base),
+        box-shadow var(--transition-base);
 }
 
 .form-group textarea {
@@ -821,7 +829,9 @@ h6 {
     background: var(--bg);
     color: var(--text);
     font-size: var(--font-size-base);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    transition:
+        border-color var(--transition-base),
+        box-shadow var(--transition-base);
 }
 
 .search-form input:focus {
@@ -881,7 +891,7 @@ table td:last-child {
     white-space: nowrap;
 }
 
-table .btn+.btn {
+table .btn + .btn {
     margin-left: var(--space-2);
 }
 
@@ -1228,7 +1238,17 @@ html.theme-light .theme-toggle-admin .icon-sun {
     background: var(--bg-secondary);
 }
 
-html.site-theme-default {}
+.sidebar-version {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+html.site-theme-default {
+}
 
 html.site-theme-minimal {
     --color-primary: #18181b;
@@ -1321,7 +1341,7 @@ html.site-theme-minimal .tag {
 }
 
 html.site-theme-magazine {
-    --font-serif: Georgia, 'Times New Roman', Times, serif;
+    --font-serif: Georgia, "Times New Roman", Times, serif;
     --color-primary: #dc2626;
     --color-primary-hover: #b91c1c;
     --color-primary-light: rgba(220, 38, 38, 0.1);
@@ -1436,4 +1456,336 @@ html.site-theme-magazine .card {
 html.site-theme-magazine .site-footer {
     border-top: 3px solid var(--color-primary);
     font-family: var(--font-sans);
+}
+
+html.site-theme-brutalist {
+    --font-sans: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+    --color-primary: #000000;
+    --color-primary-hover: #333333;
+    --color-primary-light: rgba(0, 0, 0, 0.05);
+    --color-accent: #000000;
+    --bg: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #e5e5e5;
+    --text: #000000;
+    --text-secondary: #333333;
+    --text-muted: #666666;
+    --border: #000000;
+    --border-light: #cccccc;
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --shadow-sm: none;
+    --shadow: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+}
+
+html.theme-dark.site-theme-brutalist,
+html.site-theme-brutalist[class*="theme-dark"] {
+    --color-primary: #ffffff;
+    --color-primary-hover: #cccccc;
+    --color-primary-light: rgba(255, 255, 255, 0.1);
+    --bg: #000000;
+    --bg-secondary: #111111;
+    --bg-tertiary: #222222;
+    --text: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #888888;
+    --border: #ffffff;
+    --border-light: #333333;
+}
+
+html.site-theme-brutalist body {
+    font-family: var(--font-sans);
+}
+
+html.site-theme-brutalist .admin-sidebar {
+    border-right: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .admin-sidebar h1 {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+}
+
+html.site-theme-brutalist .admin-sidebar nav a {
+    border: 1px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--font-size-xs);
+}
+
+html.site-theme-brutalist .admin-sidebar nav a:hover {
+    border: 1px solid var(--border);
+    background: transparent;
+}
+
+html.site-theme-brutalist .admin-sidebar nav a.active {
+    background: var(--text);
+    color: var(--bg);
+    border: 1px solid var(--border);
+}
+
+html.site-theme-brutalist .btn {
+    border: 2px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 400;
+}
+
+html.site-theme-brutalist .btn:hover {
+    box-shadow: 4px 4px 0 var(--border);
+    transform: translate(-2px, -2px);
+}
+
+html.site-theme-brutalist .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+}
+
+html.site-theme-brutalist .btn-secondary {
+    background: transparent;
+    border-color: var(--border);
+}
+
+html.site-theme-brutalist .card {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .card:hover {
+    box-shadow: 4px 4px 0 var(--border);
+}
+
+html.site-theme-brutalist .form-group input,
+html.site-theme-brutalist .form-group textarea,
+html.site-theme-brutalist .form-group select {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .form-group input:focus,
+html.site-theme-brutalist .form-group textarea:focus,
+html.site-theme-brutalist .form-group select:focus {
+    box-shadow: 4px 4px 0 var(--border);
+}
+
+html.site-theme-brutalist .table th,
+html.site-theme-brutalist table th {
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+    background: transparent;
+}
+
+html.site-theme-brutalist .table td,
+html.site-theme-brutalist table td {
+    border-bottom: 1px solid var(--border);
+}
+
+html.site-theme-brutalist .stat {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .flash {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist h1,
+html.site-theme-brutalist h2,
+html.site-theme-brutalist h3,
+html.site-theme-brutalist h4 {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 400;
+}
+
+html.site-theme-neon {
+    --font-sans:
+        system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+    --color-primary: #00ffff;
+    --color-primary-hover: #00cccc;
+    --color-primary-light: rgba(0, 255, 255, 0.1);
+    --color-accent: #ff00ff;
+    --bg: #0a0a0f;
+    --bg-secondary: #12121a;
+    --bg-tertiary: #1a1a25;
+    --text: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #707070;
+    --border: #00ffff40;
+    --border-light: #00ffff20;
+    --border-dark: #00ffff60;
+    --radius: 0.25rem;
+    --radius-sm: 0.125rem;
+    --radius-lg: 0.375rem;
+    --shadow-sm: 0 0 5px rgba(0, 255, 255, 0.3);
+    --shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+    --shadow-md: 0 0 15px rgba(0, 255, 255, 0.4);
+    --shadow-lg: 0 0 25px rgba(0, 255, 255, 0.5);
+}
+
+html.theme-light.site-theme-neon {
+    --bg: #f0f0f5;
+    --bg-secondary: #e5e5ea;
+    --bg-tertiary: #d5d5dd;
+    --text: #0a0a0f;
+    --text-secondary: #333340;
+    --text-muted: #666670;
+    --border: #00808080;
+    --border-light: #00808040;
+    --color-primary: #008080;
+    --color-primary-hover: #006666;
+}
+
+html.site-theme-neon .admin-sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+}
+
+html.site-theme-neon .admin-sidebar h1 a {
+    color: var(--color-primary);
+    text-shadow: 0 0 10px var(--color-primary);
+}
+
+html.site-theme-neon .admin-sidebar nav a {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+}
+
+html.site-theme-neon .admin-sidebar nav a:hover {
+    color: var(--color-primary);
+    text-shadow: 0 0 5px var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+html.site-theme-neon .admin-sidebar nav a.active {
+    background: var(--color-primary);
+    color: var(--bg);
+    text-shadow: none;
+    box-shadow: 0 0 15px var(--color-primary);
+}
+
+html.site-theme-neon .btn {
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+}
+
+html.site-theme-neon .btn:hover {
+    box-shadow: 0 0 15px var(--color-primary);
+}
+
+html.site-theme-neon .btn-primary {
+    background: var(--color-primary);
+    color: var(--bg);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 10px var(--color-primary);
+}
+
+html.site-theme-neon .btn-primary:hover {
+    box-shadow: 0 0 20px var(--color-primary);
+}
+
+html.site-theme-neon .btn-danger {
+    background: #ff0040;
+    border-color: #ff0040;
+    box-shadow: 0 0 10px #ff0040;
+}
+
+html.site-theme-neon .card {
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-neon .card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 15px var(--color-primary);
+}
+
+html.site-theme-neon .form-group input,
+html.site-theme-neon .form-group textarea,
+html.site-theme-neon .form-group select {
+    border: 1px solid var(--border);
+    background: var(--bg);
+}
+
+html.site-theme-neon .form-group input:focus,
+html.site-theme-neon .form-group textarea:focus,
+html.site-theme-neon .form-group select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 10px var(--color-primary);
+}
+
+html.site-theme-neon .table th,
+html.site-theme-neon table th {
+    background: var(--bg-tertiary);
+    color: var(--color-primary);
+    text-shadow: 0 0 5px var(--color-primary);
+}
+
+html.site-theme-neon .stat {
+    border: 1px solid var(--border);
+}
+
+html.site-theme-neon .stat:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 10px var(--color-primary);
+}
+
+html.site-theme-neon .stat-value {
+    color: var(--color-primary);
+    text-shadow: 0 0 10px var(--color-primary);
+}
+
+html.site-theme-neon .flash {
+    border: 1px solid var(--border);
+}
+
+html.site-theme-neon .flash-success {
+    background: rgba(0, 255, 128, 0.1);
+    border-color: #00ff80;
+    color: #00ff80;
+}
+
+html.site-theme-neon .flash-error {
+    background: rgba(255, 0, 64, 0.1);
+    border-color: #ff0040;
+    color: #ff0040;
+}
+
+html.site-theme-neon .status-published {
+    background: rgba(0, 255, 128, 0.2);
+    color: #00ff80;
+    text-shadow: 0 0 5px #00ff80;
+}
+
+html.site-theme-neon .status-draft {
+    background: rgba(255, 255, 0, 0.2);
+    color: #ffff00;
+}
+
+html.site-theme-neon .tag {
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    background: rgba(255, 0, 255, 0.1);
+}
+
+html.site-theme-neon .tag:hover {
+    box-shadow: 0 0 10px var(--color-accent);
+}
+
+html.site-theme-neon a {
+    color: var(--color-primary);
+}
+
+html.site-theme-neon a:hover {
+    text-shadow: 0 0 5px var(--color-primary);
+}
+
+html.site-theme-neon h1,
+html.site-theme-neon h2,
+html.site-theme-neon h3 {
+    color: var(--text);
 }

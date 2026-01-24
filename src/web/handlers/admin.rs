@@ -16,6 +16,7 @@ fn make_admin_context(state: &AppState, user: &User) -> Context {
     ctx.insert("site", &state.config.site);
     ctx.insert("user", user);
     ctx.insert("theme", &state.config.theme);
+    ctx.insert("version", env!("CARGO_PKG_VERSION"));
     if state.config.theme.custom.has_customizations() {
         ctx.insert(
             "theme_custom_css",

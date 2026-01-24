@@ -1989,3 +1989,613 @@ html.site-theme-magazine .site-footer {
     border-top: 3px solid var(--color-primary);
     font-family: var(--font-sans);
 }
+
+/* ==========================================================================
+   Theme: Brutalist
+   Raw, industrial aesthetic with monospace fonts, harsh borders, and
+   intentionally stark, unpolished design. Anti-design as design.
+   ========================================================================== */
+
+html.site-theme-brutalist {
+    --font-brutalist: "Courier New", Courier, monospace;
+    --color-primary: #000000;
+    --color-primary-hover: #333333;
+    --color-primary-light: rgba(0, 0, 0, 0.05);
+    --color-accent: #ff0000;
+    --bg: #ffffff;
+    --bg-secondary: #f0f0f0;
+    --bg-tertiary: #e0e0e0;
+    --text: #000000;
+    --text-secondary: #333333;
+    --text-muted: #666666;
+    --border: #000000;
+    --border-light: #333333;
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --shadow-sm: none;
+    --shadow: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+}
+
+html.theme-dark.site-theme-brutalist,
+html.site-theme-brutalist[class*="theme-dark"] {
+    --color-primary: #ffffff;
+    --color-primary-hover: #cccccc;
+    --color-primary-light: rgba(255, 255, 255, 0.1);
+    --color-accent: #ff3333;
+    --bg: #000000;
+    --bg-secondary: #111111;
+    --bg-tertiary: #222222;
+    --text: #ffffff;
+    --text-secondary: #cccccc;
+    --text-muted: #999999;
+    --border: #ffffff;
+    --border-light: #666666;
+}
+
+html.site-theme-brutalist body {
+    font-family: var(--font-brutalist);
+    letter-spacing: -0.02em;
+}
+
+html.site-theme-brutalist .site-header {
+    border-bottom: 4px solid var(--border);
+    padding: var(--space-4) 0;
+    background: var(--bg);
+}
+
+html.site-theme-brutalist .site-title {
+    font-family: var(--font-brutalist);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+html.site-theme-brutalist .site-nav a {
+    font-family: var(--font-brutalist);
+    text-transform: uppercase;
+    font-size: var(--font-size-sm);
+    padding: var(--space-1) var(--space-2);
+    border: 2px solid transparent;
+}
+
+html.site-theme-brutalist .site-nav a:hover {
+    border: 2px solid var(--border);
+    background: var(--text);
+    color: var(--bg);
+}
+
+html.site-theme-brutalist .hero {
+    background: var(--bg);
+    border: 4px solid var(--border);
+    padding: var(--space-12) var(--space-6);
+}
+
+html.site-theme-brutalist .hero-title {
+    font-family: var(--font-brutalist);
+    font-size: var(--font-size-4xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: none;
+    -webkit-text-fill-color: var(--text);
+    line-height: 1;
+    margin-bottom: var(--space-6);
+}
+
+html.site-theme-brutalist .hero-subtitle {
+    font-family: var(--font-brutalist);
+    font-size: var(--font-size-lg);
+    max-width: 60ch;
+    border-left: 4px solid var(--color-accent);
+    padding-left: var(--space-4);
+    margin: 0 auto;
+}
+
+html.site-theme-brutalist .section-title {
+    font-family: var(--font-brutalist);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: var(--font-size-sm);
+    border-bottom: 4px solid var(--border);
+    padding-bottom: var(--space-2);
+    display: inline-block;
+}
+
+html.site-theme-brutalist .post-card {
+    border: 2px solid var(--border);
+    background: var(--bg);
+    padding: var(--space-6);
+}
+
+html.site-theme-brutalist .post-card:hover {
+    transform: none;
+    box-shadow: 8px 8px 0 var(--border);
+    margin-right: -8px;
+    margin-bottom: -8px;
+}
+
+html.site-theme-brutalist .post-card h2 {
+    font-family: var(--font-brutalist);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+html.site-theme-brutalist .post-meta {
+    font-family: var(--font-brutalist);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+html.site-theme-brutalist .post-excerpt {
+    font-family: var(--font-brutalist);
+    line-height: 1.6;
+}
+
+html.site-theme-brutalist .btn {
+    font-family: var(--font-brutalist);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border: 2px solid var(--border);
+    font-weight: 700;
+}
+
+html.site-theme-brutalist .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+}
+
+html.site-theme-brutalist .btn-primary:hover {
+    background: var(--bg);
+    color: var(--text);
+}
+
+html.site-theme-brutalist .tag {
+    font-family: var(--font-brutalist);
+    border: 2px solid var(--border);
+    background: transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--font-size-xs);
+}
+
+html.site-theme-brutalist .tag:hover {
+    background: var(--text);
+    color: var(--bg);
+}
+
+html.site-theme-brutalist .page-card {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .page-card:hover {
+    box-shadow: 6px 6px 0 var(--border);
+    transform: none;
+}
+
+html.site-theme-brutalist .card {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .site-footer {
+    border-top: 4px solid var(--border);
+    font-family: var(--font-brutalist);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--font-size-sm);
+}
+
+html.site-theme-brutalist .content {
+    font-family: var(--font-brutalist);
+}
+
+html.site-theme-brutalist .content h1,
+html.site-theme-brutalist .content h2,
+html.site-theme-brutalist .content h3,
+html.site-theme-brutalist .content h4 {
+    font-family: var(--font-brutalist);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+html.site-theme-brutalist .content blockquote {
+    border-left: 4px solid var(--color-accent);
+    font-style: normal;
+}
+
+html.site-theme-brutalist .content pre {
+    border: 2px solid var(--border);
+}
+
+html.site-theme-brutalist .post-header h1 {
+    font-family: var(--font-brutalist);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: var(--font-size-3xl);
+}
+
+/* ==========================================================================
+   Theme: Neon
+   Cyberpunk-inspired with glowing neon colors on dark backgrounds.
+   Futuristic, high-tech vibes with electric accents.
+   ========================================================================== */
+
+html.site-theme-neon {
+    --color-primary: #00ffff;
+    --color-primary-hover: #00cccc;
+    --color-primary-light: rgba(0, 255, 255, 0.15);
+    --color-accent: #ff00ff;
+    --color-accent-hover: #cc00cc;
+    --color-neon-green: #39ff14;
+    --color-neon-pink: #ff6ec7;
+    --color-neon-yellow: #ffff00;
+    --bg: #0a0a0f;
+    --bg-secondary: #12121a;
+    --bg-tertiary: #1a1a25;
+    --text: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #707080;
+    --border: #2a2a3a;
+    --border-light: #1f1f2f;
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 2px;
+    --radius-xl: 4px;
+    --glow-cyan:
+        0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3),
+        0 0 30px rgba(0, 255, 255, 0.2);
+    --glow-magenta:
+        0 0 10px rgba(255, 0, 255, 0.5), 0 0 20px rgba(255, 0, 255, 0.3);
+    --shadow-sm: 0 0 5px rgba(0, 255, 255, 0.1);
+    --shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+    --shadow-md: 0 0 20px rgba(0, 255, 255, 0.15);
+    --shadow-lg: 0 0 30px rgba(0, 255, 255, 0.2);
+}
+
+html.theme-light.site-theme-neon,
+html.site-theme-neon[class*="theme-light"] {
+    --bg: #1a1a25;
+    --bg-secondary: #12121a;
+    --bg-tertiary: #0a0a0f;
+    --text: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --border: #2a2a3a;
+}
+
+html.site-theme-neon body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    background-image:
+        radial-gradient(
+            ellipse at top,
+            rgba(0, 255, 255, 0.03) 0%,
+            transparent 50%
+        ),
+        radial-gradient(
+            ellipse at bottom,
+            rgba(255, 0, 255, 0.03) 0%,
+            transparent 50%
+        );
+    background-attachment: fixed;
+}
+
+html.site-theme-neon .site-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-6) 0;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(10px);
+}
+
+html.site-theme-neon .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--color-primary);
+    text-shadow: var(--glow-cyan);
+    letter-spacing: 0.05em;
+}
+
+html.site-theme-neon .site-title a {
+    color: var(--color-primary);
+}
+
+html.site-theme-neon .site-title a:hover {
+    color: var(--color-accent);
+    text-shadow: var(--glow-magenta);
+}
+
+html.site-theme-neon .site-nav a {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.1em;
+    padding: var(--space-2) var(--space-3);
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .site-nav a:hover {
+    color: var(--color-primary);
+    text-shadow: var(--glow-cyan);
+}
+
+html.site-theme-neon .hero {
+    background: linear-gradient(
+        135deg,
+        rgba(0, 255, 255, 0.05) 0%,
+        rgba(255, 0, 255, 0.05) 100%
+    );
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+html.site-theme-neon .hero::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-primary),
+        var(--color-accent),
+        transparent
+    );
+}
+
+html.site-theme-neon .hero::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-accent),
+        var(--color-primary),
+        transparent
+    );
+}
+
+html.site-theme-neon .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 800;
+    background: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-accent) 50%,
+        var(--color-neon-pink) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.3));
+}
+
+html.site-theme-neon .hero-subtitle {
+    color: var(--text-secondary);
+    font-size: var(--font-size-lg);
+}
+
+html.site-theme-neon .section-title {
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+}
+
+html.site-theme-neon .post-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .post-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+html.site-theme-neon .post-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--color-primary);
+    box-shadow:
+        var(--shadow-md),
+        inset 0 0 20px rgba(0, 255, 255, 0.03);
+}
+
+html.site-theme-neon .post-card:hover::before {
+    border-color: var(--color-accent);
+    inset: 4px;
+}
+
+html.site-theme-neon .post-card h2 a {
+    color: var(--text);
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .post-card h2 a:hover {
+    color: var(--color-primary);
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+html.site-theme-neon .post-meta {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: var(--font-size-xs);
+}
+
+html.site-theme-neon .tag {
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: var(--font-size-xs);
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .tag:hover {
+    background: var(--color-primary);
+    color: var(--bg);
+    box-shadow: var(--glow-cyan);
+}
+
+html.site-theme-neon .btn-primary {
+    background: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .btn-primary::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--color-primary);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    pointer-events: none;
+}
+
+html.site-theme-neon .btn-primary span,
+html.site-theme-neon .btn-primary {
+    position: relative;
+    z-index: 1;
+}
+
+html.site-theme-neon .btn-primary:hover {
+    color: var(--bg);
+    box-shadow: var(--glow-cyan);
+}
+
+html.site-theme-neon .btn-primary:hover::before {
+    transform: translateX(0);
+}
+
+html.site-theme-neon .page-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .page-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+    transform: translateX(4px);
+}
+
+html.site-theme-neon .page-card-arrow {
+    color: var(--color-accent);
+}
+
+html.site-theme-neon .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+}
+
+html.site-theme-neon .site-footer {
+    border-top: 1px solid var(--border);
+    background: rgba(10, 10, 15, 0.8);
+    position: relative;
+}
+
+html.site-theme-neon .site-footer::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-primary),
+        var(--color-accent),
+        transparent
+    );
+}
+
+html.site-theme-neon .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-color: rgba(0, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+html.site-theme-neon .content a:hover {
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    text-decoration-color: var(--color-primary);
+}
+
+html.site-theme-neon .content blockquote {
+    border-left: 2px solid var(--color-accent);
+    background: rgba(255, 0, 255, 0.05);
+    padding: var(--space-4) var(--space-6);
+}
+
+html.site-theme-neon .content pre {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+}
+
+html.site-theme-neon .content code {
+    color: var(--color-neon-green);
+}
+
+html.site-theme-neon .post-header h1 {
+    font-size: var(--font-size-4xl);
+    font-weight: 800;
+    background: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-accent) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+html.site-theme-neon .view-all-link {
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: var(--font-size-xs);
+}
+
+html.site-theme-neon .view-all-link:hover {
+    text-shadow: var(--glow-magenta);
+}
+
+html.site-theme-neon .empty-state {
+    border: 1px dashed var(--border);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-neon ::selection {
+    background: rgba(0, 255, 255, 0.3);
+    color: var(--text);
+}

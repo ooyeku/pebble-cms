@@ -179,13 +179,36 @@ A bold, editorial theme inspired by newspaper and magazine layouts. Uses serif t
 - Large, bold headlines
 - Warm background tones
 
+#### Brutalist
+
+A raw, unpolished aesthetic inspired by brutalist architecture and early web design. Strips away decorative elements in favor of stark functionality.
+
+- Monospace typography throughout
+- High-contrast black and white palette
+- Harsh 2px borders with no border-radius
+- Uppercase headings with tight letter-spacing
+- Box shadows on hover (no subtle transitions)
+- Industrial, utilitarian feel
+
+#### Neon
+
+A cyberpunk-inspired theme with glowing neon effects on a dark background. Bold, futuristic, and eye-catching.
+
+- Dark background (#0a0a0f)
+- Cyan primary color (#00ffff) with glow effects
+- Magenta accent color (#ff00ff)
+- System UI monospace fonts
+- Neon glow on links and interactive elements
+- Subtle cyan borders
+- High contrast for readability
+
 ### Switching Themes
 
 To change your theme, edit `pebble.toml`:
 
 ```toml
 [theme]
-name = "magazine"  # Options: "default", "minimal", "magazine"
+name = "magazine"  # Options: "default", "minimal", "magazine", "brutalist", "neon"
 ```
 
 Restart the server after changing themes.
@@ -258,6 +281,29 @@ name = "magazine"
 [theme.custom]
 primary_color = "#1d4ed8"
 primary_color_hover = "#1e40af"
+```
+
+**Brutalist theme with red accents:**
+
+```toml
+[theme]
+name = "brutalist"
+
+[theme.custom]
+primary_color = "#ff0000"
+primary_color_hover = "#cc0000"
+```
+
+**Neon theme with green instead of cyan:**
+
+```toml
+[theme]
+name = "neon"
+
+[theme.custom]
+primary_color = "#00ff00"
+primary_color_hover = "#00cc00"
+accent_color = "#ff00ff"
 ```
 
 ### Dark Mode
