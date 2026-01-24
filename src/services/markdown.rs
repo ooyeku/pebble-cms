@@ -89,6 +89,8 @@ impl MarkdownRenderer {
             .collect::<Vec<_>>()
             .join(" ");
 
+        let text = strip_markdown(&text);
+
         if text.len() <= max_len {
             text
         } else {
@@ -119,4 +121,75 @@ fn html_escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+fn strip_markdown(text: &str) -> String {
+    let mut result = text.to_string();
+
+    // Remove inline code
+    while let Some(start) = result.find('`') {
+        if let Some(end) = result[start + 1..].find('`') {
+            let code_content = &result[start + 1..start + 1 + end];
+            result = format!(
+                "{}{}{}",
+                &result[..start],
+                code_content,
+                &result[start + 2 + end..]
+            );
+        } else {
+            break;
+        }
+    }
+
+    // Remove links [text](url) -> text
+    while let Some(bracket_start) = result.find('[') {
+        if let Some(bracket_end) = result[bracket_start..].find("](") {
+            let abs_bracket_end = bracket_start + bracket_end;
+            if let Some(paren_end) = result[abs_bracket_end + 2..].find(')') {
+                let link_text = &result[bracket_start + 1..abs_bracket_end];
+                result = format!(
+                    "{}{}{}",
+                    &result[..bracket_start],
+                    link_text,
+                    &result[abs_bracket_end + 3 + paren_end..]
+                );
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Remove bold/italic markers
+    result = result.replace("***", "");
+    result = result.replace("**", "");
+    result = result.replace("__", "");
+    result = result.replace('*', "");
+    result = result.replace('_', " ");
+
+    // Remove images ![alt](url)
+    while let Some(img_start) = result.find("![") {
+        if let Some(bracket_end) = result[img_start + 2..].find("](") {
+            let abs_bracket_end = img_start + 2 + bracket_end;
+            if let Some(paren_end) = result[abs_bracket_end + 2..].find(')') {
+                result = format!(
+                    "{}{}",
+                    &result[..img_start],
+                    &result[abs_bracket_end + 3 + paren_end..]
+                );
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Clean up multiple spaces
+    while result.contains("  ") {
+        result = result.replace("  ", " ");
+    }
+
+    result.trim().to_string()
 }
