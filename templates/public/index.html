@@ -37,7 +37,11 @@ show_hero %}
         {% endif %}
     </div>
 </section>
-{% endif %} {% if pages | length > 0 and show_pages %}
+{% else %} {% if homepage.custom_content %}
+<section class="custom-content-section">
+    <div class="custom-content">{{ homepage.custom_content | safe }}</div>
+</section>
+{% endif %} {% endif %} {% if pages | length > 0 and show_pages %}
 <section class="pages-section">
     <h2 class="section-title">Pages</h2>
     <div class="pages-grid pages-grid--{{ pages_layout }}">

@@ -1287,6 +1287,15 @@ html.theme-light .theme-toggle-admin .icon-sun {
     color: var(--text-secondary);
 }
 
+.custom-content-section {
+    padding: var(--space-8) 0;
+    margin-bottom: var(--space-8);
+}
+
+.custom-content {
+    color: var(--text-secondary);
+}
+
 .hero--centered {
     text-align: center;
 }
