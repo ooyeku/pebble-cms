@@ -443,6 +443,7 @@ mod tests {
         fn test_validate_valid_theme() {
             let theme = ThemeConfig {
                 name: "default".to_string(),
+                custom: Default::default(),
             };
             assert!(theme.validate().is_ok());
         }
@@ -451,6 +452,7 @@ mod tests {
         fn test_validate_invalid_theme() {
             let theme = ThemeConfig {
                 name: "nonexistent".to_string(),
+                custom: Default::default(),
             };
             assert!(theme.validate().is_err());
         }
