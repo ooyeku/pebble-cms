@@ -424,10 +424,12 @@ mod tests {
 
         #[test]
         fn test_available_themes() {
-            assert_eq!(ThemeConfig::AVAILABLE_THEMES.len(), 3);
+            assert_eq!(ThemeConfig::AVAILABLE_THEMES.len(), 5);
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"default"));
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"minimal"));
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"magazine"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"brutalist"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"neon"));
         }
 
         #[test]
@@ -435,6 +437,8 @@ mod tests {
             assert!(ThemeConfig::is_valid_theme("default"));
             assert!(ThemeConfig::is_valid_theme("minimal"));
             assert!(ThemeConfig::is_valid_theme("magazine"));
+            assert!(ThemeConfig::is_valid_theme("brutalist"));
+            assert!(ThemeConfig::is_valid_theme("neon"));
             assert!(!ThemeConfig::is_valid_theme("invalid"));
             assert!(!ThemeConfig::is_valid_theme(""));
         }
