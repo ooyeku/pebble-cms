@@ -16,6 +16,12 @@ fn make_context(state: &AppState, user: &Option<User>) -> Context {
     ctx.insert("theme", &state.config.theme);
     ctx.insert("user", user);
     ctx.insert("production_mode", &state.production_mode);
+    if state.config.theme.custom.has_customizations() {
+        ctx.insert(
+            "theme_custom_css",
+            &state.config.theme.custom.to_css_variables(),
+        );
+    }
     ctx
 }
 
@@ -52,6 +58,7 @@ pub async fn index(
     ctx.insert("posts", &posts);
     ctx.insert("pages", &pages);
     ctx.insert("homepage", &homepage_settings);
+    ctx.insert("homepage_config", &state.config.homepage);
 
     let html = state.templates.render("public/index.html", &ctx)?;
     Ok(Html(html))

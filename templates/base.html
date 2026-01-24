@@ -1,43 +1,141 @@
 <!doctype html>
-<html lang="{{ site.language | default(value='en') }}" class="site-theme-{{ theme.name | default(value='default') }}">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>{% block title %}{{ site.title }}{% endblock %}</title>
-<meta name="description" content="{% block description %}{{ site.description }}{% endblock %}" />
-<link rel="alternate" type="application/rss+xml" href="/feed.xml" title="{{ site.title }}" />
-<style>{% include "css/bundle.css" %}</style>
-{% block head %}{% endblock %}
-</head>
-<body>
-<header class="site-header">
-<div class="container">
-<h1 class="site-title"><a href="/">{{ site.title }}</a></h1>
-<nav class="site-nav">
-<a href="/">Home</a>
-<a href="/posts">Posts</a>
-<a href="/tags">Tags</a>
-<a href="/search">Search</a>
-{% if user and not production_mode %}<a href="/admin">Admin</a>{% endif %}
-<button class="theme-toggle" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
-<svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-<svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-</button>
-</nav>
-</div>
-</header>
-<main class="site-main">
-<div class="container">{% block content %}{% endblock %}</div>
-</main>
-<footer class="site-footer">
-<div class="container">
-<span>&copy; {{ site.title }}</span>
-<a href="/feed.xml">RSS</a>
-</div>
-</footer>
-<script>
-(function(){var t=document.getElementById('theme-toggle'),h=document.documentElement,s=localStorage.getItem('theme');if(s)h.classList.add('theme-'+s);t.addEventListener('click',function(){var d=h.classList.contains('theme-dark')||(!h.classList.contains('theme-light')&&window.matchMedia('(prefers-color-scheme:dark)').matches);h.classList.remove('theme-dark','theme-light');if(d){h.classList.add('theme-light');localStorage.setItem('theme','light');}else{h.classList.add('theme-dark');localStorage.setItem('theme','dark');}});})();
-</script>
-{% block scripts %}{% endblock %}
-</body>
+<html
+    lang="{{ site.language | default(value='en') }}"
+    class="site-theme-{{ theme.name | default(value='default') }}"
+>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{% block title %}{{ site.title }}{% endblock %}</title>
+        <meta
+            name="description"
+            content="{% block description %}{{ site.description }}{% endblock %}"
+        />
+        <link
+            rel="alternate"
+            type="application/rss+xml"
+            href="/feed.xml"
+            title="{{ site.title }}"
+        />
+        <style>
+            {% include "css/bundle.css" %}
+        </style>
+        {% if theme_custom_css %}
+        <style>
+            :root { {{ theme_custom_css | safe }} }
+        </style>
+        {% endif %} {% block head %}{% endblock %}
+    </head>
+    <body>
+        <header class="site-header">
+            <div class="container">
+                <h1 class="site-title"><a href="/">{{ site.title }}</a></h1>
+                <nav class="site-nav">
+                    <a href="/">Home</a>
+                    <a href="/posts">Posts</a>
+                    <a href="/tags">Tags</a>
+                    <a href="/search">Search</a>
+                    {% if user and not production_mode %}<a href="/admin"
+                        >Admin</a
+                    >{% endif %}
+                    <button
+                        class="theme-toggle"
+                        id="theme-toggle"
+                        title="Toggle theme"
+                        aria-label="Toggle theme"
+                    >
+                        <svg
+                            class="icon-sun"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line
+                                x1="4.22"
+                                y1="4.22"
+                                x2="5.64"
+                                y2="5.64"
+                            ></line>
+                            <line
+                                x1="18.36"
+                                y1="18.36"
+                                x2="19.78"
+                                y2="19.78"
+                            ></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line
+                                x1="4.22"
+                                y1="19.78"
+                                x2="5.64"
+                                y2="18.36"
+                            ></line>
+                            <line
+                                x1="18.36"
+                                y1="5.64"
+                                x2="19.78"
+                                y2="4.22"
+                            ></line>
+                        </svg>
+                        <svg
+                            class="icon-moon"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path
+                                d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+                            ></path>
+                        </svg>
+                    </button>
+                </nav>
+            </div>
+        </header>
+        <main class="site-main">
+            <div class="container">{% block content %}{% endblock %}</div>
+        </main>
+        <footer class="site-footer">
+            <div class="container">
+                <span>&copy; {{ site.title }}</span>
+                <a href="/feed.xml">RSS</a>
+            </div>
+        </footer>
+        <script>
+            (function () {
+                var t = document.getElementById("theme-toggle"),
+                    h = document.documentElement,
+                    s = localStorage.getItem("theme");
+                if (s) h.classList.add("theme-" + s);
+                t.addEventListener("click", function () {
+                    var d =
+                        h.classList.contains("theme-dark") ||
+                        (!h.classList.contains("theme-light") &&
+                            window.matchMedia("(prefers-color-scheme:dark)")
+                                .matches);
+                    h.classList.remove("theme-dark", "theme-light");
+                    if (d) {
+                        h.classList.add("theme-light");
+                        localStorage.setItem("theme", "light");
+                    } else {
+                        h.classList.add("theme-dark");
+                        localStorage.setItem("theme", "dark");
+                    }
+                });
+            })();
+        </script>
+        {% block scripts %}{% endblock %}
+    </body>
 </html>

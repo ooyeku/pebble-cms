@@ -1,4 +1,4 @@
-use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, UserRole};
+use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
 use crate::services::{auth, content, media, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::{CurrentUser, HxRequest};
@@ -11,6 +11,20 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tera::Context;
 
+fn make_admin_context(state: &AppState, user: &User) -> Context {
+    let mut ctx = Context::new();
+    ctx.insert("site", &state.config.site);
+    ctx.insert("user", user);
+    ctx.insert("theme", &state.config.theme);
+    if state.config.theme.custom.has_customizations() {
+        ctx.insert(
+            "theme_custom_css",
+            &state.config.theme.custom.to_css_variables(),
+        );
+    }
+    ctx
+}
+
 pub async fn dashboard(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
@@ -20,9 +34,7 @@ pub async fn dashboard(
     let page_count = content::count_content(&state.db, Some(ContentType::Page), None)?;
     let published_count = content::count_content(&state.db, None, Some(ContentStatus::Published))?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("recent_posts", &recent_posts);
     ctx.insert("post_count", &post_count);
     ctx.insert("page_count", &page_count);
@@ -38,9 +50,7 @@ pub async fn posts(
 ) -> AppResult<Html<String>> {
     let posts = content::list_content(&state.db, Some(ContentType::Post), None, 50, 0)?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("posts", &posts);
 
     let html = state.templates.render("admin/posts/index.html", &ctx)?;
@@ -53,9 +63,7 @@ pub async fn new_post(
 ) -> AppResult<Html<String>> {
     let all_tags = tags::list_tags(&state.db)?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("content", &Option::<crate::models::ContentWithTags>::None);
     ctx.insert("all_tags", &all_tags);
     ctx.insert("is_new", &true);
@@ -148,9 +156,7 @@ pub async fn edit_post(
         Some(p) if p.content.content_type == ContentType::Post => {
             let all_tags = tags::list_tags(&state.db)?;
 
-            let mut ctx = Context::new();
-            ctx.insert("site", &state.config.site);
-            ctx.insert("user", &user);
+            let mut ctx = make_admin_context(&state, &user);
             ctx.insert("content", &p);
             ctx.insert("all_tags", &all_tags);
             ctx.insert("is_new", &false);
@@ -222,9 +228,7 @@ pub async fn pages(
 ) -> AppResult<Html<String>> {
     let pages = content::list_content(&state.db, Some(ContentType::Page), None, 50, 0)?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("pages", &pages);
 
     let html = state.templates.render("admin/pages/index.html", &ctx)?;
@@ -235,9 +239,7 @@ pub async fn new_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
 ) -> AppResult<Html<String>> {
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("content", &Option::<crate::models::ContentWithTags>::None);
     ctx.insert("is_new", &true);
     ctx.insert("content_type", "page");
@@ -295,9 +297,7 @@ pub async fn edit_page(
 
     match page {
         Some(p) if p.content.content_type == ContentType::Page => {
-            let mut ctx = Context::new();
-            ctx.insert("site", &state.config.site);
-            ctx.insert("user", &user);
+            let mut ctx = make_admin_context(&state, &user);
             ctx.insert("content", &p);
             ctx.insert("is_new", &false);
             ctx.insert("content_type", "page");
@@ -369,9 +369,7 @@ pub async fn media_page(
 ) -> AppResult<Html<String>> {
     let media_list = media::list_media(&state.db, 100, 0)?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("media", &media_list);
 
     let html = state.templates.render("admin/media/index.html", &ctx)?;
@@ -439,9 +437,7 @@ pub async fn tags_page(
 ) -> AppResult<Html<String>> {
     let tags_list = tags::list_tags_with_counts(&state.db)?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("tags", &tags_list);
 
     let html = state.templates.render("admin/tags/index.html", &ctx)?;
@@ -497,9 +493,7 @@ pub async fn settings(
 ) -> AppResult<Html<String>> {
     let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("config", &state.config);
     ctx.insert("homepage", &homepage_settings);
 
@@ -546,9 +540,7 @@ pub async fn users(
 
     let users_list = auth::list_users(&state.db)?;
 
-    let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("user", &user);
+    let mut ctx = make_admin_context(&state, &user);
     ctx.insert("users", &users_list);
 
     let html = state.templates.render("admin/users/index.html", &ctx)?;

@@ -1,32 +1,46 @@
-{% extends "base.html" %}
-
-{% block content %}
-<section class="hero">
+{% extends "base.html" %} {% block content %} {% set show_hero =
+homepage_config.show_hero | default(value=true) %} {% set show_pages_config =
+homepage_config.show_pages | default(value=true) %} {% set show_posts_config =
+homepage_config.show_posts | default(value=true) %} {% set show_pages =
+show_pages_config and homepage.show_pages | default(value=true) %} {% set
+show_posts = show_posts_config and homepage.show_posts | default(value=true) %}
+{% set hero_layout = homepage_config.hero_layout | default(value="centered") %}
+{% set hero_height = homepage_config.hero_height | default(value="medium") %} {%
+set hero_text_align = homepage_config.hero_text_align | default(value="center")
+%} {% set hero_image = homepage_config.hero_image | default(value="") %} {% set
+posts_layout = homepage_config.posts_layout | default(value="grid") %} {% set
+posts_columns = homepage_config.posts_columns | default(value=2) %} {% set
+pages_layout = homepage_config.pages_layout | default(value="grid") %} {% if
+show_hero %}
+<section
+    class="hero hero--{{ hero_layout }} hero--{{ hero_height }} hero--align-{{ hero_text_align }}{% if hero_image %} hero--with-image{% endif %}"
+    {%
+    if
+    hero_image
+    %}
+    style="--hero-image: url('{{ hero_image }}')"
+    {%
+    endif
+    %}
+>
     <div class="hero-content">
         {% if homepage.title %}
         <h1 class="hero-title">{{ homepage.title }}</h1>
         {% else %}
-        <h1 class="hero-title">Welcome to {{ site.title }}</h1>
-        {% endif %}
-
-        {% if homepage.subtitle %}
+        <h1 class="hero-title">{{ site.title }}</h1>
+        {% endif %} {% if homepage.subtitle %}
         <p class="hero-subtitle">{{ homepage.subtitle }}</p>
         {% else %}
         <p class="hero-subtitle">{{ site.description }}</p>
-        {% endif %}
-
-        {% if homepage.custom_content %}
-        <div class="hero-custom">
-            {{ homepage.custom_content | safe }}
-        </div>
+        {% endif %} {% if homepage.custom_content %}
+        <div class="hero-custom">{{ homepage.custom_content | safe }}</div>
         {% endif %}
     </div>
 </section>
-
-{% if pages | length > 0 and homepage.show_pages %}
+{% endif %} {% if pages | length > 0 and show_pages %}
 <section class="pages-section">
     <h2 class="section-title">Pages</h2>
-    <div class="pages-grid">
+    <div class="pages-grid pages-grid--{{ pages_layout }}">
         {% for p in pages %}
         <a href="/pages/{{ p.slug }}" class="page-card">
             <div class="page-card-content">
@@ -35,24 +49,24 @@
                 <p>{{ p.excerpt }}</p>
                 {% endif %}
             </div>
-            <span class="page-card-arrow">→</span>
+            <span class="page-card-arrow">-></span>
         </a>
         {% endfor %}
     </div>
 </section>
-{% endif %}
-
-{% if homepage.show_posts %}
+{% endif %} {% if show_posts %}
 <section class="posts-section">
     <div class="section-header">
         <h2 class="section-title">Recent Posts</h2>
         {% if posts | length > 0 %}
-        <a href="/posts" class="view-all-link">View all posts →</a>
+        <a href="/posts" class="view-all-link">View all posts -></a>
         {% endif %}
     </div>
 
     {% if posts | length > 0 %}
-    <div class="post-list">
+    <div
+        class="post-list post-list--{{ posts_layout }} post-list--cols-{{ posts_columns }}"
+    >
         {% for post in posts %}
         <article class="post-card">
             <h2>
@@ -61,16 +75,14 @@
             <div class="post-meta">
                 {% if post.published_at %}
                 <time>{{ post.published_at | format_date }}</time>
-                {% endif %}
-                {% if post.author %}
+                {% endif %} {% if post.author %}
                 <span class="separator">&middot;</span>
                 <span>{{ post.author.username }}</span>
                 {% endif %}
             </div>
             {% if post.excerpt %}
             <p class="post-excerpt">{{ post.excerpt }}</p>
-            {% endif %}
-            {% if post.tags | length > 0 %}
+            {% endif %} {% if post.tags | length > 0 %}
             <div class="post-tags">
                 {% for tag in post.tags %}
                 <a href="/tags/{{ tag.slug }}" class="tag">{{ tag.name }}</a>
@@ -83,40 +95,13 @@
     {% else %}
     <div class="empty-state">
         <p>No posts published yet.</p>
-        <p class="empty-state-hint">Start creating content in the <a href="/admin">admin panel</a>.</p>
+        <p class="empty-state-hint">
+            Start creating content in the <a href="/admin">admin panel</a>.
+        </p>
     </div>
     {% endif %}
 </section>
-{% endif %}
-
-{% if posts | length == 0 and pages | length == 0 %}
-<section class="features-section">
-    <h2 class="section-title">Getting Started</h2>
-    <div class="features-grid">
-        <div class="feature-card">
-            <h3>Create Posts</h3>
-            <p>Share your thoughts, stories, and ideas with the world through blog posts.</p>
-        </div>
-        <div class="feature-card">
-            <h3>Build Pages</h3>
-            <p>Create static pages for important content like About, Contact, or Services.</p>
-        </div>
-        <div class="feature-card">
-            <h3>Organize with Tags</h3>
-            <p>Categorize your content with tags to help visitors find what they're looking for.</p>
-        </div>
-        <div class="feature-card">
-            <h3>Customize Theme</h3>
-            <p>Choose from multiple themes to give your site a unique look and feel.</p>
-        </div>
-    </div>
-    <div class="cta-container">
-        <a href="/admin" class="btn btn-primary btn-lg">Open Admin Panel →</a>
-    </div>
-</section>
-{% endif %}
-
-{% if total_pages is defined and total_pages > 1 %}
+{% endif %} {% if total_pages is defined and total_pages > 1 %}
 <nav class="pagination">
     {% if page > 1 %}
     <a href="/posts?page={{ page - 1 }}">&larr; Newer</a>
@@ -124,10 +109,10 @@
     <span></span>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
-    {% if page < total_pages %} <a href="/posts?page={{ page + 1 }}">Older &rarr;</a>
-        {% else %}
-        <span></span>
-        {% endif %}
+    {% if page < total_pages %}
+    <a href="/posts?page={{ page + 1 }}">Older &rarr;</a>
+    {% else %}
+    <span></span>
+    {% endif %}
 </nav>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

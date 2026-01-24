@@ -1,22 +1,46 @@
-html.site-theme-default {}
+/* ==========================================================================
+   Theme: Default
+   A modern, clean theme with soft colors and rounded corners.
+   ========================================================================== */
+
+html.site-theme-default {
+    /* Default theme uses base variables - no overrides needed */
+}
+
+/* ==========================================================================
+   Theme: Minimal
+   A stark, monochromatic theme focused on typography and whitespace.
+   No shadows, no rounded corners, maximum readability.
+   ========================================================================== */
 
 html.site-theme-minimal {
     --color-primary: #18181b;
     --color-primary-hover: #3f3f46;
     --color-primary-light: rgba(24, 24, 27, 0.05);
-    --color-accent: #71717a;
+    --color-accent: #52525b;
+
+    /* Remove all rounded corners */
     --radius: 0;
     --radius-sm: 0;
     --radius-lg: 0;
     --radius-xl: 0;
+    --radius-full: 0;
+
+    /* Remove all shadows */
     --shadow-sm: none;
     --shadow: none;
     --shadow-md: none;
     --shadow-lg: none;
-    --border: #e4e4e7;
-    --border-light: #f4f4f5;
+
+    /* Muted, neutral colors */
+    --border: #d4d4d8;
+    --border-light: #e4e4e7;
     --bg-secondary: #fafafa;
     --bg-tertiary: #f4f4f5;
+
+    /* Typography adjustments */
+    --font-size-base: 1.0625rem;
+    --line-height-normal: 1.6;
 }
 
 html.theme-dark.site-theme-minimal,
@@ -24,151 +48,365 @@ html.site-theme-minimal[class*="theme-dark"] {
     --color-primary: #fafafa;
     --color-primary-hover: #d4d4d8;
     --color-primary-light: rgba(250, 250, 250, 0.1);
+    --color-accent: #a1a1aa;
     --border: #3f3f46;
     --border-light: #27272a;
     --bg-secondary: #18181b;
     --bg-tertiary: #27272a;
 }
 
+/* Minimal: Header */
 html.site-theme-minimal .site-header {
-    border-bottom: none;
-    padding: var(--space-6) 0;
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--space-8) 0;
+    background: transparent;
 }
 
 html.site-theme-minimal .site-title {
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: var(--font-size-base);
+}
+
+html.site-theme-minimal .site-nav a {
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    transition: color var(--transition-base);
 }
 
+html.site-theme-minimal .site-nav a:hover {
+    color: var(--text);
+}
+
+/* Minimal: Post Cards */
 html.site-theme-minimal .post-card {
     border: none;
     background: transparent;
-    padding: var(--space-6) 0;
+    padding: var(--space-8) 0;
     border-bottom: 1px solid var(--border-light);
     border-radius: 0;
+}
+
+html.site-theme-minimal .post-card:last-child {
+    border-bottom: none;
 }
 
 html.site-theme-minimal .post-card:hover {
     transform: none;
     box-shadow: none;
+    background: transparent;
 }
 
 html.site-theme-minimal .post-card h2 {
     font-weight: 400;
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
+    letter-spacing: -0.01em;
 }
 
+html.site-theme-minimal .post-card h2 a {
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--transition-base);
+}
+
+html.site-theme-minimal .post-card h2 a:hover {
+    border-bottom-color: var(--text);
+}
+
+html.site-theme-minimal .post-excerpt {
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+}
+
+html.site-theme-minimal .post-meta {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+/* Minimal: Buttons */
 html.site-theme-minimal .btn {
     border-radius: 0;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
     font-size: var(--font-size-xs);
+    font-weight: 500;
+    padding: var(--space-3) var(--space-6);
 }
 
 html.site-theme-minimal .btn-primary {
     background: var(--text);
     color: var(--bg);
+    border: 1px solid var(--text);
 }
 
 html.site-theme-minimal .btn-primary:hover {
-    background: var(--text-secondary);
+    background: transparent;
+    color: var(--text);
 }
 
+html.site-theme-minimal .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+html.site-theme-minimal .btn-secondary:hover {
+    border-color: var(--text);
+}
+
+/* Minimal: Cards */
 html.site-theme-minimal .card {
     border-radius: 0;
     border: 1px solid var(--border-light);
+    box-shadow: none;
 }
 
+/* Minimal: Tags */
 html.site-theme-minimal .tag {
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 0;
     font-size: var(--font-size-xs);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: var(--space-1) var(--space-3);
 }
 
+html.site-theme-minimal .tag:hover {
+    border-color: var(--text);
+    color: var(--text);
+}
+
+/* Minimal: Hero Section */
+html.site-theme-minimal .hero {
+    padding: var(--space-16) 0;
+    text-align: left;
+}
+
+html.site-theme-minimal .hero-title {
+    font-weight: 300;
+    font-size: var(--font-size-4xl);
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+
+html.site-theme-minimal .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    max-width: 50ch;
+}
+
+/* Minimal: Section Titles */
+html.site-theme-minimal .section-title {
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Minimal: Footer */
+html.site-theme-minimal .site-footer {
+    border-top: 1px solid var(--border-light);
+    padding: var(--space-8) 0;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* Minimal: Single Post */
+html.site-theme-minimal .post-header h1 {
+    font-weight: 400;
+    font-size: var(--font-size-4xl);
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-minimal .content {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+}
+
+html.site-theme-minimal .content h2,
+html.site-theme-minimal .content h3,
+html.site-theme-minimal .content h4 {
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   Theme: Magazine
+   A bold, editorial theme with serif fonts and newspaper-style design.
+   ========================================================================== */
+
 html.site-theme-magazine {
-    --font-serif: Georgia, 'Times New Roman', Times, serif;
-    --color-primary: #dc2626;
-    --color-primary-hover: #b91c1c;
-    --color-primary-light: rgba(220, 38, 38, 0.1);
-    --color-accent: #0d9488;
-    --bg-secondary: #fffbeb;
-    --border: #fcd34d;
-    --border-light: #fef3c7;
+    --font-serif: Georgia, "Times New Roman", Times, serif;
+    --font-display: Georgia, "Times New Roman", Times, serif;
+
+    /* Bold red primary color */
+    --color-primary: #b91c1c;
+    --color-primary-hover: #991b1b;
+    --color-primary-light: rgba(185, 28, 28, 0.08);
+
+    /* Teal accent */
+    --color-accent: #0f766e;
+    --color-accent-hover: #115e59;
+
+    /* Warm backgrounds */
+    --bg-secondary: #fef7ed;
+    --bg-tertiary: #fff7ed;
+
+    /* Borders */
+    --border: #e7e5e4;
+    --border-light: #f5f5f4;
+
+    /* Sharp corners for editorial feel */
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+
+    /* Subtle shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 html.theme-dark.site-theme-magazine,
 html.site-theme-magazine[class*="theme-dark"] {
     --color-primary: #f87171;
     --color-primary-hover: #fca5a5;
-    --color-primary-light: rgba(248, 113, 113, 0.15);
+    --color-primary-light: rgba(248, 113, 113, 0.12);
     --color-accent: #5eead4;
+    --color-accent-hover: #99f6e4;
     --bg-secondary: #1c1917;
+    --bg-tertiary: #292524;
     --border: #44403c;
     --border-light: #292524;
 }
 
+/* Magazine: Typography */
 html.site-theme-magazine body {
     font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    line-height: 1.7;
 }
 
+/* Magazine: Header */
 html.site-theme-magazine .site-header {
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 4px double var(--color-primary);
     padding: var(--space-6) 0;
+    background: var(--bg);
 }
 
 html.site-theme-magazine .site-title {
-    font-family: var(--font-serif);
-    font-size: var(--font-size-3xl);
+    font-family: var(--font-display);
+    font-size: var(--font-size-4xl);
     font-weight: 700;
     font-style: italic;
+    letter-spacing: -0.02em;
 }
 
 html.site-theme-magazine .site-nav a {
     font-family: var(--font-sans);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: var(--font-size-sm);
+    letter-spacing: 0.08em;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
 }
 
+html.site-theme-magazine .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Magazine: Hero */
+html.site-theme-magazine .hero {
+    padding: var(--space-12) 0;
+    border-bottom: 1px solid var(--border);
+}
+
+html.site-theme-magazine .hero-title {
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    font-weight: 700;
+    font-style: italic;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+html.site-theme-magazine .hero-subtitle {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-xl);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Magazine: Section Titles */
+html.site-theme-magazine .section-title {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-primary);
+    display: inline-block;
+}
+
+/* Magazine: Post Cards */
 html.site-theme-magazine .post-card {
     background: var(--bg);
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
-    padding: var(--space-8);
+    padding: var(--space-8) 0;
+    transition: background var(--transition-base);
 }
 
 html.site-theme-magazine .post-card:hover {
     transform: none;
     box-shadow: none;
     background: var(--bg-secondary);
+    margin: 0 calc(-1 * var(--space-4));
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
 }
 
 html.site-theme-magazine .post-card h2 {
-    font-family: var(--font-serif);
+    font-family: var(--font-display);
     font-size: var(--font-size-3xl);
     font-weight: 700;
-    line-height: 1.1;
+    line-height: 1.15;
     margin-bottom: var(--space-3);
+    letter-spacing: -0.01em;
 }
 
-html.site-theme-magazine .post-excerpt,
-html.site-theme-magazine .content {
+html.site-theme-magazine .post-card h2 a {
+    text-decoration: none;
+    color: var(--text);
+}
+
+html.site-theme-magazine .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-magazine .post-excerpt {
     font-family: var(--font-serif);
     font-size: var(--font-size-lg);
-    line-height: 1.8;
-}
-
-html.site-theme-magazine .post-header h1 {
-    font-family: var(--font-serif);
-    font-size: 3rem;
-    font-weight: 700;
-    line-height: 1.1;
+    line-height: 1.7;
+    color: var(--text-secondary);
 }
 
 html.site-theme-magazine .post-meta {
@@ -177,33 +415,130 @@ html.site-theme-magazine .post-meta {
     letter-spacing: 0.1em;
     font-size: var(--font-size-xs);
     color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Magazine: Single Post */
+html.site-theme-magazine .post-header h1 {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-4);
+}
+
+html.site-theme-magazine .content {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-lg);
+    line-height: 1.8;
+}
+
+html.site-theme-magazine .content h2 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    margin-top: var(--space-10);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--color-primary);
+}
+
+html.site-theme-magazine .content h3 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    font-style: italic;
+}
+
+html.site-theme-magazine .content blockquote {
+    font-style: italic;
+    font-size: var(--font-size-xl);
+    border-left: 4px solid var(--color-primary);
+    padding-left: var(--space-6);
+    margin: var(--space-8) 0;
+    color: var(--text-secondary);
+}
+
+html.site-theme-magazine .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-magazine .content a:hover {
+    color: var(--color-primary-hover);
+}
+
+/* Magazine: Buttons */
+html.site-theme-magazine .btn {
+    font-family: var(--font-sans);
+    border-radius: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
 }
 
 html.site-theme-magazine .btn-primary {
     background: var(--color-primary);
-    border-radius: 0;
+    border: 2px solid var(--color-primary);
 }
 
 html.site-theme-magazine .btn-primary:hover {
     background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
 }
 
+/* Magazine: Tags */
 html.site-theme-magazine .tag {
     background: var(--color-primary-light);
     color: var(--color-primary);
     border-radius: 0;
     font-family: var(--font-sans);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     font-size: var(--font-size-xs);
+    font-weight: 600;
+    border: none;
 }
 
+html.site-theme-magazine .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Magazine: Cards */
 html.site-theme-magazine .card {
     border-radius: 0;
     border: 1px solid var(--border);
+    box-shadow: none;
 }
 
+/* Magazine: Footer */
 html.site-theme-magazine .site-footer {
-    border-top: 3px solid var(--color-primary);
+    border-top: 4px double var(--color-primary);
+    padding: var(--space-8) 0;
     font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+}
+
+/* Magazine: Page Cards */
+html.site-theme-magazine .page-card {
+    border: 1px solid var(--border);
+    border-radius: 0;
+    transition:
+        border-color var(--transition-base),
+        background var(--transition-base);
+}
+
+html.site-theme-magazine .page-card:hover {
+    border-color: var(--color-primary);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-magazine .page-card h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
 }

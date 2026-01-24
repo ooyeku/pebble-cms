@@ -1,5 +1,5 @@
 use crate::models::{ContentStatus, ContentType};
-use crate::services::{content, tags};
+use crate::services::{content, settings, tags};
 use crate::web::AppState;
 use crate::Config;
 use anyhow::Result;
@@ -36,8 +36,15 @@ fn make_context(state: &AppState) -> Context {
     let mut ctx = Context::new();
     ctx.insert("site", &state.config.site);
     ctx.insert("theme", &state.config.theme);
+    ctx.insert("homepage_config", &state.config.homepage);
     ctx.insert("production_mode", &true);
     ctx.insert("user", &None::<()>);
+    if state.config.theme.custom.has_customizations() {
+        ctx.insert(
+            "theme_custom_css",
+            &state.config.theme.custom.to_css_variables(),
+        );
+    }
     ctx
 }
 
@@ -49,6 +56,8 @@ fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<(
         Some(ContentStatus::Published),
     )?;
     let total_pages = ((total as usize) + posts_per_page - 1) / posts_per_page;
+    let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
+    let pages = content::list_published_content(&state.db, ContentType::Page, 100, 0)?;
 
     for page_num in 1..=total_pages.max(1) {
         let offset = (page_num - 1) * posts_per_page;
@@ -57,6 +66,8 @@ fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<(
 
         let mut ctx = make_context(state);
         ctx.insert("posts", &posts);
+        ctx.insert("pages", &pages);
+        ctx.insert("homepage", &homepage_settings);
         ctx.insert("page", &page_num);
         ctx.insert("total_pages", &total_pages);
         ctx.insert("has_prev", &(page_num > 1));
@@ -202,22 +213,22 @@ fn generate_static_search_page(state: &AppState) -> Result<String> {
     const form = document.querySelector('.search-form');
     const input = form.querySelector('input[name="q"]');
     const resultsSection = document.querySelector('.post-list') || document.createElement('section');
-    
+
     if (!document.querySelector('.post-list')) {
         resultsSection.className = 'post-list';
         form.after(resultsSection);
     }
-    
+
     fetch('/search/index.json')
         .then(r => r.json())
         .then(data => { searchIndex = data; })
         .catch(console.error);
-    
+
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         performSearch(input.value.trim().toLowerCase());
     });
-    
+
     input.addEventListener('input', function() {
         if (this.value.length > 2) {
             performSearch(this.value.trim().toLowerCase());
@@ -225,24 +236,24 @@ fn generate_static_search_page(state: &AppState) -> Result<String> {
             resultsSection.innerHTML = '';
         }
     });
-    
+
     function performSearch(query) {
         if (!searchIndex || !query) {
             resultsSection.innerHTML = '';
             return;
         }
-        
-        const results = searchIndex.filter(post => 
+
+        const results = searchIndex.filter(post =>
             post.title.toLowerCase().includes(query) ||
             (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
             post.body.toLowerCase().includes(query)
         );
-        
+
         if (results.length === 0) {
             resultsSection.innerHTML = '<p style="color: var(--text-muted);">No results found for "' + query + '"</p><div class="empty-state"><p>Try a different search term.</p></div>';
             return;
         }
-        
+
         let html = '<p style="color: var(--text-muted); margin-bottom: 1.5rem;">' + results.length + ' result' + (results.length !== 1 ? 's' : '') + ' for "' + query + '"</p>';
         results.forEach(post => {
             html += '<article class="post-card"><h2><a href="/posts/' + post.slug + '">' + post.title + '</a></h2>';

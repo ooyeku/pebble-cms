@@ -144,6 +144,228 @@ name = "default"
 session_lifetime = "7d"
 ```
 
+## Themes
+
+Pebble includes three built-in themes, each with a distinct visual style. All themes support both light and dark modes.
+
+### Available Themes
+
+#### Default
+
+A modern, clean theme with soft colors and rounded corners. Uses a blue primary color and sans-serif typography. Best for personal blogs and general-purpose sites.
+
+- Rounded corners on cards and buttons
+- Subtle shadows for depth
+- Blue primary color (#3b82f6)
+- Sans-serif font stack
+
+#### Minimal
+
+A stark, monochromatic theme focused on typography and whitespace. Removes visual clutter to emphasize content.
+
+- No rounded corners (sharp edges)
+- No shadows
+- Monochromatic color scheme
+- Uppercase headings with letter-spacing
+- Maximum readability with increased line-height
+
+#### Magazine
+
+A bold, editorial theme inspired by newspaper and magazine layouts. Uses serif typography and strong visual hierarchy.
+
+- Serif font family (Georgia)
+- Red primary color (#b91c1c)
+- Double-line borders on header/footer
+- Large, bold headlines
+- Warm background tones
+
+### Switching Themes
+
+To change your theme, edit `pebble.toml`:
+
+```toml
+[theme]
+name = "magazine"  # Options: "default", "minimal", "magazine"
+```
+
+Restart the server after changing themes.
+
+### Custom Theme Options
+
+You can customize colors, fonts, and other visual properties without creating a full custom theme. Add a `[theme.custom]` section to your `pebble.toml`:
+
+```toml
+[theme]
+name = "default"
+
+[theme.custom]
+# Colors (use any valid CSS color value)
+primary_color = "#8b5cf6"        # Primary brand color
+primary_color_hover = "#7c3aed"  # Primary color on hover
+accent_color = "#f59e0b"         # Accent color for highlights
+background_color = "#fafafa"     # Main background
+background_secondary = "#f3f4f6" # Secondary background (cards, sections)
+text_color = "#111827"           # Main text color
+text_muted = "#6b7280"           # Muted/secondary text
+border_color = "#e5e7eb"         # Border color
+link_color = "#2563eb"           # Link color (defaults to primary)
+
+# Typography
+font_family = "Inter, system-ui, sans-serif"       # Body text font
+heading_font_family = "Playfair Display, Georgia"  # Heading font
+font_size = "18px"                                 # Base font size
+line_height = 1.7                                  # Line height for body text
+
+# Layout
+border_radius = "0.75rem"  # Border radius (use "0" for sharp corners)
+```
+
+All custom options are optional. Only specify the values you want to change; unspecified values will use the theme's defaults.
+
+### Examples
+
+**Purple theme with sharp corners:**
+
+```toml
+[theme]
+name = "default"
+
+[theme.custom]
+primary_color = "#7c3aed"
+primary_color_hover = "#6d28d9"
+accent_color = "#ec4899"
+border_radius = "0"
+```
+
+**Minimal theme with custom serif font:**
+
+```toml
+[theme]
+name = "minimal"
+
+[theme.custom]
+font_family = "Merriweather, Georgia, serif"
+heading_font_family = "Merriweather, Georgia, serif"
+line_height = 1.8
+```
+
+**Magazine theme with blue instead of red:**
+
+```toml
+[theme]
+name = "magazine"
+
+[theme.custom]
+primary_color = "#1d4ed8"
+primary_color_hover = "#1e40af"
+```
+
+### Dark Mode
+
+All themes support automatic dark mode based on the user's system preference. Users can also toggle between light and dark modes using the theme toggle button in the site header.
+
+Custom colors defined in `[theme.custom]` apply to the light mode. Dark mode colors are automatically adjusted by the theme.
+
+## Homepage Layout
+
+Customize the homepage layout and design through the `[homepage]` section in `pebble.toml`.
+
+### Basic Configuration
+
+```toml
+[homepage]
+show_hero = true       # Show/hide the hero section
+show_pages = true      # Show/hide the pages section
+show_posts = true      # Show/hide the recent posts section
+```
+
+### Hero Section Options
+
+The hero section is the main banner at the top of your homepage.
+
+```toml
+[homepage]
+hero_layout = "centered"    # "centered", "left", or "banner"
+hero_height = "medium"      # "small", "medium", "large", or "full"
+hero_text_align = "center"  # "left", "center", or "right"
+hero_image = "/media/hero-bg.jpg"  # Optional background image
+```
+
+**Hero Layouts:**
+
+- `centered` - Content centered with gradient background (default)
+- `left` - Content aligned left, minimal styling
+- `banner` - Full-width banner that extends beyond the container
+
+**Hero Heights:**
+
+- `small` - Compact padding
+- `medium` - Standard padding (default)
+- `large` - Tall hero (50vh minimum)
+- `full` - Near full-screen hero (80vh minimum)
+
+### Posts Section Options
+
+Control how recent posts are displayed on the homepage.
+
+```toml
+[homepage]
+posts_layout = "grid"   # "grid", "list", or "compact"
+posts_columns = 2       # Number of columns (1, 2, or 3) for grid layout
+```
+
+**Posts Layouts:**
+
+- `grid` - Card grid layout (default)
+- `list` - Single column list with full excerpts
+- `compact` - Dense list without excerpts
+
+### Pages Section Options
+
+Control how pages are displayed on the homepage.
+
+```toml
+[homepage]
+pages_layout = "grid"   # "grid", "list", or "compact"
+```
+
+**Pages Layouts:**
+
+- `grid` - Card grid layout (default)
+- `list` - Vertical list
+- `compact` - Inline button-style links
+
+### Complete Example
+
+```toml
+[homepage]
+# Hero configuration
+show_hero = true
+hero_layout = "centered"
+hero_height = "large"
+hero_text_align = "center"
+hero_image = "/media/mountains.jpg"
+
+# Sections visibility
+show_pages = true
+show_posts = true
+
+# Posts display
+posts_layout = "grid"
+posts_columns = 2
+
+# Pages display
+pages_layout = "compact"
+```
+
+### Homepage Content (Admin UI)
+
+In addition to layout options in `pebble.toml`, you can customize homepage text content through the admin panel at `/admin/settings`:
+
+- **Homepage Title** - Custom hero title (defaults to site title)
+- **Homepage Subtitle** - Custom tagline (defaults to site description)
+- **Custom Content** - HTML content below the subtitle (for CTAs, buttons, etc.)
+
 ## Content Types
 
 ### Posts
