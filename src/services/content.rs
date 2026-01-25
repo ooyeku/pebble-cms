@@ -313,7 +313,7 @@ pub fn count_content(
     Ok(count)
 }
 
-fn ensure_metadata_defaults(mut metadata: serde_json::Value) -> serde_json::Value {
+pub fn ensure_metadata_defaults(mut metadata: serde_json::Value) -> serde_json::Value {
     // Ensure custom code fields have default values for template compatibility
     if metadata.get("use_custom_code").is_none() {
         metadata["use_custom_code"] = serde_json::json!("");

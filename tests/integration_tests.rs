@@ -1,5 +1,5 @@
 use pebble::models::{ContentStatus, ContentType, UserRole};
-use pebble::services::{auth, content, tags};
+use pebble::services::{auth, content, database, search, settings, tags};
 use pebble::Database;
 
 fn create_test_db() -> Database {
@@ -590,5 +590,323 @@ mod content_integration_tests {
 
         let result = content::create_content(&db, input, None, 200);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_content_metadata_defaults() {
+        let db = create_test_db();
+
+        // Create content without any custom metadata
+        let input = CreateContent {
+            title: "Metadata Test".to_string(),
+            slug: None,
+            content_type: ContentType::Page,
+            body_markdown: "Test content".to_string(),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Draft,
+            scheduled_at: None,
+            tags: vec![],
+            metadata: None, // No metadata provided
+        };
+
+        let content_id = content::create_content(&db, input, None, 200).unwrap();
+
+        let page = content::get_content_by_id(&db, content_id)
+            .unwrap()
+            .expect("Content should exist");
+
+        // Metadata should have default values for custom code fields
+        assert_eq!(page.content.metadata["use_custom_code"], "");
+        assert_eq!(page.content.metadata["custom_html"], "");
+        assert_eq!(page.content.metadata["custom_css"], "");
+        assert_eq!(page.content.metadata["custom_js"], "");
+    }
+
+    #[test]
+    fn test_content_with_custom_metadata() {
+        let db = create_test_db();
+
+        let custom_metadata = serde_json::json!({
+            "use_custom_code": "only",
+            "custom_html": "<div>Hello</div>",
+            "custom_css": "body { color: red; }",
+            "meta_title": "Custom Title"
+        });
+
+        let input = CreateContent {
+            title: "Custom Page".to_string(),
+            slug: None,
+            content_type: ContentType::Page,
+            body_markdown: "".to_string(),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Published,
+            scheduled_at: None,
+            tags: vec![],
+            metadata: Some(custom_metadata),
+        };
+
+        let content_id = content::create_content(&db, input, None, 200).unwrap();
+
+        let page = content::get_content_by_id(&db, content_id)
+            .unwrap()
+            .expect("Content should exist");
+
+        assert_eq!(page.content.metadata["use_custom_code"], "only");
+        assert_eq!(page.content.metadata["custom_html"], "<div>Hello</div>");
+        assert_eq!(page.content.metadata["meta_title"], "Custom Title");
+    }
+}
+
+mod settings_integration_tests {
+    use super::*;
+
+    #[test]
+    fn test_get_setting_not_found() {
+        let db = create_test_db();
+        let result = settings::get_setting(&db, "nonexistent_key").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_set_and_get_setting() {
+        let db = create_test_db();
+
+        settings::set_setting(&db, "test_key", "test_value").unwrap();
+
+        let value = settings::get_setting(&db, "test_key")
+            .unwrap()
+            .expect("Setting should exist");
+        assert_eq!(value, "test_value");
+    }
+
+    #[test]
+    fn test_update_setting() {
+        let db = create_test_db();
+
+        settings::set_setting(&db, "update_key", "original").unwrap();
+        settings::set_setting(&db, "update_key", "updated").unwrap();
+
+        let value = settings::get_setting(&db, "update_key")
+            .unwrap()
+            .expect("Setting should exist");
+        assert_eq!(value, "updated");
+    }
+
+    #[test]
+    fn test_delete_setting() {
+        let db = create_test_db();
+
+        settings::set_setting(&db, "delete_key", "value").unwrap();
+        settings::delete_setting(&db, "delete_key").unwrap();
+
+        let result = settings::get_setting(&db, "delete_key").unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_settings_by_prefix() {
+        let db = create_test_db();
+
+        settings::set_setting(&db, "prefix_one", "value1").unwrap();
+        settings::set_setting(&db, "prefix_two", "value2").unwrap();
+        settings::set_setting(&db, "other_key", "value3").unwrap();
+
+        let prefix_settings = settings::get_settings_by_prefix(&db, "prefix_").unwrap();
+        assert_eq!(prefix_settings.len(), 2);
+    }
+
+    #[test]
+    fn test_homepage_settings_defaults() {
+        let db = create_test_db();
+
+        let homepage = settings::get_homepage_settings(&db).unwrap();
+
+        assert!(homepage.title.is_empty());
+        assert!(homepage.subtitle.is_empty());
+        assert!(homepage.show_pages); // Default true
+        assert!(homepage.show_posts); // Default true
+        assert!(homepage.custom_content.is_empty());
+    }
+
+    #[test]
+    fn test_save_and_get_homepage_settings() {
+        let db = create_test_db();
+
+        let new_settings = settings::HomepageSettings {
+            title: "Welcome".to_string(),
+            subtitle: "My Blog".to_string(),
+            show_pages: false,
+            show_posts: true,
+            custom_content: "<p>Hello World</p>".to_string(),
+        };
+
+        settings::save_homepage_settings(&db, &new_settings).unwrap();
+
+        let loaded = settings::get_homepage_settings(&db).unwrap();
+
+        assert_eq!(loaded.title, "Welcome");
+        assert_eq!(loaded.subtitle, "My Blog");
+        assert!(!loaded.show_pages);
+        assert!(loaded.show_posts);
+        assert_eq!(loaded.custom_content, "<p>Hello World</p>");
+    }
+}
+
+mod search_integration_tests {
+    use super::*;
+    use pebble::models::CreateContent;
+
+    #[test]
+    fn test_search_empty_results() {
+        let db = create_test_db();
+
+        let results = search::search_content(&db, "nonexistent", 10).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_finds_published_content() {
+        let db = create_test_db();
+
+        // Create published post
+        let input = CreateContent {
+            title: "Rust Programming Guide".to_string(),
+            slug: None,
+            content_type: ContentType::Post,
+            body_markdown: "Learn Rust programming language basics".to_string(),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Published,
+            scheduled_at: None,
+            tags: vec![],
+            metadata: None,
+        };
+        content::create_content(&db, input, None, 200).unwrap();
+
+        // Rebuild FTS index
+        search::rebuild_fts_index(&db).unwrap();
+
+        let results = search::search_content(&db, "rust", 10).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].title, "Rust Programming Guide");
+    }
+
+    #[test]
+    fn test_search_excludes_draft_content() {
+        let db = create_test_db();
+
+        // Create draft post
+        let input = CreateContent {
+            title: "Draft About Python".to_string(),
+            slug: None,
+            content_type: ContentType::Post,
+            body_markdown: "This is a draft about Python".to_string(),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Draft,
+            scheduled_at: None,
+            tags: vec![],
+            metadata: None,
+        };
+        content::create_content(&db, input, None, 200).unwrap();
+
+        search::rebuild_fts_index(&db).unwrap();
+
+        let results = search::search_content(&db, "python", 10).unwrap();
+        assert!(results.is_empty()); // Drafts should not appear
+    }
+
+    #[test]
+    fn test_rebuild_fts_index() {
+        let db = create_test_db();
+
+        // Create multiple posts
+        for i in 1..=3 {
+            let mut input = CreateContent {
+                title: format!("Post Number {}", i),
+                slug: None,
+                content_type: ContentType::Post,
+                body_markdown: format!("Content for post {}", i),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            };
+            content::create_content(&db, input, None, 200).unwrap();
+        }
+
+        let indexed = search::rebuild_fts_index(&db).unwrap();
+        assert_eq!(indexed, 3);
+    }
+
+    #[test]
+    fn test_search_multiple_terms() {
+        let db = create_test_db();
+
+        let input = CreateContent {
+            title: "Web Development with JavaScript".to_string(),
+            slug: None,
+            content_type: ContentType::Post,
+            body_markdown: "Learn web development using JavaScript and modern frameworks"
+                .to_string(),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Published,
+            scheduled_at: None,
+            tags: vec![],
+            metadata: None,
+        };
+        content::create_content(&db, input, None, 200).unwrap();
+
+        search::rebuild_fts_index(&db).unwrap();
+
+        // Search with multiple terms (OR logic)
+        let results = search::search_content(&db, "javascript web", 10).unwrap();
+        assert!(!results.is_empty());
+    }
+}
+
+mod database_integration_tests {
+    use super::*;
+
+    #[test]
+    fn test_run_analyze() {
+        let db = create_test_db();
+        // ANALYZE should succeed on empty database
+        let result = database::run_analyze(&db);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_run_integrity_check() {
+        let db = create_test_db();
+
+        let results = database::run_integrity_check(&db).unwrap();
+
+        // Should return "ok" for a healthy database
+        assert!(!results.is_empty());
+        assert_eq!(results[0], "ok");
+    }
+
+    #[test]
+    fn test_run_integrity_check_with_data() {
+        let db = create_test_db();
+
+        // Add some data
+        auth::create_user(
+            &db,
+            "testuser",
+            "test@example.com",
+            "password",
+            UserRole::Admin,
+        )
+        .unwrap();
+
+        let results = database::run_integrity_check(&db).unwrap();
+        assert_eq!(results[0], "ok");
     }
 }

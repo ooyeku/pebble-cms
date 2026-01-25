@@ -37,7 +37,7 @@ pub fn search_content(db: &Database, query: &str, limit: usize) -> Result<Vec<Co
     Ok(results)
 }
 
-fn build_fts_query(query: &str) -> String {
+pub fn build_fts_query(query: &str) -> String {
     let terms: Vec<&str> = query.split_whitespace().collect();
     if terms.is_empty() {
         return String::new();

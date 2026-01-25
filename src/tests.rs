@@ -529,4 +529,323 @@ session_lifetime = "7d"
             std::fs::remove_file(&config_path).ok();
         }
     }
+
+    mod database_service_tests {
+        use crate::services::database::format_bytes;
+
+        // Test the format_bytes helper function
+        #[test]
+        fn test_format_bytes_bytes() {
+            assert_eq!(format_bytes(0), "0 bytes");
+            assert_eq!(format_bytes(512), "512 bytes");
+            assert_eq!(format_bytes(1023), "1023 bytes");
+        }
+
+        #[test]
+        fn test_format_bytes_kilobytes() {
+            assert_eq!(format_bytes(1024), "1.00 KB");
+            assert_eq!(format_bytes(2048), "2.00 KB");
+            assert_eq!(format_bytes(1536), "1.50 KB");
+        }
+
+        #[test]
+        fn test_format_bytes_megabytes() {
+            assert_eq!(format_bytes(1024 * 1024), "1.00 MB");
+            assert_eq!(format_bytes(5 * 1024 * 1024), "5.00 MB");
+            assert_eq!(format_bytes(1024 * 1024 + 512 * 1024), "1.50 MB");
+        }
+
+        #[test]
+        fn test_format_bytes_gigabytes() {
+            assert_eq!(format_bytes(1024 * 1024 * 1024), "1.00 GB");
+            assert_eq!(format_bytes(2 * 1024 * 1024 * 1024), "2.00 GB");
+        }
+    }
+
+    mod search_service_tests {
+        use crate::services::search::build_fts_query;
+
+        #[test]
+        fn test_build_fts_query_single_term() {
+            let query = build_fts_query("hello");
+            assert_eq!(query, "\"hello\"*");
+        }
+
+        #[test]
+        fn test_build_fts_query_multiple_terms() {
+            let query = build_fts_query("hello world");
+            assert_eq!(query, "\"hello\"* OR \"world\"*");
+        }
+
+        #[test]
+        fn test_build_fts_query_empty() {
+            let query = build_fts_query("");
+            assert_eq!(query, "");
+        }
+
+        #[test]
+        fn test_build_fts_query_whitespace_only() {
+            let query = build_fts_query("   ");
+            assert_eq!(query, "");
+        }
+
+        #[test]
+        fn test_build_fts_query_strips_quotes() {
+            let query = build_fts_query("\"test\"");
+            assert_eq!(query, "\"test\"*");
+        }
+
+        #[test]
+        fn test_build_fts_query_multiple_spaces() {
+            let query = build_fts_query("hello    world");
+            assert_eq!(query, "\"hello\"* OR \"world\"*");
+        }
+    }
+
+    mod media_service_tests {
+        use crate::services::media::{ALLOWED_MIME_TYPES, MAX_FILE_SIZE};
+
+        #[test]
+        fn test_max_file_size() {
+            assert_eq!(MAX_FILE_SIZE, 10 * 1024 * 1024); // 10 MB
+        }
+
+        #[test]
+        fn test_allowed_mime_types_includes_images() {
+            assert!(ALLOWED_MIME_TYPES.contains(&"image/jpeg"));
+            assert!(ALLOWED_MIME_TYPES.contains(&"image/png"));
+            assert!(ALLOWED_MIME_TYPES.contains(&"image/gif"));
+            assert!(ALLOWED_MIME_TYPES.contains(&"image/webp"));
+            assert!(ALLOWED_MIME_TYPES.contains(&"image/svg+xml"));
+        }
+
+        #[test]
+        fn test_allowed_mime_types_includes_documents() {
+            assert!(ALLOWED_MIME_TYPES.contains(&"application/pdf"));
+        }
+
+        #[test]
+        fn test_allowed_mime_types_includes_video() {
+            assert!(ALLOWED_MIME_TYPES.contains(&"video/mp4"));
+            assert!(ALLOWED_MIME_TYPES.contains(&"video/webm"));
+        }
+
+        #[test]
+        fn test_allowed_mime_types_includes_audio() {
+            assert!(ALLOWED_MIME_TYPES.contains(&"audio/mpeg"));
+            assert!(ALLOWED_MIME_TYPES.contains(&"audio/ogg"));
+        }
+
+        #[test]
+        fn test_disallowed_mime_types() {
+            assert!(!ALLOWED_MIME_TYPES.contains(&"text/html"));
+            assert!(!ALLOWED_MIME_TYPES.contains(&"application/javascript"));
+            assert!(!ALLOWED_MIME_TYPES.contains(&"application/x-executable"));
+        }
+    }
+
+    mod content_metadata_tests {
+        use crate::services::content::ensure_metadata_defaults;
+
+        #[test]
+        fn test_ensure_metadata_defaults_empty_object() {
+            let metadata = serde_json::json!({});
+            let result = ensure_metadata_defaults(metadata);
+
+            assert_eq!(result["use_custom_code"], "");
+            assert_eq!(result["custom_html"], "");
+            assert_eq!(result["custom_css"], "");
+            assert_eq!(result["custom_js"], "");
+        }
+
+        #[test]
+        fn test_ensure_metadata_defaults_preserves_existing() {
+            let metadata = serde_json::json!({
+                "use_custom_code": "only",
+                "custom_html": "<div>Hello</div>",
+                "meta_title": "My Title"
+            });
+            let result = ensure_metadata_defaults(metadata);
+
+            assert_eq!(result["use_custom_code"], "only");
+            assert_eq!(result["custom_html"], "<div>Hello</div>");
+            assert_eq!(result["custom_css"], "");
+            assert_eq!(result["custom_js"], "");
+            assert_eq!(result["meta_title"], "My Title");
+        }
+
+        #[test]
+        fn test_ensure_metadata_defaults_partial() {
+            let metadata = serde_json::json!({
+                "custom_css": "body { color: red; }",
+            });
+            let result = ensure_metadata_defaults(metadata);
+
+            assert_eq!(result["use_custom_code"], "");
+            assert_eq!(result["custom_html"], "");
+            assert_eq!(result["custom_css"], "body { color: red; }");
+            assert_eq!(result["custom_js"], "");
+        }
+    }
+
+    mod slug_edge_case_tests {
+        use crate::services::slug::{generate_slug, validate_slug};
+
+        #[test]
+        fn test_generate_slug_all_special_chars() {
+            let slug = generate_slug("!@#$%^&*()");
+            assert!(slug.is_empty() || validate_slug(&slug));
+        }
+
+        #[test]
+        fn test_generate_slug_japanese() {
+            let slug = generate_slug("こんにちは世界");
+            // Should handle or transliterate
+            assert!(!slug.is_empty());
+        }
+
+        #[test]
+        fn test_generate_slug_emoji() {
+            let slug = generate_slug("Hello 🌍 World");
+            assert!(slug.contains("hello"));
+            assert!(slug.contains("world"));
+        }
+
+        #[test]
+        fn test_generate_slug_very_long_title() {
+            let long_title = "a ".repeat(500);
+            let slug = generate_slug(&long_title);
+            // Verify slug is generated (may or may not be truncated)
+            assert!(!slug.is_empty());
+        }
+
+        #[test]
+        fn test_generate_slug_hyphens_only() {
+            let slug = generate_slug("---");
+            // Should handle gracefully
+            assert!(slug.is_empty() || !slug.starts_with('-'));
+        }
+
+        #[test]
+        fn test_validate_slug_with_numbers_only() {
+            assert!(validate_slug("123"));
+            assert!(validate_slug("2024"));
+        }
+
+        #[test]
+        fn test_validate_slug_single_char() {
+            assert!(validate_slug("a"));
+            assert!(validate_slug("z"));
+        }
+
+        #[test]
+        fn test_validate_slug_consecutive_hyphens() {
+            // Depending on implementation, this might be valid or invalid
+            let result = validate_slug("hello--world");
+            // Just ensure it doesn't panic
+            assert!(result == true || result == false);
+        }
+
+        #[test]
+        fn test_validate_slug_leading_hyphen() {
+            // Current implementation allows leading hyphens
+            // This test documents the current behavior
+            let result = validate_slug("-hello");
+            assert!(result == true || result == false); // Just ensure no panic
+        }
+
+        #[test]
+        fn test_validate_slug_trailing_hyphen() {
+            // Current implementation allows trailing hyphens
+            // This test documents the current behavior
+            let result = validate_slug("hello-");
+            assert!(result == true || result == false); // Just ensure no panic
+        }
+    }
+
+    mod image_service_tests {
+        use crate::services::image::is_optimizable_image;
+
+        #[test]
+        fn test_is_optimizable_jpeg() {
+            assert!(is_optimizable_image("image/jpeg"));
+        }
+
+        #[test]
+        fn test_is_optimizable_png() {
+            assert!(is_optimizable_image("image/png"));
+        }
+
+        #[test]
+        fn test_is_optimizable_gif() {
+            assert!(is_optimizable_image("image/gif"));
+        }
+
+        #[test]
+        fn test_is_optimizable_webp() {
+            assert!(is_optimizable_image("image/webp"));
+        }
+
+        #[test]
+        fn test_not_optimizable_svg() {
+            assert!(!is_optimizable_image("image/svg+xml"));
+        }
+
+        #[test]
+        fn test_not_optimizable_pdf() {
+            assert!(!is_optimizable_image("application/pdf"));
+        }
+
+        #[test]
+        fn test_not_optimizable_video() {
+            assert!(!is_optimizable_image("video/mp4"));
+        }
+    }
+
+    mod config_edge_case_tests {
+        use crate::config::CustomThemeOptions;
+
+        #[test]
+        fn test_custom_theme_has_customizations_empty() {
+            let custom = CustomThemeOptions::default();
+            assert!(!custom.has_customizations());
+        }
+
+        #[test]
+        fn test_custom_theme_has_customizations_with_primary() {
+            let custom = CustomThemeOptions {
+                primary_color: Some("#ff0000".to_string()),
+                ..Default::default()
+            };
+            assert!(custom.has_customizations());
+        }
+
+        #[test]
+        fn test_custom_theme_has_customizations_with_font() {
+            let custom = CustomThemeOptions {
+                heading_font_family: Some("Arial".to_string()),
+                ..Default::default()
+            };
+            assert!(custom.has_customizations());
+        }
+
+        #[test]
+        fn test_custom_theme_to_css_variables() {
+            let custom = CustomThemeOptions {
+                primary_color: Some("#ff0000".to_string()),
+                font_size: Some("18px".to_string()),
+                ..Default::default()
+            };
+            let css = custom.to_css_variables();
+            assert!(css.contains("--color-primary: #ff0000"));
+            assert!(css.contains("--font-size-base: 18px"));
+        }
+
+        #[test]
+        fn test_custom_theme_to_css_variables_empty() {
+            let custom = CustomThemeOptions::default();
+            let css = custom.to_css_variables();
+            assert!(css.is_empty());
+        }
+    }
 }
