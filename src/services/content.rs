@@ -313,7 +313,28 @@ pub fn count_content(
     Ok(count)
 }
 
+fn ensure_metadata_defaults(mut metadata: serde_json::Value) -> serde_json::Value {
+    // Ensure custom code fields have default values for template compatibility
+    if metadata.get("use_custom_code").is_none() {
+        metadata["use_custom_code"] = serde_json::json!("");
+    }
+    if metadata.get("custom_html").is_none() {
+        metadata["custom_html"] = serde_json::json!("");
+    }
+    if metadata.get("custom_css").is_none() {
+        metadata["custom_css"] = serde_json::json!("");
+    }
+    if metadata.get("custom_js").is_none() {
+        metadata["custom_js"] = serde_json::json!("");
+    }
+    metadata
+}
+
 fn row_to_content(row: &rusqlite::Row) -> rusqlite::Result<Content> {
+    let raw_metadata: serde_json::Value =
+        serde_json::from_str(&row.get::<_, String>(12)?).unwrap_or(serde_json::json!({}));
+    let metadata = ensure_metadata_defaults(raw_metadata);
+
     Ok(Content {
         id: row.get(0)?,
         slug: row.get(1)?,
@@ -333,7 +354,7 @@ fn row_to_content(row: &rusqlite::Row) -> rusqlite::Result<Content> {
         scheduled_at: row.get(9)?,
         published_at: row.get(10)?,
         author_id: row.get(11)?,
-        metadata: serde_json::from_str(&row.get::<_, String>(12)?).unwrap_or(serde_json::json!({})),
+        metadata,
         created_at: row.get(13)?,
         updated_at: row.get(14)?,
     })

@@ -1,6 +1,7 @@
 pub mod analytics;
 pub mod auth;
 pub mod content;
+pub mod database;
 pub mod image;
 pub mod markdown;
 pub mod media;

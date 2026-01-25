@@ -1789,6 +1789,36 @@ html.theme-light .theme-toggle-admin .icon-sun {
 }
 
 html.site-theme-default {
+    --color-primary: #3b82f6;
+    --color-primary-hover: #2563eb;
+    --color-primary-light: rgba(59, 130, 246, 0.1);
+    --color-accent: #8b5cf6;
+    --color-accent-hover: #7c3aed;
+    --bg: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --text: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+}
+
+html.theme-dark.site-theme-default,
+html.site-theme-default[class*="theme-dark"] {
+    --color-primary: #60a5fa;
+    --color-primary-hover: #93c5fd;
+    --color-primary-light: rgba(96, 165, 250, 0.15);
+    --color-accent: #a78bfa;
+    --color-accent-hover: #c4b5fd;
+    --bg: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --text: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --border-light: #1e293b;
 }
 
 html.site-theme-minimal {
@@ -2271,12 +2301,30 @@ html.site-theme-neon {
 
 html.theme-light.site-theme-neon,
 html.site-theme-neon[class*="theme-light"] {
-    --bg: #1a1a25;
-    --bg-secondary: #12121a;
-    --bg-tertiary: #0a0a0f;
-    --text: #e0e0e0;
-    --text-secondary: #b0b0b0;
-    --border: #2a2a3a;
+    --color-primary: #0099cc;
+    --color-primary-hover: #007799;
+    --color-primary-light: rgba(0, 153, 204, 0.1);
+    --color-accent: #cc00cc;
+    --color-accent-hover: #990099;
+    --color-neon-green: #00aa00;
+    --color-neon-pink: #cc3399;
+    --color-neon-yellow: #cc9900;
+    --bg: #f8f8fc;
+    --bg-secondary: #efefff;
+    --bg-tertiary: #e8e8f4;
+    --text: #1a1a2e;
+    --text-secondary: #3a3a5e;
+    --text-muted: #6a6a8e;
+    --border: #d0d0e0;
+    --border-light: #e0e0f0;
+    --glow-cyan:
+        0 0 8px rgba(0, 153, 204, 0.4), 0 0 16px rgba(0, 153, 204, 0.2);
+    --glow-magenta:
+        0 0 8px rgba(204, 0, 204, 0.4), 0 0 16px rgba(204, 0, 204, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 html.site-theme-neon body {
@@ -2296,11 +2344,31 @@ html.site-theme-neon body {
     background-attachment: fixed;
 }
 
+html.theme-light.site-theme-neon body,
+html.site-theme-neon[class*="theme-light"] body {
+    background-image:
+        radial-gradient(
+            ellipse at top,
+            rgba(0, 153, 204, 0.05) 0%,
+            transparent 50%
+        ),
+        radial-gradient(
+            ellipse at bottom,
+            rgba(204, 0, 204, 0.05) 0%,
+            transparent 50%
+        );
+}
+
 html.site-theme-neon .site-header {
     border-bottom: 1px solid var(--border);
     padding: var(--space-6) 0;
     background: rgba(10, 10, 15, 0.8);
     backdrop-filter: blur(10px);
+}
+
+html.theme-light.site-theme-neon .site-header,
+html.site-theme-neon[class*="theme-light"] .site-header {
+    background: rgba(248, 248, 252, 0.9);
 }
 
 html.site-theme-neon .site-title {
@@ -2530,6 +2598,11 @@ html.site-theme-neon .site-footer {
     border-top: 1px solid var(--border);
     background: rgba(10, 10, 15, 0.8);
     position: relative;
+}
+
+html.theme-light.site-theme-neon .site-footer,
+html.site-theme-neon[class*="theme-light"] .site-footer {
+    background: rgba(248, 248, 252, 0.9);
 }
 
 html.site-theme-neon .site-footer::before {

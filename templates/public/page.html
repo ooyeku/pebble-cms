@@ -1,22 +1,40 @@
-{% extends "base.html" %}
-
-{% block title %}{% if content.metadata.meta_title %}{{ content.metadata.meta_title }}{% else %}{{ content.title }}{%
-endif %} - {{ site.title }}{% endblock %}
-
-{% block description %}{% if content.metadata.meta_description %}{{ content.metadata.meta_description }}{% else %}{{
-content.excerpt | default(value=site.description) }}{% endif %}{% endblock %}
-
-{% block head %}
-{% if content.metadata.canonical_url %}
-<link rel="canonical" href="{{ content.metadata.canonical_url }}">{% endif %}
-{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}{% if content.metadata.meta_title
+%}{{ content.metadata.meta_title }}{% else %}{{ content.title }}{% endif %} - {{
+site.title }}{% endblock %} {% block description %}{% if
+content.metadata.meta_description %}{{ content.metadata.meta_description }}{%
+else %}{{ content.excerpt | default(value=site.description) }}{% endif %}{%
+endblock %} {% block head %} {% if content.metadata.canonical_url %}
+<link rel="canonical" href="{{ content.metadata.canonical_url }}" />{% endif %}
+{% if content.metadata.custom_css %}
+<style>
+    {{ content.metadata.custom_css | safe }}</style
+>{% endif %} {% endblock %} {% block content %}
 <article>
     <header class="post-header">
         <h1>{{ content.title }}</h1>
     </header>
 
+    {% if content.metadata.use_custom_code == "only" %} {# Custom code only - no
+    markdown content #} {% if content.metadata.custom_html %}
+    <div class="content custom-content">
+        {{ content.metadata.custom_html | safe }}
+    </div>
+    {% endif %} {% elif content.metadata.use_custom_code == "both" %} {# Both
+    markdown and custom code #}
     <div class="content">{{ content.body_html | safe }}</div>
+    {% if content.metadata.custom_html %}
+    <div class="custom-content">{{ content.metadata.custom_html | safe }}</div>
+    {% endif %} {% else %} {# Markdown only (default) #}
+    <div class="content">{{ content.body_html | safe }}</div>
+    {% endif %}
 </article>
-{% endblock %}
+
+{% if content.metadata.custom_js %}
+<script>
+    {
+        {
+            content.metadata.custom_js | safe;
+        }
+    }
+</script>
+{% endif %} {% endblock %}

@@ -1,8 +1,49 @@
-{% extends "admin/base.html" %}
+{% extends "admin/base.html" %} {% block title %}Pages{% endblock %} {% block
+content %}
+<style>
+    .link-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .page-link {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        background: var(--bg-tertiary);
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--radius-sm);
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .copy-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .copy-btn:hover {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+    }
+    .copy-btn.copied {
+        background: var(--color-success);
+        color: white;
+        border-color: var(--color-success);
+    }
+    .status-draft .page-link {
+        opacity: 0.5;
+    }
+</style>
 
-{% block title %}Pages{% endblock %}
-
-{% block content %}
 <div class="header">
     <h2>Pages</h2>
     <a href="/admin/pages/new" class="btn btn-primary">New Page</a>
@@ -14,6 +55,7 @@
         <thead>
             <tr>
                 <th>Title</th>
+                <th>Link</th>
                 <th>Status</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -22,17 +64,41 @@
         <tbody>
             {% for page in pages %}
             <tr>
-                <td><a href="/admin/pages/{{ page.id }}/edit">{{ page.title }}</a></td>
                 <td>
-                    <span class="status status-{{ page.status }}">{{ page.status }}</span>
+                    <a href="/admin/pages/{{ page.id }}/edit"
+                        >{{ page.title }}</a
+                    >
+                </td>
+                <td>
+                    <div class="link-cell">
+                        <code class="page-link">/pages/{{ page.slug }}</code>
+                        <button
+                            type="button"
+                            class="copy-btn"
+                            onclick="copyPageLink(this, '{{ page.slug }}')"
+                            title="Copy full URL"
+                        >
+                            Copy Link
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <span class="status status-{{ page.status }}"
+                        >{{ page.status }}</span
+                    >
                 </td>
                 <td>{{ page.created_at }}</td>
                 <td>
-                    <a href="/admin/pages/{{ page.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                    <a
+                        href="/admin/pages/{{ page.id }}/edit"
+                        class="btn btn-secondary btn-sm"
+                        >Edit</a
+                    >
                     <button
                         class="btn btn-danger btn-sm"
                         hx-delete="/admin/pages/{{ page.id }}"
-                        hx-confirm="Delete this page?">
+                        hx-confirm="Delete this page?"
+                    >
                         Delete
                     </button>
                 </td>
@@ -41,7 +107,41 @@
         </tbody>
     </table>
     {% else %}
-    <p style="color: var(--text-muted);">No pages yet. <a href="/admin/pages/new">Create your first page</a></p>
+    <p style="color: var(--text-muted)">
+        No pages yet. <a href="/admin/pages/new">Create your first page</a>
+    </p>
     {% endif %}
 </div>
+
+<script>
+    function copyPageLink(btn, slug) {
+        const url = window.location.origin + "/pages/" + slug;
+        navigator.clipboard
+            .writeText(url)
+            .then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = "Copied!";
+                btn.classList.add("copied");
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove("copied");
+                }, 2000);
+            })
+            .catch(() => {
+                // Fallback for older browsers
+                const input = document.createElement("input");
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand("copy");
+                document.body.removeChild(input);
+                btn.textContent = "Copied!";
+                btn.classList.add("copied");
+                setTimeout(() => {
+                    btn.textContent = "Copy Link";
+                    btn.classList.remove("copied");
+                }, 2000);
+            });
+    }
+</script>
 {% endblock %}

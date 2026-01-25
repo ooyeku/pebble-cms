@@ -63,6 +63,8 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/settings/homepage",
             post(handlers::admin::save_homepage_settings),
         )
+        .route("/admin/database", get(handlers::admin::database_dashboard))
+        .route("/admin/database", post(handlers::admin::database_action))
         .route("/admin/analytics", get(handlers::admin::analytics))
         .route("/admin/users", get(handlers::admin::users))
         .route("/admin/users", post(handlers::admin::create_user))

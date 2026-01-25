@@ -1,5 +1,5 @@
 use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
-use crate::services::{auth, content, media, settings, tags};
+use crate::services::{auth, content, database, media, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::{CurrentUser, HxRequest};
 use crate::web::state::AppState;
@@ -88,6 +88,15 @@ pub struct ContentForm {
     meta_title: Option<String>,
     meta_description: Option<String>,
     canonical_url: Option<String>,
+    // Custom code fields (for pages)
+    #[serde(default)]
+    custom_html: Option<String>,
+    #[serde(default)]
+    custom_css: Option<String>,
+    #[serde(default)]
+    custom_js: Option<String>,
+    #[serde(default)]
+    use_custom_code: Option<String>,
 }
 
 fn build_seo_metadata(form: &ContentForm) -> serde_json::Value {
@@ -107,6 +116,35 @@ fn build_seo_metadata(form: &ContentForm) -> serde_json::Value {
             metadata["canonical_url"] = serde_json::json!(cu);
         }
     }
+    metadata
+}
+
+fn build_page_metadata(form: &ContentForm) -> serde_json::Value {
+    let mut metadata = build_seo_metadata(form);
+
+    // Custom code fields - only save non-empty values
+    if let Some(ref html) = form.custom_html {
+        if !html.trim().is_empty() {
+            metadata["custom_html"] = serde_json::json!(html);
+        }
+    }
+    if let Some(ref css) = form.custom_css {
+        if !css.trim().is_empty() {
+            metadata["custom_css"] = serde_json::json!(css);
+        }
+    }
+    if let Some(ref js) = form.custom_js {
+        if !js.trim().is_empty() {
+            metadata["custom_js"] = serde_json::json!(js);
+        }
+    }
+    // use_custom_code: "only" = only custom code, empty/none = markdown only
+    if let Some(ref mode) = form.use_custom_code {
+        if !mode.is_empty() {
+            metadata["use_custom_code"] = serde_json::json!(mode);
+        }
+    }
+
     metadata
 }
 
@@ -265,7 +303,7 @@ pub async fn create_page(
         status: form.status.parse().unwrap_or(ContentStatus::Draft),
         scheduled_at: form.scheduled_at.clone().filter(|s| !s.is_empty()),
         tags: vec![],
-        metadata: Some(build_seo_metadata(&form)),
+        metadata: Some(build_page_metadata(&form)),
     };
 
     let id = content::create_content(
@@ -326,7 +364,7 @@ pub async fn update_page(
         status: Some(form.status.parse().unwrap_or(ContentStatus::Draft)),
         scheduled_at: form.scheduled_at.clone().filter(|s| !s.is_empty()),
         tags: None,
-        metadata: Some(build_seo_metadata(&form)),
+        metadata: Some(build_page_metadata(&form)),
     };
 
     content::update_content(&state.db, id, input, state.config.content.excerpt_length)?;
@@ -677,4 +715,47 @@ pub async fn analytics_realtime(
         .templates
         .render("htmx/analytics_realtime.html", &ctx)?;
     Ok(Html(html))
+}
+
+pub async fn database_dashboard(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Html<String>> {
+    let db_path = &state.config.database.path;
+    let stats = database::get_database_stats(&state.db, db_path)?;
+    let analysis = database::analyze_database(&state.db, db_path)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("stats", &stats);
+    ctx.insert("analysis", &analysis);
+
+    let html = state.templates.render("admin/database/index.html", &ctx)?;
+    Ok(Html(html))
+}
+
+#[derive(Deserialize)]
+pub struct DatabaseActionForm {
+    action: String,
+}
+
+pub async fn database_action(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Form(form): Form<DatabaseActionForm>,
+) -> AppResult<Response> {
+    if user.role != UserRole::Admin {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
+    match form.action.as_str() {
+        "vacuum" => {
+            database::run_vacuum(&state.db)?;
+        }
+        "analyze" => {
+            database::run_analyze(&state.db)?;
+        }
+        _ => {}
+    }
+
+    Ok(Redirect::to("/admin/database").into_response())
 }

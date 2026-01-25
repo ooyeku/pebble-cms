@@ -3,21 +3,56 @@
 {% block title %}{% if is_new %}New Page{% else %}Edit Page{% endif %}{% endblock %}
 
 {% block content %}
+<style>
+.code-editor {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    tab-size: 2;
+    min-height: 200px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    resize: vertical;
+    width: 100%;
+}
+.code-editor-group { margin-bottom: 1.5rem; }
+.code-editor-group:last-child { margin-bottom: 0; }
+.code-editor-group label { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 500; }
+.content-mode-selector { display: flex; gap: 1.5rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); margin-bottom: 1rem; }
+.content-mode-selector label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: var(--font-size-sm); font-weight: 500; }
+.content-mode-selector input[type="radio"] { width: auto; margin: 0; }
+.content-section { display: none; }
+.content-section.active { display: block; }
+.custom-code-section { background: var(--bg-secondary); border-radius: var(--radius); padding: 1.5rem; margin-top: 0.5rem; }
+.page-permalink { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: var(--radius); margin-bottom: 1.5rem; }
+.page-permalink-label { font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.page-permalink-url { flex: 1; font-family: var(--font-mono); font-size: 0.9rem; color: var(--color-primary); word-break: break-all; }
+.page-permalink-url a { color: inherit; text-decoration: none; }
+.page-permalink-url a:hover { text-decoration: underline; }
+.copy-link-btn { padding: 0.4rem 0.75rem; font-size: 0.8rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary); transition: all 0.15s ease; white-space: nowrap; }
+.copy-link-btn:hover { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.copy-link-btn.copied { background: var(--color-success); color: white; border-color: var(--color-success); }
+</style>
+
 <div class="header">
     <h2>{% if is_new %}New Page{% else %}Edit Page{% endif %}</h2>
-    <div>
-        {% if not is_new %}
-        <a href="/pages/{{ content.slug }}" target="_blank" class="btn btn-secondary">View</a>
-        {% endif %}
-    </div>
+    <div>{% if not is_new %}<a href="/pages/{{ content.slug }}" target="_blank" class="btn btn-secondary">View</a>{% endif %}</div>
 </div>
 
-<form method="post" action="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}"
-    hx-post="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}" hx-target="#flash-container"
-    hx-swap="innerHTML">
+<form method="post" action="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}" hx-post="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}" hx-target="#flash-container" hx-swap="innerHTML">
     {% if not is_new %}<input type="hidden" name="_method" value="PUT">{% endif %}
 
     <div class="card">
+        {% if not is_new %}
+        <div class="page-permalink">
+            <span class="page-permalink-label">Permalink</span>
+            <span class="page-permalink-url"><a href="/pages/{{ content.slug }}" target="_blank" id="permalinkUrl">/pages/{{ content.slug }}</a></span>
+            <button type="button" class="copy-link-btn" onclick="copyPermalink(this)">Copy Link</button>
+        </div>
+        {% endif %}
+
         <div class="form-row">
             <div class="form-group">
                 <label for="title">Title</label>
@@ -25,46 +60,59 @@
             </div>
             <div class="form-group">
                 <label for="slug">Slug</label>
-                <input type="text" id="slug" name="slug" value="{{ content.slug | default(value='') }}"
-                    placeholder="auto-generated">
+                <input type="text" id="slug" name="slug" value="{{ content.slug | default(value='') }}" placeholder="auto-generated">
             </div>
         </div>
 
-        <div class="form-group">
-            <label for="body_markdown">Content</label>
-            <div class="editor-layout">
-                <textarea id="body_markdown" name="body_markdown" hx-post="/htmx/preview"
-                    hx-trigger="input changed delay:500ms"
-                    hx-target="#preview">{{ content.body_markdown | default(value='') }}</textarea>
-                <div id="preview" class="preview content">
-                    {% if content.body_html %}{{ content.body_html | safe }}{% else %}<p
-                        style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Content Type</label>
+            <div class="content-mode-selector">
+                <label><input type="radio" name="use_custom_code" value="" id="mode-markdown"{% if not content or not content.metadata or not content.metadata.use_custom_code %} checked{% endif %} onchange="toggleContentMode()"> Markdown</label>
+                <label><input type="radio" name="use_custom_code" value="only" id="mode-custom"{% if content and content.metadata and content.metadata.use_custom_code == "only" %} checked{% endif %} onchange="toggleContentMode()"> Custom Code (HTML/CSS/JS)</label>
+            </div>
+        </div>
+
+        <div id="markdown-section" class="content-section active">
+            <div class="form-group">
+                <label for="body_markdown">Content</label>
+                <div class="editor-layout">
+                    <textarea id="body_markdown" name="body_markdown" hx-post="/htmx/preview" hx-trigger="input changed delay:500ms" hx-target="#preview">{{ content.body_markdown | default(value='') }}</textarea>
+                    <div id="preview" class="preview content">{% if content.body_html %}{{ content.body_html | safe }}{% else %}<p style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}</div>
                 </div>
             </div>
         </div>
 
-        <details class="seo-section" style="margin-bottom: 1rem;">
+        <div id="custom-section" class="content-section">
+            <div class="custom-code-section">
+                <div class="code-editor-group">
+                    <label for="custom_html">HTML</label>
+                    <textarea id="custom_html" name="custom_html" class="code-editor" placeholder="Your HTML here">{% if content and content.metadata and content.metadata.custom_html %}{{ content.metadata.custom_html }}{% endif %}</textarea>
+                </div>
+                <div class="code-editor-group">
+                    <label for="custom_css">CSS</label>
+                    <textarea id="custom_css" name="custom_css" class="code-editor" style="min-height: 150px;" placeholder="Your CSS here">{% if content and content.metadata and content.metadata.custom_css %}{{ content.metadata.custom_css }}{% endif %}</textarea>
+                </div>
+                <div class="code-editor-group">
+                    <label for="custom_js">JavaScript</label>
+                    <textarea id="custom_js" name="custom_js" class="code-editor" style="min-height: 150px;" placeholder="Your JavaScript here">{% if content and content.metadata and content.metadata.custom_js %}{{ content.metadata.custom_js }}{% endif %}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <details class="seo-section" style="margin-bottom: 1rem; margin-top: 1rem;">
             <summary style="cursor: pointer; font-weight: 500; padding: 0.5rem 0;">SEO Settings</summary>
-            <div
-                style="padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); margin-top: 0.5rem;">
+            <div style="padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); margin-top: 0.5rem;">
                 <div class="form-group">
-                    <label for="meta_title">Meta Title <small style="color: var(--text-muted);">(defaults to page
-                            title)</small></label>
-                    <input type="text" id="meta_title" name="meta_title"
-                        value="{% if content and content.metadata.meta_title %}{{ content.metadata.meta_title }}{% endif %}"
-                        placeholder="{{ content.title | default(value='') }}">
+                    <label for="meta_title">Meta Title <small style="color: var(--text-muted);">(defaults to page title)</small></label>
+                    <input type="text" id="meta_title" name="meta_title" value="{% if content and content.metadata and content.metadata.meta_title %}{{ content.metadata.meta_title }}{% endif %}" placeholder="{{ content.title | default(value='') }}">
                 </div>
                 <div class="form-group">
                     <label for="meta_description">Meta Description</label>
-                    <textarea id="meta_description" name="meta_description" rows="2"
-                        style="min-height: 60px;">{% if content and content.metadata.meta_description %}{{ content.metadata.meta_description }}{% endif %}</textarea>
+                    <textarea id="meta_description" name="meta_description" rows="2" style="min-height: 60px;">{% if content and content.metadata and content.metadata.meta_description %}{{ content.metadata.meta_description }}{% endif %}</textarea>
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label for="canonical_url">Canonical URL <small
-                            style="color: var(--text-muted);">(optional)</small></label>
-                    <input type="url" id="canonical_url" name="canonical_url"
-                        value="{% if content and content.metadata.canonical_url %}{{ content.metadata.canonical_url }}{% endif %}"
-                        placeholder="https://...">
+                    <label for="canonical_url">Canonical URL <small style="color: var(--text-muted);">(optional)</small></label>
+                    <input type="url" id="canonical_url" name="canonical_url" value="{% if content and content.metadata and content.metadata.canonical_url %}{{ content.metadata.canonical_url }}{% endif %}" placeholder="https://...">
                 </div>
             </div>
         </details>
@@ -73,29 +121,62 @@
             <div class="form-group">
                 <label for="status">Status</label>
                 <select id="status" name="status" onchange="toggleScheduled()">
-                    <option value="draft" {% if is_new %}selected{% elif content %}{% if content.status=="draft"
-                        %}selected{% endif %}{% endif %}>Draft</option>
-                    <option value="scheduled" {% if content %}{% if content.status=="scheduled" %}selected{% endif %}{%
-                        endif %}>Scheduled</option>
-                    <option value="published" {% if content %}{% if content.status=="published" %}selected{% endif %}{%
-                        endif %}>Published</option>
-                    <option value="archived" {% if content %}{% if content.status=="archived" %}selected{% endif %}{%
-                        endif %}>Archived</option>
+                    <option value="draft"{% if is_new or (content and content.status == "draft") %} selected{% endif %}>Draft</option>
+                    <option value="scheduled"{% if content and content.status == "scheduled" %} selected{% endif %}>Scheduled</option>
+                    <option value="published"{% if content and content.status == "published" %} selected{% endif %}>Published</option>
+                    <option value="archived"{% if content and content.status == "archived" %} selected{% endif %}>Archived</option>
                 </select>
             </div>
             <div class="form-group" id="scheduled-group" style="display: none;">
                 <label for="scheduled_at">Publish At</label>
-                <input type="datetime-local" id="scheduled_at" name="scheduled_at"
-                    value="{% if content and content.scheduled_at %}{{ content.scheduled_at | truncate_str(len=16) }}{% endif %}">
+                <input type="datetime-local" id="scheduled_at" name="scheduled_at" value="{% if content and content.scheduled_at %}{{ content.scheduled_at | truncate_str(len=16) }}{% endif %}">
             </div>
         </div>
+
         <script>
-            function toggleScheduled() {
-                const status = document.getElementById('status').value;
-                const group = document.getElementById('scheduled-group');
-                group.style.display = status === 'scheduled' ? 'block' : 'none';
-            }
-            toggleScheduled();
+        function toggleScheduled() {
+            var status = document.getElementById('status').value;
+            var group = document.getElementById('scheduled-group');
+            group.style.display = status === 'scheduled' ? 'block' : 'none';
+        }
+        function toggleContentMode() {
+            var isMarkdown = document.getElementById('mode-markdown').checked;
+            document.getElementById('markdown-section').classList.toggle('active', isMarkdown);
+            document.getElementById('custom-section').classList.toggle('active', !isMarkdown);
+        }
+        function copyPermalink(btn) {
+            var slug = document.getElementById('permalinkUrl').textContent.replace('/pages/', '');
+            var url = window.location.origin + '/pages/' + slug;
+            navigator.clipboard.writeText(url).then(function() {
+                var originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(function() { btn.textContent = originalText; btn.classList.remove('copied'); }, 2000);
+            }).catch(function() {
+                var input = document.createElement('input');
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(function() { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+            });
+        }
+        toggleScheduled();
+        toggleContentMode();
+        document.querySelectorAll('.code-editor').forEach(function(editor) {
+            editor.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    var start = this.selectionStart;
+                    var end = this.selectionEnd;
+                    this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+                    this.selectionStart = this.selectionEnd = start + 2;
+                }
+            });
+        });
         </script>
 
         <div style="display: flex; gap: 1rem;">
