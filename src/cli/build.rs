@@ -8,6 +8,10 @@ use std::path::Path;
 use std::sync::Arc;
 use tera::Context;
 
+/// Maximum number of content items to fetch for static site generation.
+/// This is intentionally high to ensure all content is included in the build.
+const MAX_BUILD_CONTENT: usize = 10000;
+
 pub async fn run(config_path: &Path, output_dir: &Path, base_url: Option<String>) -> Result<()> {
     let config = Config::load(config_path)?;
     let db = crate::Database::open(&config.database.path)?;
@@ -98,7 +102,8 @@ fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<(
 }
 
 fn build_posts(state: &AppState, output_dir: &Path) -> Result<()> {
-    let posts = content::list_published_content(&state.db, ContentType::Post, 10000, 0)?;
+    let posts =
+        content::list_published_content(&state.db, ContentType::Post, MAX_BUILD_CONTENT, 0)?;
     let posts_dir = output_dir.join("posts");
     fs::create_dir_all(&posts_dir)?;
 
@@ -118,7 +123,8 @@ fn build_posts(state: &AppState, output_dir: &Path) -> Result<()> {
 }
 
 fn build_pages(state: &AppState, output_dir: &Path) -> Result<()> {
-    let pages = content::list_published_content(&state.db, ContentType::Page, 10000, 0)?;
+    let pages =
+        content::list_published_content(&state.db, ContentType::Page, MAX_BUILD_CONTENT, 0)?;
 
     for page in &pages {
         let mut ctx = make_context(state);
@@ -167,7 +173,8 @@ fn build_search(state: &AppState, output_dir: &Path) -> Result<()> {
     let search_dir = output_dir.join("search");
     fs::create_dir_all(&search_dir)?;
 
-    let posts = content::list_published_content(&state.db, ContentType::Post, 10000, 0)?;
+    let posts =
+        content::list_published_content(&state.db, ContentType::Post, MAX_BUILD_CONTENT, 0)?;
 
     let search_index: Vec<serde_json::Value> = posts
         .iter()
@@ -376,7 +383,8 @@ fn generate_sitemap(state: &AppState, site_url: &str) -> Result<String> {
         site_url
     ));
 
-    let posts = content::list_published_content(&state.db, ContentType::Post, 10000, 0)?;
+    let posts =
+        content::list_published_content(&state.db, ContentType::Post, MAX_BUILD_CONTENT, 0)?;
     for post in posts {
         urls.push_str(&format!(
             "<url><loc>{}/posts/{}</loc><lastmod>{}</lastmod><changefreq>weekly</changefreq></url>\n",
@@ -386,7 +394,8 @@ fn generate_sitemap(state: &AppState, site_url: &str) -> Result<String> {
         ));
     }
 
-    let pages = content::list_published_content(&state.db, ContentType::Page, 10000, 0)?;
+    let pages =
+        content::list_published_content(&state.db, ContentType::Page, MAX_BUILD_CONTENT, 0)?;
     for page in pages {
         urls.push_str(&format!(
             "<url><loc>{}/{}</loc><lastmod>{}</lastmod><changefreq>monthly</changefreq></url>\n",

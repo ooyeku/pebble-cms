@@ -1,5 +1,6 @@
 use clap::Parser;
 use pebble::cli::{Cli, Commands};
+use pebble::global::PebbleHome;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -11,6 +12,8 @@ async fn main() -> anyhow::Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    let _ = PebbleHome::init();
 
     let cli = Cli::parse();
 
@@ -45,6 +48,12 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Commands::User { command }) => {
             pebble::cli::user::run(&cli.config, command).await?;
+        }
+        Some(Commands::Config { command }) => {
+            pebble::cli::config::run(command).await?;
+        }
+        Some(Commands::Registry { command }) => {
+            pebble::cli::registry::run(command).await?;
         }
         None => {
             use clap::CommandFactory;

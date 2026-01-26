@@ -49,6 +49,17 @@ pub fn create_content(
         );
     }
 
+    // Check for slug uniqueness before insert for better error messages
+    let conn = db.get()?;
+    let existing: Option<i64> = conn
+        .query_row("SELECT id FROM content WHERE slug = ?", [&slug], |row| {
+            row.get(0)
+        })
+        .ok();
+    if existing.is_some() {
+        bail!("A post or page with the slug '{}' already exists", slug);
+    }
+
     let body_html = renderer.render(&input.body_markdown);
     let excerpt = input.excerpt.or_else(|| {
         if input.body_markdown.is_empty() {
@@ -78,7 +89,6 @@ pub fn create_content(
     let mut metadata = input.metadata.unwrap_or(serde_json::json!({}));
     metadata["reading_time_minutes"] = serde_json::json!(reading_time);
 
-    let conn = db.get()?;
     conn.execute(
         r#"
         INSERT INTO content (slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata)
@@ -133,6 +143,7 @@ pub fn update_content(
     )?;
 
     let title = input.title.unwrap_or(current.title);
+    let original_slug = current.slug.clone();
     let slug = input.slug.unwrap_or(current.slug);
     let body_markdown = input.body_markdown.unwrap_or(current.body_markdown);
 
@@ -143,6 +154,19 @@ pub fn update_content(
             "Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only"
         );
     }
+
+    // Check for slug uniqueness (excluding current content) for better error messages
+    if slug != original_slug {
+        let existing: Option<i64> = conn
+            .query_row("SELECT id FROM content WHERE slug = ?", [&slug], |row| {
+                row.get(0)
+            })
+            .ok();
+        if existing.is_some() {
+            bail!("A post or page with the slug '{}' already exists", slug);
+        }
+    }
+
     let body_html = renderer.render(&body_markdown);
     let excerpt = input
         .excerpt
@@ -329,7 +353,7 @@ pub fn list_published_content(
         .query_map((content_type.to_string(), limit, offset), row_to_content)?
         .collect::<Result<Vec<_>, _>>()?;
 
-    content.into_iter().map(|c| enrich_content(db, c)).collect()
+    enrich_content_batch(db, content)
 }
 
 pub fn count_content(
@@ -439,6 +463,114 @@ fn enrich_content(db: &Database, content: Content) -> Result<ContentWithTags> {
         tags,
         author,
     })
+}
+
+/// Batch enrich multiple content items to avoid N+1 queries.
+/// Fetches all tags and authors in bulk queries instead of per-item.
+fn enrich_content_batch(db: &Database, contents: Vec<Content>) -> Result<Vec<ContentWithTags>> {
+    if contents.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let conn = db.get()?;
+
+    // Collect all content IDs and author IDs
+    let content_ids: Vec<i64> = contents.iter().map(|c| c.id).collect();
+    let author_ids: Vec<i64> = contents
+        .iter()
+        .filter_map(|c| c.author_id)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    // Batch fetch all tags for all content items
+    let placeholders: String = content_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
+    let tag_sql = format!(
+        "SELECT ct.content_id, t.id, t.name, t.slug, t.created_at
+         FROM tags t
+         JOIN content_tags ct ON t.id = ct.tag_id
+         WHERE ct.content_id IN ({})",
+        placeholders
+    );
+
+    let mut tag_stmt = conn.prepare(&tag_sql)?;
+    let params: Vec<&dyn rusqlite::ToSql> = content_ids
+        .iter()
+        .map(|id| id as &dyn rusqlite::ToSql)
+        .collect();
+
+    let mut tags_by_content: std::collections::HashMap<i64, Vec<Tag>> =
+        std::collections::HashMap::new();
+
+    let tag_rows = tag_stmt.query_map(params.as_slice(), |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            Tag {
+                id: row.get(1)?,
+                name: row.get(2)?,
+                slug: row.get(3)?,
+                created_at: row.get(4)?,
+            },
+        ))
+    })?;
+
+    for row in tag_rows {
+        let (content_id, tag) = row?;
+        tags_by_content.entry(content_id).or_default().push(tag);
+    }
+
+    // Batch fetch all authors
+    let mut authors_by_id: std::collections::HashMap<i64, UserSummary> =
+        std::collections::HashMap::new();
+
+    if !author_ids.is_empty() {
+        let author_placeholders: String =
+            author_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let author_sql = format!(
+            "SELECT id, username FROM users WHERE id IN ({})",
+            author_placeholders
+        );
+
+        let mut author_stmt = conn.prepare(&author_sql)?;
+        let author_params: Vec<&dyn rusqlite::ToSql> = author_ids
+            .iter()
+            .map(|id| id as &dyn rusqlite::ToSql)
+            .collect();
+
+        let author_rows = author_stmt.query_map(author_params.as_slice(), |row| {
+            Ok(UserSummary {
+                id: row.get(0)?,
+                username: row.get(1)?,
+            })
+        })?;
+
+        for row in author_rows {
+            let author = row?;
+            authors_by_id.insert(author.id, author);
+        }
+    }
+
+    // Build the enriched content
+    let result: Vec<ContentWithTags> = contents
+        .into_iter()
+        .map(|content| {
+            let tags = tags_by_content.remove(&content.id).unwrap_or_default();
+            let author = content
+                .author_id
+                .and_then(|aid| authors_by_id.get(&aid).cloned());
+            ContentWithTags {
+                content,
+                tags,
+                author,
+            }
+        })
+        .collect();
+
+    Ok(result)
 }
 
 pub fn publish_scheduled(db: &Database) -> Result<usize> {

@@ -1,10 +1,12 @@
 pub mod backup;
 pub mod build;
+pub mod config;
 pub mod deploy;
 pub mod export;
 pub mod import;
 pub mod init;
 pub mod migrate;
+pub mod registry;
 pub mod serve;
 pub mod user;
 
@@ -72,6 +74,14 @@ pub enum Commands {
         #[command(subcommand)]
         command: UserCommand,
     },
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommand,
+    },
+    Registry {
+        #[command(subcommand)]
+        command: RegistryCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -107,5 +117,49 @@ pub enum BackupCommand {
     List {
         #[arg(short, long, default_value = "./backups")]
         dir: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ConfigCommand {
+    Get { key: String },
+    Set { key: String, value: String },
+    List,
+    Remove { key: String },
+    Path,
+}
+
+#[derive(Subcommand)]
+pub enum RegistryCommand {
+    Init {
+        name: String,
+        #[arg(long)]
+        title: Option<String>,
+    },
+    List,
+    Serve {
+        name: String,
+        #[arg(short, long)]
+        port: Option<u16>,
+    },
+    Deploy {
+        name: String,
+        #[arg(short, long)]
+        port: Option<u16>,
+    },
+    Stop {
+        name: String,
+    },
+    StopAll,
+    Remove {
+        name: String,
+        #[arg(long)]
+        force: bool,
+    },
+    Status {
+        name: String,
+    },
+    Path {
+        name: Option<String>,
     },
 }
