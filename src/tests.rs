@@ -855,3 +855,62 @@ session_lifetime = "7d"
         }
     }
 }
+
+#[cfg(test)]
+mod shortcode_tests {
+    use crate::services::markdown::{MarkdownRenderer, ShortcodeProcessor};
+
+    #[test]
+    fn test_shortcode_image_basic() {
+        let processor = ShortcodeProcessor::new();
+        let input = r#"[image src="test.jpg" alt="My image"]"#;
+        let output = processor.process(input);
+        println!("Input: {}", input);
+        println!("Output: {}", output);
+        assert!(output.contains("<figure"), "Should contain figure tag");
+        assert!(output.contains("test.jpg"), "Should contain filename");
+    }
+
+    #[test]
+    fn test_shortcode_media_basic() {
+        let processor = ShortcodeProcessor::new();
+        let input = r#"[media src="video.mp4"]"#;
+        let output = processor.process(input);
+        println!("Input: {}", input);
+        println!("Output: {}", output);
+        assert!(output.contains("<video"), "Should contain video tag");
+    }
+
+    #[test]
+    fn test_shortcode_in_markdown() {
+        let renderer = MarkdownRenderer::new();
+        let input = r#"# Hello
+
+[image src="test.jpg" alt="Test"]
+
+Some text after."#;
+        let output = renderer.render(input);
+        println!("Input: {}", input);
+        println!("Output: {}", output);
+        assert!(output.contains("<figure"), "Should contain figure tag");
+    }
+
+    #[test]
+    fn test_shortcode_with_media_prefix() {
+        let processor = ShortcodeProcessor::new();
+        // User includes /media/ prefix - should be normalized
+        let input = r#"[image src="/media/test.jpg" alt="Test"]"#;
+        let output = processor.process(input);
+        println!("Input: {}", input);
+        println!("Output: {}", output);
+        // Should NOT have doubled /media//media/
+        assert!(
+            !output.contains("/media//media/"),
+            "Path should not be doubled"
+        );
+        assert!(
+            output.contains(r#"src="/media/test.jpg""#),
+            "Should have correct path"
+        );
+    }
+}
