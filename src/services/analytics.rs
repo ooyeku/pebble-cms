@@ -50,6 +50,8 @@ pub struct DashboardSummary {
     pub top_referrers: Vec<ReferrerStats>,
     pub devices: HashMap<String, i64>,
     pub browsers: HashMap<String, i64>,
+    pub total_devices: i64,
+    pub total_browsers: i64,
     pub countries: Vec<CountryStats>,
     pub pageviews_over_time: Vec<TimeSeriesPoint>,
     pub pageviews_max: i64,
@@ -324,6 +326,8 @@ impl Analytics {
             FROM analytics_events
             WHERE timestamp >= ?1
             GROUP BY device_type
+            ORDER BY count DESC
+            LIMIT 20
             "#,
         )?;
         for row in stmt.query_map([&cutoff], |row| {
@@ -341,6 +345,8 @@ impl Analytics {
             FROM analytics_events
             WHERE timestamp >= ?1
             GROUP BY browser_family
+            ORDER BY count DESC
+            LIMIT 50
             "#,
         )?;
         for row in stmt.query_map([&cutoff], |row| {
@@ -425,6 +431,9 @@ impl Analytics {
             pageviews_max
         );
 
+        let total_devices: i64 = devices.values().sum();
+        let total_browsers: i64 = browsers.values().sum();
+
         Ok(DashboardSummary {
             total_pageviews,
             unique_sessions,
@@ -436,6 +445,8 @@ impl Analytics {
             top_referrers,
             devices,
             browsers,
+            total_devices,
+            total_browsers,
             countries,
             pageviews_over_time,
             pageviews_max,

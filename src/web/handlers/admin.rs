@@ -26,6 +26,22 @@ fn make_admin_context(state: &AppState, user: &User) -> Context {
     ctx
 }
 
+fn require_admin(user: &User) -> Result<(), Response> {
+    if user.role != UserRole::Admin {
+        Err((StatusCode::FORBIDDEN, "Admin access required").into_response())
+    } else {
+        Ok(())
+    }
+}
+
+fn require_author_or_admin(user: &User) -> Result<(), Response> {
+    if user.role == UserRole::Viewer {
+        Err((StatusCode::FORBIDDEN, "Author or admin access required").into_response())
+    } else {
+        Ok(())
+    }
+}
+
 pub async fn dashboard(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
@@ -48,20 +64,28 @@ pub async fn dashboard(
 pub async fn posts(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let posts = content::list_content(&state.db, Some(ContentType::Post), None, 50, 0)?;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("posts", &posts);
 
     let html = state.templates.render("admin/posts/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn new_post(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let all_tags = tags::list_tags(&state.db)?;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -71,7 +95,7 @@ pub async fn new_post(
     ctx.insert("content_type", "post");
 
     let html = state.templates.render("admin/posts/form.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 #[derive(Deserialize)]
@@ -154,6 +178,10 @@ pub async fn create_post(
     HxRequest(_is_htmx): HxRequest,
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let tags: Vec<String> = form
         .tags
         .split(',')
@@ -189,6 +217,10 @@ pub async fn edit_post(
     CurrentUser(user): CurrentUser,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let post = content::get_content_by_id(&state.db, id)?;
 
     match post {
@@ -210,11 +242,15 @@ pub async fn edit_post(
 
 pub async fn update_post(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     HxRequest(_is_htmx): HxRequest,
     Path(id): Path<i64>,
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let tags: Vec<String> = form
         .tags
         .split(',')
@@ -241,10 +277,14 @@ pub async fn update_post(
 
 pub async fn delete_post(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     content::delete_content(&state.db, id)?;
 
     if is_htmx {
@@ -264,27 +304,35 @@ pub async fn delete_post(
 pub async fn pages(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let pages = content::list_content(&state.db, Some(ContentType::Page), None, 50, 0)?;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("pages", &pages);
 
     let html = state.templates.render("admin/pages/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn new_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("content", &Option::<crate::models::ContentWithTags>::None);
     ctx.insert("is_new", &true);
     ctx.insert("content_type", "page");
 
     let html = state.templates.render("admin/pages/form.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn create_page(
@@ -293,6 +341,10 @@ pub async fn create_page(
     HxRequest(is_htmx): HxRequest,
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let input = CreateContent {
         title: form.title.clone(),
         slug: form.slug.clone().filter(|s| !s.is_empty()),
@@ -332,6 +384,10 @@ pub async fn edit_page(
     CurrentUser(user): CurrentUser,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let page = content::get_content_by_id(&state.db, id)?;
 
     match page {
@@ -350,11 +406,15 @@ pub async fn edit_page(
 
 pub async fn update_page(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let input = UpdateContent {
         title: Some(form.title.clone()),
         slug: form.slug.clone().filter(|s| !s.is_empty()),
@@ -382,10 +442,14 @@ pub async fn update_page(
 
 pub async fn delete_page(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     content::delete_content(&state.db, id)?;
 
     if is_htmx {
@@ -405,20 +469,24 @@ pub async fn delete_page(
 pub async fn media_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let media_list = media::list_media(&state.db, 100, 0)?;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("media", &media_list);
 
     let html = state.templates.render("admin/media/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn media(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
     media_page(State(state), CurrentUser(user)).await
 }
 
@@ -427,6 +495,19 @@ pub async fn upload_media(
     CurrentUser(user): CurrentUser,
     mut multipart: Multipart,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let rate_key = format!("upload:{}", user.id);
+    if !state.upload_rate_limiter.check(&rate_key) {
+        return Ok((
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            "Too many uploads. Please wait before uploading more files.",
+        )
+            .into_response());
+    }
+
     while let Some(field) = multipart.next_field().await? {
         let name = field.file_name().unwrap_or("unknown").to_string();
         let content_type = field
@@ -443,6 +524,7 @@ pub async fn upload_media(
             &data,
             Some(user.id),
         )?;
+        state.upload_rate_limiter.record_attempt(&rate_key);
     }
 
     Ok(Redirect::to("/admin/media").into_response())
@@ -450,10 +532,14 @@ pub async fn upload_media(
 
 pub async fn delete_media(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     media::delete_media(&state.db, &state.media_dir, id)?;
 
     if is_htmx {
@@ -473,20 +559,24 @@ pub async fn delete_media(
 pub async fn tags_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     let tags_list = tags::list_tags_with_counts(&state.db)?;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("tags", &tags_list);
 
     let html = state.templates.render("admin/tags/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn tags(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
     tags_page(State(state), CurrentUser(user)).await
 }
 
@@ -497,19 +587,27 @@ pub struct TagForm {
 
 pub async fn create_tag(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     Form(form): Form<TagForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     tags::create_tag(&state.db, &form.name, None)?;
     Ok(Redirect::to("/admin/tags").into_response())
 }
 
 pub async fn delete_tag(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     tags::delete_tag(&state.db, id)?;
 
     if is_htmx {
@@ -529,7 +627,11 @@ pub async fn delete_tag(
 pub async fn settings(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
     let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
 
     let mut ctx = make_admin_context(&state, &user);
@@ -537,7 +639,7 @@ pub async fn settings(
     ctx.insert("homepage", &homepage_settings);
 
     let html = state.templates.render("admin/settings/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 #[derive(Deserialize)]
@@ -553,14 +655,18 @@ pub struct HomepageSettingsForm {
 
 pub async fn save_homepage_settings(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     Form(form): Form<HomepageSettingsForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
     let homepage = settings::HomepageSettings {
         title: form.homepage_title,
         subtitle: form.homepage_subtitle,
-        show_pages: form.show_pages.is_some(),
-        show_posts: form.show_posts.is_some(),
+        show_pages: form.show_pages.as_ref().is_some_and(|v| !v.is_empty()),
+        show_posts: form.show_posts.as_ref().is_some_and(|v| !v.is_empty()),
         custom_content: form.custom_content,
     };
 
@@ -572,9 +678,9 @@ pub async fn save_homepage_settings(
 pub async fn users(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
-    if user.role != UserRole::Admin {
-        return Ok(Html("Unauthorized".to_string()));
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
     }
 
     let users_list = auth::list_users(&state.db)?;
@@ -583,7 +689,7 @@ pub async fn users(
     ctx.insert("users", &users_list);
 
     let html = state.templates.render("admin/users/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 #[derive(Deserialize)]
@@ -599,8 +705,8 @@ pub async fn create_user(
     CurrentUser(user): CurrentUser,
     Form(form): Form<CreateUserForm>,
 ) -> AppResult<Response> {
-    if user.role != UserRole::Admin {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
     }
 
     let role: UserRole = form.role.parse().unwrap_or(UserRole::Author);
@@ -621,8 +727,8 @@ pub async fn update_user(
     Path(id): Path<i64>,
     Form(form): Form<UpdateUserForm>,
 ) -> AppResult<Response> {
-    if user.role != UserRole::Admin {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
     }
 
     let role = form.role.and_then(|r| r.parse().ok());
@@ -636,8 +742,8 @@ pub async fn delete_user(
     CurrentUser(user): CurrentUser,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
-    if user.role != UserRole::Admin {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
     }
 
     if user.id == id {
@@ -651,10 +757,14 @@ pub async fn delete_user(
 
 pub async fn update_tag(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
+    CurrentUser(user): CurrentUser,
     Path(id): Path<i64>,
     Form(form): Form<TagForm>,
 ) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
     tags::update_tag(&state.db, id, &form.name, None)?;
     Ok(Redirect::to("/admin/tags").into_response())
 }
@@ -673,7 +783,11 @@ pub async fn analytics(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
     Query(query): Query<AnalyticsQuery>,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
     let mut ctx = make_admin_context(&state, &user);
 
     if let Some(ref analytics) = state.analytics {
@@ -697,13 +811,17 @@ pub async fn analytics(
     }
 
     let html = state.templates.render("admin/analytics/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn analytics_realtime(
     State(state): State<Arc<AppState>>,
-    CurrentUser(_user): CurrentUser,
-) -> AppResult<Html<String>> {
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
     let mut ctx = Context::new();
 
     if let Some(ref analytics) = state.analytics {
@@ -714,13 +832,17 @@ pub async fn analytics_realtime(
     let html = state
         .templates
         .render("htmx/analytics_realtime.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 pub async fn database_dashboard(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
-) -> AppResult<Html<String>> {
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
     let db_path = &state.config.database.path;
     let stats = database::get_database_stats(&state.db, db_path)?;
     let analysis = database::analyze_database(&state.db, db_path)?;
@@ -730,7 +852,7 @@ pub async fn database_dashboard(
     ctx.insert("analysis", &analysis);
 
     let html = state.templates.render("admin/database/index.html", &ctx)?;
-    Ok(Html(html))
+    Ok(Html(html).into_response())
 }
 
 #[derive(Deserialize)]
@@ -743,8 +865,8 @@ pub async fn database_action(
     CurrentUser(user): CurrentUser,
     Form(form): Form<DatabaseActionForm>,
 ) -> AppResult<Response> {
-    if user.role != UserRole::Admin {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
     }
 
     match form.action.as_str() {

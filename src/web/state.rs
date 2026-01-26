@@ -17,7 +17,9 @@ pub struct AppState {
     pub production_mode: bool,
     pub csrf: Arc<CsrfManager>,
     pub rate_limiter: Arc<RateLimiter>,
+    pub upload_rate_limiter: Arc<RateLimiter>,
     pub analytics: Option<Arc<Analytics>>,
+    pub static_assets: HashMap<String, &'static str>,
 }
 
 impl AppState {
@@ -142,6 +144,16 @@ impl AppState {
 
         let media_dir = PathBuf::from(&config.media.upload_dir);
 
+        let mut static_assets = HashMap::new();
+        static_assets.insert(
+            "theme.js".to_string(),
+            include_str!("../../templates/js/theme.js"),
+        );
+        static_assets.insert(
+            "admin.js".to_string(),
+            include_str!("../../templates/js/admin.js"),
+        );
+
         Ok(Self {
             config,
             db,
@@ -151,7 +163,13 @@ impl AppState {
             production_mode,
             csrf: Arc::new(CsrfManager::default()),
             rate_limiter: Arc::new(RateLimiter::default()),
+            upload_rate_limiter: Arc::new(RateLimiter::new(
+                20,
+                std::time::Duration::from_secs(60),
+                std::time::Duration::from_secs(300),
+            )),
             analytics: None,
+            static_assets,
         })
     }
 
@@ -191,8 +209,9 @@ fn truncate_str_filter(value: &Value, args: &HashMap<String, Value>) -> tera::Re
         .as_str()
         .ok_or_else(|| tera::Error::msg("truncate_str requires a string"))?;
     let len = args.get("len").and_then(|v| v.as_u64()).unwrap_or(16) as usize;
-    if s.len() > len {
-        Ok(Value::String(s[..len].to_string()))
+    let char_count = s.chars().count();
+    if char_count > len {
+        Ok(Value::String(s.chars().take(len).collect()))
     } else {
         Ok(Value::String(s.to_string()))
     }
@@ -203,14 +222,20 @@ fn str_slice_filter(value: &Value, args: &HashMap<String, Value>) -> tera::Resul
         .as_str()
         .ok_or_else(|| tera::Error::msg("str_slice requires a string"))?;
     let start = args.get("start").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+    let char_count = s.chars().count();
     let end = args
         .get("end")
         .and_then(|v| v.as_u64())
         .map(|v| v as usize)
-        .unwrap_or(s.len());
-    let start = start.min(s.len());
-    let end = end.min(s.len());
-    Ok(Value::String(s[start..end].to_string()))
+        .unwrap_or(char_count);
+    let start = start.min(char_count);
+    let end = end.min(char_count);
+    Ok(Value::String(
+        s.chars()
+            .skip(start)
+            .take(end.saturating_sub(start))
+            .collect(),
+    ))
 }
 
 fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
@@ -220,16 +245,19 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
 
     let mut result = text.to_string();
 
-    // Remove inline code
-    while let Some(start) = result.find('`') {
-        if let Some(end) = result[start + 1..].find('`') {
-            let code_content = &result[start + 1..start + 1 + end];
-            result = format!(
-                "{}{}{}",
-                &result[..start],
-                code_content,
-                &result[start + 2 + end..]
-            );
+    // Remove inline code using char-safe iteration
+    loop {
+        let chars: Vec<char> = result.chars().collect();
+        if let Some(start) = chars.iter().position(|&c| c == '`') {
+            if let Some(rel_end) = chars[start + 1..].iter().position(|&c| c == '`') {
+                let end = start + 1 + rel_end;
+                let code_content: String = chars[start + 1..end].iter().collect();
+                let before: String = chars[..start].iter().collect();
+                let after: String = chars[end + 1..].iter().collect();
+                result = format!("{}{}{}", before, code_content, after);
+            } else {
+                break;
+            }
         } else {
             break;
         }
@@ -240,11 +268,9 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
         if let Some(bracket_end) = result[img_start + 2..].find("](") {
             let abs_bracket_end = img_start + 2 + bracket_end;
             if let Some(paren_end) = result[abs_bracket_end + 2..].find(')') {
-                result = format!(
-                    "{}{}",
-                    &result[..img_start],
-                    &result[abs_bracket_end + 3 + paren_end..]
-                );
+                let before = &result[..img_start];
+                let after = &result[abs_bracket_end + 3 + paren_end..];
+                result = format!("{}{}", before, after);
             } else {
                 break;
             }
@@ -259,12 +285,9 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
             let abs_bracket_end = bracket_start + bracket_end;
             if let Some(paren_end) = result[abs_bracket_end + 2..].find(')') {
                 let link_text = &result[bracket_start + 1..abs_bracket_end];
-                result = format!(
-                    "{}{}{}",
-                    &result[..bracket_start],
-                    link_text,
-                    &result[abs_bracket_end + 3 + paren_end..]
-                );
+                let before = &result[..bracket_start];
+                let after = &result[abs_bracket_end + 3 + paren_end..];
+                result = format!("{}{}{}", before, link_text, after);
             } else {
                 break;
             }
@@ -285,14 +308,19 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
         .lines()
         .map(|line| {
             let trimmed = line.trim_start();
-            if trimmed.starts_with("- ") || trimmed.starts_with("* ") {
-                trimmed[2..].to_string()
-            } else if trimmed.len() > 3 && trimmed.chars().next().unwrap().is_ascii_digit() {
-                if let Some(pos) = trimmed.find(". ") {
-                    trimmed[pos + 2..].to_string()
-                } else {
-                    line.to_string()
+            if trimmed.starts_with("- ") {
+                trimmed.chars().skip(2).collect()
+            } else if trimmed.starts_with("* ") {
+                trimmed.chars().skip(2).collect()
+            } else if !trimmed.is_empty() {
+                if let Some(first_char) = trimmed.chars().next() {
+                    if first_char.is_ascii_digit() {
+                        if let Some(dot_pos) = trimmed.find(". ") {
+                            return trimmed.chars().skip(dot_pos + 2).collect();
+                        }
+                    }
                 }
+                line.to_string()
             } else {
                 line.to_string()
             }

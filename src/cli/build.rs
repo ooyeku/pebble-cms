@@ -103,17 +103,14 @@ fn build_posts(state: &AppState, output_dir: &Path) -> Result<()> {
     fs::create_dir_all(&posts_dir)?;
 
     for post in &posts {
-        let full_content = content::get_content_by_id(&state.db, post.content.id)?;
-        if let Some(c) = full_content {
-            let mut ctx = make_context(state);
-            ctx.insert("content", &c);
+        let mut ctx = make_context(state);
+        ctx.insert("content", &post);
 
-            let html = state.templates.render("public/post.html", &ctx)?;
+        let html = state.templates.render("public/post.html", &ctx)?;
 
-            let post_dir = posts_dir.join(&c.content.slug);
-            fs::create_dir_all(&post_dir)?;
-            fs::write(post_dir.join("index.html"), html)?;
-        }
+        let post_dir = posts_dir.join(&post.content.slug);
+        fs::create_dir_all(&post_dir)?;
+        fs::write(post_dir.join("index.html"), html)?;
     }
 
     tracing::info!("Built {} posts", posts.len());
@@ -124,17 +121,14 @@ fn build_pages(state: &AppState, output_dir: &Path) -> Result<()> {
     let pages = content::list_published_content(&state.db, ContentType::Page, 10000, 0)?;
 
     for page in &pages {
-        let full_content = content::get_content_by_id(&state.db, page.content.id)?;
-        if let Some(c) = full_content {
-            let mut ctx = make_context(state);
-            ctx.insert("content", &c);
+        let mut ctx = make_context(state);
+        ctx.insert("content", &page);
 
-            let html = state.templates.render("public/page.html", &ctx)?;
+        let html = state.templates.render("public/page.html", &ctx)?;
 
-            let page_dir = output_dir.join(&c.content.slug);
-            fs::create_dir_all(&page_dir)?;
-            fs::write(page_dir.join("index.html"), html)?;
-        }
+        let page_dir = output_dir.join(&page.content.slug);
+        fs::create_dir_all(&page_dir)?;
+        fs::write(page_dir.join("index.html"), html)?;
     }
 
     tracing::info!("Built {} pages", pages.len());

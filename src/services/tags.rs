@@ -84,6 +84,15 @@ pub fn delete_tag(db: &Database, id: i64) -> Result<()> {
     Ok(())
 }
 
+pub fn cleanup_orphaned_tags(db: &Database) -> Result<usize> {
+    let conn = db.get()?;
+    let deleted = conn.execute(
+        "DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM content_tags)",
+        [],
+    )?;
+    Ok(deleted)
+}
+
 pub fn update_tag(db: &Database, id: i64, name: &str, slug: Option<&str>) -> Result<()> {
     let slug = slug
         .map(String::from)

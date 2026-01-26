@@ -12,13 +12,74 @@ pub const ALLOWED_MIME_TYPES: &[&str] = &[
     "image/png",
     "image/gif",
     "image/webp",
-    "image/svg+xml",
     "application/pdf",
     "video/mp4",
     "video/webm",
     "audio/mpeg",
     "audio/ogg",
 ];
+
+fn detect_mime_type(data: &[u8], claimed_mime: &str) -> Option<String> {
+    if let Some(kind) = infer::get(data) {
+        return Some(kind.mime_type().to_string());
+    }
+
+    if claimed_mime == "image/svg+xml" && data.len() > 5 {
+        let start = String::from_utf8_lossy(&data[..data.len().min(1000)]);
+        if start.contains("<svg") || start.contains("<?xml") {
+            return Some("image/svg+xml".to_string());
+        }
+    }
+
+    None
+}
+
+fn sanitize_svg(data: &[u8]) -> Result<Vec<u8>> {
+    let content = String::from_utf8_lossy(data);
+
+    let dangerous_patterns = [
+        "<script",
+        "javascript:",
+        "onload=",
+        "onerror=",
+        "onclick=",
+        "onmouseover=",
+        "onfocus=",
+        "onblur=",
+        "onchange=",
+        "onsubmit=",
+        "eval(",
+        "expression(",
+        "url(data:",
+        "xlink:href=\"javascript",
+        "xlink:href='javascript",
+    ];
+
+    let lower_content = content.to_lowercase();
+    for pattern in dangerous_patterns {
+        if lower_content.contains(pattern) {
+            bail!("SVG contains potentially dangerous content: {}", pattern);
+        }
+    }
+
+    Ok(data.to_vec())
+}
+
+fn get_safe_extension(detected_mime: &str) -> Option<&'static str> {
+    match detected_mime {
+        "image/jpeg" => Some("jpg"),
+        "image/png" => Some("png"),
+        "image/gif" => Some("gif"),
+        "image/webp" => Some("webp"),
+        "image/svg+xml" => Some("svg"),
+        "application/pdf" => Some("pdf"),
+        "video/mp4" => Some("mp4"),
+        "video/webm" => Some("webm"),
+        "audio/mpeg" => Some("mp3"),
+        "audio/ogg" => Some("ogg"),
+        _ => None,
+    }
+}
 
 pub fn upload_media(
     db: &Database,
@@ -36,21 +97,31 @@ pub fn upload_media(
         );
     }
 
-    if !ALLOWED_MIME_TYPES.contains(&mime_type) {
+    let detected_mime = detect_mime_type(data, mime_type);
+    let actual_mime = detected_mime.as_deref().unwrap_or(mime_type);
+
+    let is_svg = actual_mime == "image/svg+xml";
+    if !ALLOWED_MIME_TYPES.contains(&actual_mime) && !is_svg {
         bail!(
             "File type not allowed: {}. Allowed types: {}",
-            mime_type,
+            actual_mime,
             ALLOWED_MIME_TYPES.join(", ")
         );
     }
+
+    let final_data = if is_svg {
+        sanitize_svg(data)?
+    } else {
+        data.to_vec()
+    };
 
     std::fs::create_dir_all(upload_dir)?;
 
     let base_uuid = Uuid::new_v4();
 
-    let (filename, webp_filename, width, height, final_data) =
-        if img_service::is_optimizable_image(mime_type) {
-            match img_service::optimize_image(data, mime_type, None) {
+    let (filename, webp_filename, width, height, stored_data) =
+        if img_service::is_optimizable_image(actual_mime) {
+            match img_service::optimize_image(&final_data, actual_mime, None) {
                 Ok(optimized) => {
                     let ext = match optimized.original_format {
                         image::ImageFormat::Jpeg => "jpg",
@@ -82,37 +153,23 @@ pub fn upload_media(
                     )
                 }
                 Err(_) => {
-                    let extension = Path::new(original_name)
-                        .extension()
-                        .and_then(|e| e.to_str())
-                        .unwrap_or("");
-                    let filename = if extension.is_empty() {
-                        base_uuid.to_string()
-                    } else {
-                        format!("{}.{}", base_uuid, extension)
-                    };
-                    std::fs::write(upload_dir.join(&filename), data)?;
-                    (filename, None, None, None, data.to_vec())
+                    let extension = get_safe_extension(actual_mime).unwrap_or("bin");
+                    let filename = format!("{}.{}", base_uuid, extension);
+                    std::fs::write(upload_dir.join(&filename), &final_data)?;
+                    (filename, None, None, None, final_data.clone())
                 }
             }
         } else {
-            let extension = Path::new(original_name)
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("");
-            let filename = if extension.is_empty() {
-                base_uuid.to_string()
-            } else {
-                format!("{}.{}", base_uuid, extension)
-            };
-            std::fs::write(upload_dir.join(&filename), data)?;
-            (filename, None, None, None, data.to_vec())
+            let extension = get_safe_extension(actual_mime).unwrap_or("bin");
+            let filename = format!("{}.{}", base_uuid, extension);
+            std::fs::write(upload_dir.join(&filename), &final_data)?;
+            (filename, None, None, None, final_data.clone())
         };
 
     let conn = db.get()?;
     conn.execute(
         "INSERT INTO media (filename, original_name, mime_type, size_bytes, uploaded_by, webp_filename, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (&filename, original_name, mime_type, final_data.len() as i64, uploaded_by, &webp_filename, width, height),
+        (&filename, original_name, actual_mime, stored_data.len() as i64, uploaded_by, &webp_filename, width, height),
     )?;
 
     let id = conn.last_insert_rowid();
@@ -125,8 +182,8 @@ pub fn upload_media(
         id,
         filename,
         original_name: original_name.to_string(),
-        mime_type: mime_type.to_string(),
-        size_bytes: final_data.len() as i64,
+        mime_type: actual_mime.to_string(),
+        size_bytes: stored_data.len() as i64,
         alt_text: String::new(),
         uploaded_by,
         created_at,

@@ -1,0 +1,159 @@
+PEBBLE CMS - SECURITY & BUG ISSUES
+===================================
+
+CRITICAL ISSUES
+---------------
+
+[x] 1. Authorization Bypass - src/web/handlers/admin.rs:29,48,405,473,529,672,720
+      Non-admin users can access admin dashboards, analytics, database stats, settings.
+      Only user management endpoints check role.
+
+[x] 2. Rate Limiting Broken - src/web/handlers/auth.rs:15-20
+      get_client_ip() reads _client_id cookie that's never set, always returns "unknown".
+      All brute force attempts share one key, defeating rate limiting entirely.
+
+[x] 3. Rate Limiter Window Unused - src/web/security.rs:33-50
+      The window parameter is accepted but never used. Rate limiting uses lockout
+      duration for everything, breaking intended sliding window behavior.
+
+[x] 4. Stored XSS - Markdown - src/services/markdown.rs:25-60
+      Markdown converted to HTML without sanitization. Script tags pass through.
+      Rendered with | safe in templates.
+
+[x] 5. DOM XSS - Delete Confirm - templates/admin/users/index.html:63
+      Username embedded in JS onclick without escaping.
+
+[ ] 6. Custom Code Injection - templates/public/page.html:8,10,20,26,32,36
+      Pages can include arbitrary custom_html, custom_css, custom_js with | safe.
+
+[x] 7. ZIP Slip Vulnerability - src/cli/backup.rs:84-117
+      Backup restore extracts files without validating paths stay within target.
+
+[x] 8. SVG XSS - src/services/media.rs:16
+      SVG files allowed and served with correct MIME type, executing embedded JS.
+
+[x] 9. Content-Type Spoofing - src/web/handlers/admin.rs:437
+      Client-provided Content-Type trusted without magic byte verification.
+
+[x] 10. UTF-8 Slice Panic - src/web/state.rs:195,211-213,225-266
+       Multiple string slice operations using byte positions without UTF-8 checks.
+
+[x] 11. Empty Line Panic - src/web/state.rs:290
+       chars().next().unwrap() on potentially empty string.
+
+[x] 12. Excerpt Slice Panic - src/services/markdown.rs:97-100
+       rfind() returns byte position but used as char boundary for slicing.
+
+
+HIGH SEVERITY ISSUES
+--------------------
+
+[x] 13. Missing Secure Cookie Flag - src/web/handlers/auth.rs:119,240
+       Session cookies lack Secure flag, transmitted over HTTP in production.
+
+[x] 14. Missing SameSite on Session - src/web/handlers/auth.rs:119,240
+       Session cookies don't specify SameSite, reducing CSRF protection.
+
+[x] 15. CSRF Timing Attack - src/web/security.rs:130-132
+       CSRF validation uses == instead of constant-time comparison.
+
+[x] 16. Weak CSP Header - src/web/security.rs:24
+       'unsafe-inline' in script-src and style-src defeats CSP protection.
+
+[x] 17. Path Traversal in Media - src/web/handlers/public.rs:318
+       canonicalize().unwrap_or_default() returns empty path on error.
+
+[x] 18. LIKE Wildcard Injection - src/services/settings.rs:27-28
+       User input in LIKE pattern not escaped for % and _ wildcards.
+
+[x] 19. Dangerous File Extensions - src/services/media.rs:78
+       Original file extension preserved without validation.
+
+[x] 20. No Content Length Limits - src/services/content.rs
+       Title, body_markdown, excerpt have no maximum length validation.
+
+[x] 21. No User Field Validation - src/web/handlers/admin.rs:595-600
+       Username, email, password have no format/length requirements.
+
+[x] 22. FTS Query Injection - src/services/search.rs:41-46
+       Only removes " from search terms, not other FTS operators.
+
+[x] 23. Integer Overflow in Pagination - src/web/handlers/public.rs:30-42
+       (page - 1) * per_page can overflow without checking bounds.
+
+[x] 24. No Config Validation - src/config/mod.rs
+       posts_per_page: 0 accepted, causes division by zero.
+
+
+MEDIUM SEVERITY ISSUES
+----------------------
+
+[x] 25. User Enumeration - src/services/auth.rs:18-26
+       Early return on invalid hash reveals whether username exists via timing.
+
+[x] 26. No Password Policy - src/web/handlers/auth.rs:216
+       Single character passwords accepted. No complexity requirements.
+
+[x] 27. Thread-Local RNG - src/services/auth.rs:31-33
+       Session tokens use thread_rng() instead of OsRng.
+
+[x] 28. No Session Fixation Protection - src/web/handlers/auth.rs:112
+       Old sessions not invalidated on login.
+
+[ ] 29. Database Path Disclosure - src/web/handlers/admin.rs:720-726
+       Database file path exposed in UI to all authenticated users.
+
+[x] 30. Race Condition - Scheduler - src/cli/serve.rs:14-22
+       Scheduled publishing not wrapped in transaction.
+
+[x] 31. Orphaned Tags - src/services/content.rs:114-165
+       Tag associations not cleaned up when input.tags is None.
+
+[ ] 32. Backup Restore Path Bug - src/cli/backup.rs:81-111
+       Media restored to data/media/ instead of configured media directory.
+
+[x] 33. Scheduled Post No Timestamp - src/services/content.rs:119-123
+       Posts can be set to Scheduled status without scheduled_at time.
+
+[ ] 34. Published At Lost - src/services/content.rs:108-113
+       Original publication timestamp lost if post unpublished then republished.
+
+[x] 35. Metadata Overwrite - src/services/content.rs:105-107
+       Partial update replaces all metadata instead of merging.
+
+[ ] 36. Import TOCTOU - src/cli/import.rs:117-125
+       Check-then-delete pattern for slug uniqueness has race condition.
+
+[ ] 37. N+1 Query in Build - src/cli/build.rs:99-118
+       Lists 10000 posts, then queries each one individually.
+
+[x] 38. File Size Inconsistency - src/web/routes.rs vs src/services/media.rs
+       Axum layer allows 15MB but service enforces 10MB.
+
+[x] 39. Silent Enum Default - src/services/search.rs:27,29
+       Invalid enum values in database silently default instead of erroring.
+
+[x] 40. Unbounded Analytics - src/services/analytics.rs
+       No size limits on realtime analytics collections in memory.
+
+
+LOW SEVERITY ISSUES
+-------------------
+
+[x] 41. Session token in debug logs - src/web/handlers/auth.rs:75-78
+       CSRF tokens logged at debug level.
+
+[ ] 42. No rate limit on uploads - src/web/handlers/admin.rs:427-452
+       Authenticated users can upload unlimited files rapidly.
+
+[x] 43. Boolean parsed as string presence - src/web/handlers/admin.rs:548-549
+       Checkbox values check presence, not actual value.
+
+[x] 44. Missing HTML sanitization library - Cargo.toml
+       No ammonia or similar crate for HTML sanitization. FIXED: Added ammonia crate.
+
+[ ] 45. Hardcoded pagination limits - src/cli/build.rs
+       Magic numbers instead of config values.
+
+[ ] 46. No slug uniqueness pre-check - src/services/content.rs:1-75
+       Relies on database constraint rather than explicit validation.

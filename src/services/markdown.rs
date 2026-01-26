@@ -1,3 +1,4 @@
+use ammonia::Builder;
 use pulldown_cmark::{html, Options, Parser};
 use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_html_for_string;
@@ -6,6 +7,7 @@ use syntect::parsing::SyntaxSet;
 pub struct MarkdownRenderer {
     syntax_set: SyntaxSet,
     theme_set: ThemeSet,
+    sanitizer: Builder<'static>,
 }
 
 impl Default for MarkdownRenderer {
@@ -16,9 +18,59 @@ impl Default for MarkdownRenderer {
 
 impl MarkdownRenderer {
     pub fn new() -> Self {
+        let mut tags = ammonia::Builder::default().clone_tags();
+        tags.insert("pre");
+        tags.insert("code");
+        tags.insert("span");
+        tags.insert("table");
+        tags.insert("thead");
+        tags.insert("tbody");
+        tags.insert("tr");
+        tags.insert("th");
+        tags.insert("td");
+        tags.insert("del");
+        tags.insert("input");
+
+        let mut attrs = ammonia::Builder::default().clone_tag_attributes();
+        attrs.insert("span", ["style"].iter().cloned().collect());
+        attrs.insert(
+            "input",
+            ["type", "checked", "disabled"].iter().cloned().collect(),
+        );
+
+        let mut sanitizer = Builder::default();
+        sanitizer
+            .tags(tags)
+            .tag_attributes(attrs)
+            .add_allowed_classes(
+                "code",
+                &[
+                    "language-rust",
+                    "language-python",
+                    "language-javascript",
+                    "language-typescript",
+                    "language-go",
+                    "language-c",
+                    "language-cpp",
+                    "language-java",
+                    "language-html",
+                    "language-css",
+                    "language-json",
+                    "language-yaml",
+                    "language-toml",
+                    "language-sql",
+                    "language-bash",
+                    "language-shell",
+                    "language-markdown",
+                ],
+            )
+            .add_allowed_classes("pre", &["code-block"])
+            .link_rel(Some("noopener noreferrer"));
+
         Self {
             syntax_set: SyntaxSet::load_defaults_newlines(),
             theme_set: ThemeSet::load_defaults(),
+            sanitizer,
         }
     }
 
@@ -58,7 +110,8 @@ impl MarkdownRenderer {
 
         let mut html_output = String::new();
         html::push_html(&mut html_output, events.into_iter());
-        html_output
+
+        self.sanitizer.clean(&html_output).to_string()
     }
 
     fn highlight_code(&self, code: &str, lang: &str) -> String {
@@ -91,12 +144,19 @@ impl MarkdownRenderer {
 
         let text = strip_markdown(&text);
 
-        if text.len() <= max_len {
+        let char_count = text.chars().count();
+        if char_count <= max_len {
             text
         } else {
             let truncated: String = text.chars().take(max_len).collect();
-            if let Some(last_space) = truncated.rfind(' ') {
-                format!("{}...", &truncated[..last_space])
+            let last_space_pos = truncated
+                .char_indices()
+                .rev()
+                .find(|(_, c)| *c == ' ')
+                .map(|(i, _)| i);
+
+            if let Some(pos) = last_space_pos {
+                format!("{}...", &truncated[..pos])
             } else {
                 format!("{}...", truncated)
             }

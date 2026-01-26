@@ -21,11 +21,17 @@ pub fn set_setting(db: &Database, key: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
+fn escape_like_pattern(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace('%', "\\%")
+        .replace('_', "\\_")
+}
+
 /// Get multiple settings by prefix
 pub fn get_settings_by_prefix(db: &Database, prefix: &str) -> Result<Vec<(String, String)>> {
     let conn = db.get()?;
-    let mut stmt = conn.prepare("SELECT key, value FROM settings WHERE key LIKE ?")?;
-    let pattern = format!("{}%", prefix);
+    let mut stmt = conn.prepare("SELECT key, value FROM settings WHERE key LIKE ? ESCAPE '\\'")?;
+    let pattern = format!("{}%", escape_like_pattern(prefix));
     let rows = stmt.query_map([pattern], |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?;

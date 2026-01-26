@@ -303,6 +303,24 @@ impl Config {
             )
         })?;
         let config: Config = toml::from_str(&content)?;
+        config.validate()?;
         Ok(config)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.content.posts_per_page == 0 {
+            anyhow::bail!("content.posts_per_page must be greater than 0");
+        }
+        if self.content.posts_per_page > 100 {
+            anyhow::bail!("content.posts_per_page must be 100 or less");
+        }
+        if self.content.excerpt_length == 0 {
+            anyhow::bail!("content.excerpt_length must be greater than 0");
+        }
+        if self.content.excerpt_length > 10000 {
+            anyhow::bail!("content.excerpt_length must be 10000 or less");
+        }
+        self.theme.validate()?;
+        Ok(())
     }
 }

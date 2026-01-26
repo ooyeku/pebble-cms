@@ -121,14 +121,6 @@ fn import_markdown_file(
                 .to_string()
         });
 
-    if let Some(existing) = content::get_content_by_slug(db, &slug)? {
-        if !overwrite {
-            tracing::info!("Skipping existing: {}", slug);
-            return Ok(false);
-        }
-        content::delete_content(db, existing.content.id)?;
-    }
-
     let title = frontmatter
         .get("title")
         .and_then(|v| v.as_str())
@@ -159,9 +151,39 @@ fn import_markdown_file(
         metadata: None,
     };
 
-    content::create_content(db, input, None, excerpt_length)?;
-    tracing::info!("Imported: {} ({})", slug, content_type);
-    Ok(true)
+    // Atomically check for existing content and handle overwrite
+    {
+        let conn = db.get()?;
+        let existing_id: Option<i64> = conn
+            .query_row("SELECT id FROM content WHERE slug = ?", [&slug], |row| {
+                row.get(0)
+            })
+            .ok();
+
+        if let Some(id) = existing_id {
+            if !overwrite {
+                tracing::info!("Skipping existing: {}", slug);
+                return Ok(false);
+            }
+            conn.execute("DELETE FROM content WHERE id = ?", [id])?;
+        }
+    }
+
+    // The unique constraint on slug will catch any race condition
+    match content::create_content(db, input, None, excerpt_length) {
+        Ok(_) => {
+            tracing::info!("Imported: {} ({})", slug, content_type);
+            Ok(true)
+        }
+        Err(e) if e.to_string().contains("UNIQUE constraint") => {
+            if !overwrite {
+                tracing::info!("Skipping existing (race): {}", slug);
+                return Ok(false);
+            }
+            Err(e)
+        }
+        Err(e) => Err(e),
+    }
 }
 
 fn parse_frontmatter(content: &str) -> Result<(serde_json::Map<String, serde_json::Value>, &str)> {

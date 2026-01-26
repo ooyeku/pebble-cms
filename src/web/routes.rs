@@ -20,6 +20,7 @@ pub fn public_routes() -> Router<Arc<AppState>> {
         .route("/feed.json", get(handlers::public::json_feed))
         .route("/sitemap.xml", get(handlers::public::sitemap))
         .route("/media/:filename", get(handlers::public::serve_media))
+        .route("/js/:filename", get(handlers::public::serve_js))
 }
 
 pub fn admin_routes() -> Router<Arc<AppState>> {
@@ -51,7 +52,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/media", get(handlers::admin::media))
         .route(
             "/admin/media",
-            post(handlers::admin::upload_media).layer(DefaultBodyLimit::max(15 * 1024 * 1024)),
+            post(handlers::admin::upload_media).layer(DefaultBodyLimit::max(10 * 1024 * 1024)),
         )
         .route("/admin/media/:id", delete(handlers::admin::delete_media))
         .route("/admin/tags", get(handlers::admin::tags))

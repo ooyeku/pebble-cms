@@ -7,12 +7,39 @@ use crate::services::slug::{generate_slug, validate_slug};
 use crate::Database;
 use anyhow::{bail, Result};
 
+const MAX_TITLE_LENGTH: usize = 500;
+const MAX_BODY_LENGTH: usize = 500_000;
+const MAX_EXCERPT_LENGTH: usize = 2000;
+
+fn validate_content_input(title: &str, body: &str, excerpt: Option<&str>) -> Result<()> {
+    if title.is_empty() {
+        bail!("Title cannot be empty");
+    }
+    if title.len() > MAX_TITLE_LENGTH {
+        bail!("Title must be {} characters or less", MAX_TITLE_LENGTH);
+    }
+    if body.len() > MAX_BODY_LENGTH {
+        bail!(
+            "Content body must be {} characters or less",
+            MAX_BODY_LENGTH
+        );
+    }
+    if let Some(exc) = excerpt {
+        if exc.len() > MAX_EXCERPT_LENGTH {
+            bail!("Excerpt must be {} characters or less", MAX_EXCERPT_LENGTH);
+        }
+    }
+    Ok(())
+}
+
 pub fn create_content(
     db: &Database,
     input: CreateContent,
     author_id: Option<i64>,
     excerpt_length: usize,
 ) -> Result<i64> {
+    validate_content_input(&input.title, &input.body_markdown, input.excerpt.as_deref())?;
+
     let renderer = MarkdownRenderer::new();
     let slug = input.slug.unwrap_or_else(|| generate_slug(&input.title));
 
@@ -38,7 +65,10 @@ pub fn create_content(
     };
 
     let scheduled_at = if input.status == ContentStatus::Scheduled {
-        input.scheduled_at.clone()
+        match &input.scheduled_at {
+            Some(dt) if !dt.is_empty() => Some(dt.clone()),
+            _ => bail!("Scheduled status requires a scheduled_at timestamp"),
+        }
     } else {
         None
     };
@@ -104,13 +134,15 @@ pub fn update_content(
 
     let title = input.title.unwrap_or(current.title);
     let slug = input.slug.unwrap_or(current.slug);
+    let body_markdown = input.body_markdown.unwrap_or(current.body_markdown);
+
+    validate_content_input(&title, &body_markdown, input.excerpt.as_deref())?;
 
     if !validate_slug(&slug) {
         bail!(
             "Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only"
         );
     }
-    let body_markdown = input.body_markdown.unwrap_or(current.body_markdown);
     let body_html = renderer.render(&body_markdown);
     let excerpt = input
         .excerpt
@@ -120,7 +152,14 @@ pub fn update_content(
 
     // Calculate reading time and merge with provided metadata
     let reading_time = renderer.calculate_reading_time(&body_markdown);
-    let mut metadata = input.metadata.unwrap_or(current.metadata);
+    let mut metadata = current.metadata;
+    if let Some(input_meta) = input.metadata {
+        if let (Some(base), Some(updates)) = (metadata.as_object_mut(), input_meta.as_object()) {
+            for (key, value) in updates {
+                base.insert(key.clone(), value.clone());
+            }
+        }
+    }
     metadata["reading_time_minutes"] = serde_json::json!(reading_time);
 
     let published_at = if status == ContentStatus::Published && current.published_at.is_none() {
@@ -130,7 +169,10 @@ pub fn update_content(
     };
 
     let scheduled_at = if status == ContentStatus::Scheduled {
-        input.scheduled_at.or(current.scheduled_at)
+        match input.scheduled_at.or(current.scheduled_at) {
+            Some(dt) if !dt.is_empty() => Some(dt),
+            _ => bail!("Scheduled status requires a scheduled_at timestamp"),
+        }
     } else {
         None
     };
@@ -176,6 +218,7 @@ pub fn update_content(
 pub fn delete_content(db: &Database, id: i64) -> Result<()> {
     let conn = db.get()?;
     conn.execute("DELETE FROM content WHERE id = ?", [id])?;
+    let _ = crate::services::tags::cleanup_orphaned_tags(db);
     Ok(())
 }
 
@@ -399,30 +442,31 @@ fn enrich_content(db: &Database, content: Content) -> Result<ContentWithTags> {
 }
 
 pub fn publish_scheduled(db: &Database) -> Result<usize> {
-    let conn = db.get()?;
+    let mut conn = db.get()?;
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Find all scheduled content that should be published
-    let mut stmt = conn.prepare(
+    let tx = conn.transaction()?;
+
+    let mut stmt = tx.prepare(
         "SELECT id FROM content WHERE status = 'scheduled' AND scheduled_at IS NOT NULL AND scheduled_at <= ?"
     )?;
-
     let ids: Vec<i64> = stmt
         .query_map([&now], |row| row.get(0))?
         .collect::<Result<Vec<_>, _>>()?;
+    drop(stmt);
 
     if ids.is_empty() {
         return Ok(0);
     }
 
-    // Update each post to published
     for id in &ids {
-        conn.execute(
+        tx.execute(
             "UPDATE content SET status = 'published', published_at = ?, scheduled_at = NULL WHERE id = ?",
             (&now, id),
         )?;
         tracing::info!("Auto-published scheduled content id={}", id);
     }
 
+    tx.commit()?;
     Ok(ids.len())
 }

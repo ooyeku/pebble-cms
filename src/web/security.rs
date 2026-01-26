@@ -21,7 +21,7 @@ pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
 
     headers.insert(
         header::CONTENT_SECURITY_POLICY,
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'".parse().unwrap(),
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'".parse().unwrap(),
     );
 
     response
@@ -30,7 +30,6 @@ pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
 pub struct RateLimiter {
     attempts: RwLock<HashMap<String, Vec<Instant>>>,
     max_attempts: usize,
-    #[allow(dead_code)]
     window: Duration,
     lockout: Duration,
 }
@@ -56,7 +55,7 @@ impl RateLimiter {
         let mut attempts = self.attempts.write().unwrap();
 
         let entry = attempts.entry(key.to_string()).or_default();
-        entry.retain(|t| now.duration_since(*t) < self.lockout);
+        entry.retain(|t| now.duration_since(*t) < self.window);
 
         if entry.len() >= self.max_attempts {
             let oldest = entry.first().copied();
@@ -86,7 +85,7 @@ impl RateLimiter {
         let now = Instant::now();
         let mut attempts = self.attempts.write().unwrap();
         attempts.retain(|_, v| {
-            v.retain(|t| now.duration_since(*t) < self.lockout);
+            v.retain(|t| now.duration_since(*t) < self.window);
             !v.is_empty()
         });
     }
@@ -111,7 +110,17 @@ impl CsrfManager {
     }
 
     pub fn validate(&self, form_token: &str, cookie_token: &str) -> bool {
-        !form_token.is_empty() && form_token == cookie_token
+        if form_token.is_empty() || cookie_token.is_empty() {
+            return false;
+        }
+        if form_token.len() != cookie_token.len() {
+            return false;
+        }
+        let result = form_token
+            .bytes()
+            .zip(cookie_token.bytes())
+            .fold(0u8, |acc, (a, b)| acc | (a ^ b));
+        result == 0
     }
 }
 

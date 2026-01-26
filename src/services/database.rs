@@ -4,8 +4,7 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 pub struct DatabaseStats {
-    // File info
-    pub file_path: String,
+    // File info (path intentionally omitted for security)
     pub file_size_bytes: i64,
     pub file_size_human: String,
 
@@ -245,7 +244,6 @@ pub fn get_database_stats(db: &Database, db_path: &str) -> Result<DatabaseStats>
     let pool_idle = 0u32; // Not easily accessible through r2d2
 
     Ok(DatabaseStats {
-        file_path: db_path.to_string(),
         file_size_bytes,
         file_size_human,
         sqlite_version,

@@ -20,13 +20,28 @@ pub fn search_content(db: &Database, query: &str, limit: usize) -> Result<Vec<Co
 
     let results = stmt
         .query_map((&fts_query, limit), |row| {
+            let id: i64 = row.get(0)?;
+            let content_type_str: String = row.get(3)?;
+            let status_str: String = row.get(5)?;
+            let content_type = content_type_str.parse().unwrap_or_else(|_| {
+                tracing::warn!(
+                    "Invalid content_type '{}' for content id={}",
+                    content_type_str,
+                    id
+                );
+                Default::default()
+            });
+            let status = status_str.parse().unwrap_or_else(|_| {
+                tracing::warn!("Invalid status '{}' for content id={}", status_str, id);
+                Default::default()
+            });
             Ok(ContentSummary {
-                id: row.get(0)?,
+                id,
                 slug: row.get(1)?,
                 title: row.get(2)?,
-                content_type: row.get::<_, String>(3)?.parse().unwrap_or_default(),
+                content_type,
                 excerpt: row.get(4)?,
-                status: row.get::<_, String>(5)?.parse().unwrap_or_default(),
+                status,
                 scheduled_at: None,
                 published_at: row.get(6)?,
                 created_at: row.get(7)?,
@@ -37,14 +52,26 @@ pub fn search_content(db: &Database, query: &str, limit: usize) -> Result<Vec<Co
     Ok(results)
 }
 
+fn sanitize_fts_term(term: &str) -> String {
+    term.chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .collect()
+}
+
 pub fn build_fts_query(query: &str) -> String {
-    let terms: Vec<&str> = query.split_whitespace().collect();
+    let terms: Vec<String> = query
+        .split_whitespace()
+        .map(sanitize_fts_term)
+        .filter(|t| !t.is_empty())
+        .collect();
+
     if terms.is_empty() {
         return String::new();
     }
+
     terms
         .iter()
-        .map(|t| format!("\"{}\"*", t.replace('"', "")))
+        .map(|t| format!("\"{}\"*", t))
         .collect::<Vec<_>>()
         .join(" OR ")
 }

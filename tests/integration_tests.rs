@@ -13,6 +13,12 @@ fn create_test_db() -> Database {
     db
 }
 
+// Valid test passwords that meet requirements: 8+ chars, uppercase, lowercase, number
+const TEST_PASSWORD: &str = "Password123";
+const WRONG_PASSWORD: &str = "WrongPass456";
+const OLD_PASSWORD: &str = "OldPass123";
+const NEW_PASSWORD: &str = "NewPass456";
+
 mod auth_integration_tests {
     use super::*;
 
@@ -24,14 +30,14 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .expect("Failed to create user");
 
         assert!(user_id > 0);
 
-        let user = auth::authenticate(&db, "testuser", "password123")
+        let user = auth::authenticate(&db, "testuser", TEST_PASSWORD)
             .expect("Authentication error")
             .expect("User should be found");
 
@@ -48,13 +54,13 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .expect("Failed to create user");
 
         let result =
-            auth::authenticate(&db, "testuser", "wrongpassword").expect("Authentication error");
+            auth::authenticate(&db, "testuser", WRONG_PASSWORD).expect("Authentication error");
 
         assert!(result.is_none());
     }
@@ -64,7 +70,7 @@ mod auth_integration_tests {
         let db = create_test_db();
 
         let result =
-            auth::authenticate(&db, "nonexistent", "password123").expect("Authentication error");
+            auth::authenticate(&db, "nonexistent", TEST_PASSWORD).expect("Authentication error");
 
         assert!(result.is_none());
     }
@@ -82,7 +88,7 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .unwrap();
@@ -93,8 +99,22 @@ mod auth_integration_tests {
     fn test_list_users() {
         let db = create_test_db();
 
-        auth::create_user(&db, "user1", "user1@example.com", "pass1", UserRole::Admin).unwrap();
-        auth::create_user(&db, "user2", "user2@example.com", "pass2", UserRole::Author).unwrap();
+        auth::create_user(
+            &db,
+            "user1",
+            "user1@example.com",
+            TEST_PASSWORD,
+            UserRole::Admin,
+        )
+        .unwrap();
+        auth::create_user(
+            &db,
+            "user2",
+            "user2@example.com",
+            TEST_PASSWORD,
+            UserRole::Author,
+        )
+        .unwrap();
 
         let users = auth::list_users(&db).unwrap();
         assert_eq!(users.len(), 2);
@@ -108,7 +128,7 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .unwrap();
@@ -128,7 +148,7 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "old@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Author,
         )
         .unwrap();
@@ -150,7 +170,7 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .unwrap();
@@ -169,7 +189,7 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password123",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .unwrap();
@@ -197,19 +217,19 @@ mod auth_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "oldpassword",
+            OLD_PASSWORD,
             UserRole::Admin,
         )
         .unwrap();
 
-        auth::update_password(&db, "testuser", "newpassword").unwrap();
+        auth::update_password(&db, "testuser", NEW_PASSWORD).unwrap();
 
         // Old password should fail
-        let old_auth = auth::authenticate(&db, "testuser", "oldpassword").unwrap();
+        let old_auth = auth::authenticate(&db, "testuser", OLD_PASSWORD).unwrap();
         assert!(old_auth.is_none());
 
         // New password should work
-        let new_auth = auth::authenticate(&db, "testuser", "newpassword").unwrap();
+        let new_auth = auth::authenticate(&db, "testuser", NEW_PASSWORD).unwrap();
         assert!(new_auth.is_some());
     }
 }
@@ -824,7 +844,7 @@ mod search_integration_tests {
 
         // Create multiple posts
         for i in 1..=3 {
-            let mut input = CreateContent {
+            let input = CreateContent {
                 title: format!("Post Number {}", i),
                 slug: None,
                 content_type: ContentType::Post,
@@ -901,7 +921,7 @@ mod database_integration_tests {
             &db,
             "testuser",
             "test@example.com",
-            "password",
+            TEST_PASSWORD,
             UserRole::Admin,
         )
         .unwrap();

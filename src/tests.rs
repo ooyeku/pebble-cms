@@ -103,7 +103,9 @@ mod tests {
         fn test_render_links() {
             let renderer = MarkdownRenderer::new();
             let html = renderer.render("[Link](https://example.com)");
-            assert!(html.contains("<a href=\"https://example.com\">Link</a>"));
+            // Links get rel="noopener noreferrer" added by ammonia sanitizer
+            assert!(html.contains("<a href=\"https://example.com\""));
+            assert!(html.contains(">Link</a>"));
         }
 
         #[test]
@@ -222,36 +224,40 @@ mod tests {
     mod auth_tests {
         use crate::services::auth::{generate_session_token, hash_password, verify_password};
 
+        // Test password that meets all requirements: 8+ chars, uppercase, lowercase, number
+        const VALID_PASSWORD: &str = "Password123";
+        const WRONG_PASSWORD: &str = "WrongPass456";
+
         #[test]
         fn test_hash_password_produces_hash() {
-            let hash = hash_password("password123").unwrap();
+            let hash = hash_password(VALID_PASSWORD).unwrap();
             assert!(!hash.is_empty());
             assert!(hash.starts_with("$argon2"));
         }
 
         #[test]
         fn test_hash_password_unique() {
-            let hash1 = hash_password("password123").unwrap();
-            let hash2 = hash_password("password123").unwrap();
+            let hash1 = hash_password(VALID_PASSWORD).unwrap();
+            let hash2 = hash_password(VALID_PASSWORD).unwrap();
             // Same password should produce different hashes (due to salt)
             assert_ne!(hash1, hash2);
         }
 
         #[test]
         fn test_verify_password_correct() {
-            let hash = hash_password("password123").unwrap();
-            assert!(verify_password("password123", &hash));
+            let hash = hash_password(VALID_PASSWORD).unwrap();
+            assert!(verify_password(VALID_PASSWORD, &hash));
         }
 
         #[test]
         fn test_verify_password_incorrect() {
-            let hash = hash_password("password123").unwrap();
-            assert!(!verify_password("wrongpassword", &hash));
+            let hash = hash_password(VALID_PASSWORD).unwrap();
+            assert!(!verify_password(WRONG_PASSWORD, &hash));
         }
 
         #[test]
         fn test_verify_password_empty() {
-            let hash = hash_password("password123").unwrap();
+            let hash = hash_password(VALID_PASSWORD).unwrap();
             assert!(!verify_password("", &hash));
         }
 
@@ -616,7 +622,7 @@ session_lifetime = "7d"
             assert!(ALLOWED_MIME_TYPES.contains(&"image/png"));
             assert!(ALLOWED_MIME_TYPES.contains(&"image/gif"));
             assert!(ALLOWED_MIME_TYPES.contains(&"image/webp"));
-            assert!(ALLOWED_MIME_TYPES.contains(&"image/svg+xml"));
+            // Note: SVG is handled specially in upload_media, not in ALLOWED_MIME_TYPES
         }
 
         #[test]

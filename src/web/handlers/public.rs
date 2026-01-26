@@ -69,9 +69,9 @@ pub async fn posts(
     OptionalUser(user): OptionalUser,
     Query(pagination): Query<Pagination>,
 ) -> AppResult<Html<String>> {
-    let per_page = state.config.content.posts_per_page;
+    let per_page = state.config.content.posts_per_page.max(1);
     let page = clamp_page(pagination.page);
-    let offset = (page - 1) * per_page;
+    let offset = page.saturating_sub(1).saturating_mul(per_page);
     let posts = content::list_published_content(&state.db, ContentType::Post, per_page, offset)?;
     let total = content::count_content(
         &state.db,
@@ -307,15 +307,17 @@ pub async fn serve_media(
     State(state): State<Arc<AppState>>,
     Path(filename): Path<String>,
 ) -> AppResult<Response> {
-    // Prevent path traversal attacks
     if filename.contains("..") || filename.contains('/') || filename.contains('\\') {
         return Ok(StatusCode::NOT_FOUND.into_response());
     }
 
     let file_path = state.media_dir.join(&filename);
 
-    // Ensure the resolved path is still within media_dir
-    let canonical_media = state.media_dir.canonicalize().unwrap_or_default();
+    let canonical_media = match state.media_dir.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return Ok(StatusCode::NOT_FOUND.into_response()),
+    };
+
     let canonical_file = match file_path.canonicalize() {
         Ok(p) => p,
         Err(_) => return Ok(StatusCode::NOT_FOUND.into_response()),
@@ -329,6 +331,26 @@ pub async fn serve_media(
     let mime = mime_guess::from_path(&filename).first_or_octet_stream();
 
     Ok(([(header::CONTENT_TYPE, mime.as_ref())], content).into_response())
+}
+
+pub async fn serve_js(
+    State(state): State<Arc<AppState>>,
+    Path(filename): Path<String>,
+) -> AppResult<Response> {
+    match state.static_assets.get(&filename) {
+        Some(content) => Ok((
+            [
+                (
+                    header::CONTENT_TYPE,
+                    "application/javascript; charset=utf-8",
+                ),
+                (header::CACHE_CONTROL, "public, max-age=31536000"),
+            ],
+            *content,
+        )
+            .into_response()),
+        None => Ok(StatusCode::NOT_FOUND.into_response()),
+    }
 }
 
 pub async fn json_feed(State(state): State<Arc<AppState>>) -> AppResult<Response> {

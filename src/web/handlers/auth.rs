@@ -2,19 +2,33 @@ use crate::models::UserRole;
 use crate::services::auth;
 use crate::web::error::AppResult;
 use crate::web::state::AppState;
-use axum::extract::State;
-use axum::http::StatusCode;
+use axum::extract::{ConnectInfo, State};
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::Form;
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use serde::Deserialize;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tera::Context;
 use time::Duration;
 
-fn get_client_ip(jar: &CookieJar) -> String {
-    jar.get("_client_id")
-        .map(|c| c.value().to_string())
+fn get_client_ip(headers: &HeaderMap, addr: Option<SocketAddr>) -> String {
+    if let Some(forwarded) = headers.get("x-forwarded-for") {
+        if let Ok(s) = forwarded.to_str() {
+            if let Some(ip) = s.split(',').next() {
+                return ip.trim().to_string();
+            }
+        }
+    }
+
+    if let Some(real_ip) = headers.get("x-real-ip") {
+        if let Ok(s) = real_ip.to_str() {
+            return s.to_string();
+        }
+    }
+
+    addr.map(|a| a.ip().to_string())
         .unwrap_or_else(|| "unknown".to_string())
 }
 
@@ -52,10 +66,12 @@ pub struct LoginForm {
 
 pub async fn login(
     State(state): State<Arc<AppState>>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
+    headers: HeaderMap,
     jar: CookieJar,
     Form(form): Form<LoginForm>,
 ) -> AppResult<Response> {
-    let client_key = get_client_ip(&jar);
+    let client_key = get_client_ip(&headers, connect_info.map(|c| c.0));
     let csrf_cookie = get_csrf_cookie(&jar);
 
     let new_csrf = state.csrf.generate();
@@ -83,20 +99,9 @@ pub async fn login(
     }
 
     let csrf_valid = match (&form.csrf_token, &csrf_cookie) {
-        (Some(form_token), Some(cookie_token)) => {
-            tracing::debug!(
-                "CSRF validation: form_token={}, cookie_token={}",
-                form_token,
-                cookie_token
-            );
-            state.csrf.validate(form_token, cookie_token)
-        }
+        (Some(form_token), Some(cookie_token)) => state.csrf.validate(form_token, cookie_token),
         _ => {
-            tracing::debug!(
-                "CSRF missing: form_token={:?}, cookie_token={:?}",
-                form.csrf_token,
-                csrf_cookie
-            );
+            tracing::debug!("CSRF token missing from form or cookie");
             false
         }
     };
@@ -113,10 +118,16 @@ pub async fn login(
         Some(user) => {
             state.rate_limiter.clear(&client_key);
 
+            if let Some(old_session) = jar.get("session") {
+                let _ = auth::delete_session(&state.db, old_session.value());
+            }
+
             let token = auth::create_session(&state.db, user.id, 7)?;
             let session_cookie = Cookie::build(("session", token))
                 .path("/")
                 .http_only(true)
+                .secure(!cfg!(debug_assertions))
+                .same_site(SameSite::Lax)
                 .max_age(Duration::days(7))
                 .build();
 
@@ -238,6 +249,8 @@ pub async fn setup(
     let cookie = Cookie::build(("session", token))
         .path("/")
         .http_only(true)
+        .secure(!cfg!(debug_assertions))
+        .same_site(SameSite::Lax)
         .max_age(Duration::days(7))
         .build();
 
