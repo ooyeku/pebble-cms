@@ -162,4 +162,29 @@ pub enum RegistryCommand {
     Path {
         name: Option<String>,
     },
+    /// View or edit a site's configuration
+    Config {
+        /// Site name
+        name: String,
+        #[command(subcommand)]
+        command: Option<SiteConfigCommand>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SiteConfigCommand {
+    /// Get a config value (e.g., theme.name, site.title)
+    Get {
+        /// Config key in dot notation (e.g., theme.name)
+        key: String,
+    },
+    /// Set a config value
+    Set {
+        /// Config key in dot notation (e.g., theme.name)
+        key: String,
+        /// New value
+        value: String,
+    },
+    /// Open config file in editor
+    Edit,
 }

@@ -5,11 +5,12 @@ use crate::{Config, Database};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tera::{Tera, Value};
 
 pub struct AppState {
-    pub config: Config,
+    pub config: RwLock<Config>,
+    pub config_path: PathBuf,
     pub db: Database,
     pub templates: Tera,
     pub markdown: MarkdownRenderer,
@@ -23,7 +24,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: Config, db: Database, production_mode: bool) -> Result<Self> {
+    pub fn new(config: Config, config_path: PathBuf, db: Database, production_mode: bool) -> Result<Self> {
         let mut templates = Tera::default();
 
         templates.register_filter("format_date", format_date_filter);
@@ -155,7 +156,8 @@ impl AppState {
         );
 
         Ok(Self {
-            config,
+            config: RwLock::new(config),
+            config_path,
             db,
             templates,
             markdown: MarkdownRenderer::new(),
@@ -171,6 +173,72 @@ impl AppState {
             analytics: None,
             static_assets,
         })
+    }
+
+    /// Get a read lock on the config
+    pub fn config(&self) -> std::sync::RwLockReadGuard<'_, Config> {
+        self.config.read().unwrap()
+    }
+
+    /// Update the config (writes to file and updates in-memory)
+    pub fn update_config(&self, new_config: Config) -> Result<()> {
+        // Validate new config
+        new_config.validate()?;
+
+        // Write to file using toml_edit to preserve formatting
+        let content = std::fs::read_to_string(&self.config_path)?;
+        let mut doc = content.parse::<toml_edit::DocumentMut>()?;
+
+        // Update all fields
+        doc["site"]["title"] = toml_edit::value(&new_config.site.title);
+        doc["site"]["description"] = toml_edit::value(&new_config.site.description);
+        doc["site"]["url"] = toml_edit::value(&new_config.site.url);
+        doc["site"]["language"] = toml_edit::value(&new_config.site.language);
+
+        doc["content"]["posts_per_page"] = toml_edit::value(new_config.content.posts_per_page as i64);
+        doc["content"]["excerpt_length"] = toml_edit::value(new_config.content.excerpt_length as i64);
+        doc["content"]["auto_excerpt"] = toml_edit::value(new_config.content.auto_excerpt);
+
+        doc["theme"]["name"] = toml_edit::value(&new_config.theme.name);
+
+        // Handle theme.custom
+        if !doc["theme"].as_table().map_or(false, |t| t.contains_key("custom")) {
+            doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
+        }
+        if let Some(ref v) = new_config.theme.custom.primary_color {
+            doc["theme"]["custom"]["primary_color"] = toml_edit::value(v);
+        }
+        if let Some(ref v) = new_config.theme.custom.accent_color {
+            doc["theme"]["custom"]["accent_color"] = toml_edit::value(v);
+        }
+        if let Some(ref v) = new_config.theme.custom.background_color {
+            doc["theme"]["custom"]["background_color"] = toml_edit::value(v);
+        }
+        if let Some(ref v) = new_config.theme.custom.text_color {
+            doc["theme"]["custom"]["text_color"] = toml_edit::value(v);
+        }
+
+        // Handle homepage section
+        if !doc.contains_key("homepage") {
+            doc["homepage"] = toml_edit::Item::Table(toml_edit::Table::new());
+        }
+        doc["homepage"]["show_hero"] = toml_edit::value(new_config.homepage.show_hero);
+        doc["homepage"]["hero_layout"] = toml_edit::value(&new_config.homepage.hero_layout);
+        doc["homepage"]["hero_height"] = toml_edit::value(&new_config.homepage.hero_height);
+        doc["homepage"]["hero_text_align"] = toml_edit::value(&new_config.homepage.hero_text_align);
+        doc["homepage"]["show_posts"] = toml_edit::value(new_config.homepage.show_posts);
+        doc["homepage"]["posts_layout"] = toml_edit::value(&new_config.homepage.posts_layout);
+        doc["homepage"]["posts_columns"] = toml_edit::value(new_config.homepage.posts_columns as i64);
+        doc["homepage"]["show_pages"] = toml_edit::value(new_config.homepage.show_pages);
+        doc["homepage"]["pages_layout"] = toml_edit::value(&new_config.homepage.pages_layout);
+
+        std::fs::write(&self.config_path, doc.to_string())?;
+
+        // Update in-memory config
+        let mut config = self.config.write().unwrap();
+        *config = new_config;
+
+        Ok(())
     }
 
     pub fn with_analytics(mut self, analytics: Arc<Analytics>) -> Self {

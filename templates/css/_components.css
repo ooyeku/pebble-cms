@@ -76,7 +76,9 @@
 }
 
 .card-hover {
-    transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+    transition:
+        transform var(--transition-slow),
+        box-shadow var(--transition-slow);
 }
 
 .card-hover:hover {
@@ -106,7 +108,9 @@
     color: var(--text);
     font-family: inherit;
     font-size: var(--font-size-base);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    transition:
+        border-color var(--transition-base),
+        box-shadow var(--transition-base);
 }
 
 .form-group textarea {
@@ -154,7 +158,9 @@
     background: var(--bg);
     color: var(--text);
     font-size: var(--font-size-base);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    transition:
+        border-color var(--transition-base),
+        box-shadow var(--transition-base);
 }
 
 .search-form input:focus {
@@ -214,7 +220,7 @@ table td:last-child {
     white-space: nowrap;
 }
 
-table .btn+.btn {
+table .btn + .btn {
     margin-left: var(--space-2);
 }
 
@@ -508,23 +514,81 @@ html.theme-light .theme-toggle-admin .icon-sun {
 }
 
 .editor-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-height: 400px;
+}
+
+.editor-layout > textarea {
+    flex: 1 1 50%;
+    min-width: 100px;
+    max-width: calc(100% - 208px);
+    resize: none;
+}
+
+.editor-layout .resize-handle {
+    width: 8px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+    position: relative;
+}
+
+.editor-layout .resize-handle:hover,
+.editor-layout .resize-handle.dragging {
+    background: var(--color-primary);
+}
+
+.editor-layout .resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 30px;
+    background: var(--text-muted);
+    border-radius: 1px;
+    opacity: 0.5;
+}
+
+.editor-layout .resize-handle:hover::after,
+.editor-layout .resize-handle.dragging::after {
+    background: white;
+    opacity: 1;
 }
 
 @media (max-width: 768px) {
     .editor-layout {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+    .editor-layout textarea {
+        min-height: 200px;
+    }
+    .editor-layout .resize-handle {
+        width: 100%;
+        height: 8px;
+        cursor: row-resize;
+    }
+    .editor-layout .resize-handle::after {
+        width: 30px;
+        height: 2px;
     }
 }
 
-.preview {
+.editor-layout > .preview {
+    flex: 1 1 50%;
+    min-width: 100px;
+    max-width: calc(100% - 208px);
     padding: var(--space-4);
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     min-height: 300px;
+    overflow-y: auto;
 }
 
 .htmx-indicator {

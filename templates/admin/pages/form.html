@@ -75,8 +75,9 @@
         <div id="markdown-section" class="content-section active">
             <div class="form-group">
                 <label for="body_markdown">Content</label>
-                <div class="editor-layout">
+                <div class="editor-layout" id="editor-layout">
                     <textarea id="body_markdown" name="body_markdown" hx-post="/htmx/preview" hx-trigger="input changed delay:500ms" hx-target="#preview">{{ content.body_markdown | default(value='') }}</textarea>
+                    <div class="resize-handle" id="resize-handle"></div>
                     <div id="preview" class="preview content">{% if content.body_html %}{{ content.body_html | safe }}{% else %}<p style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}</div>
                 </div>
             </div>
@@ -177,6 +178,56 @@
                 }
             });
         });
+
+        // Resizable editor panes
+        (function() {
+            var layout = document.getElementById('editor-layout');
+            var handle = document.getElementById('resize-handle');
+            var textarea = document.getElementById('body_markdown');
+            var preview = document.getElementById('preview');
+            
+            if (!layout || !handle || !textarea || !preview) return;
+            
+            var isDragging = false;
+            
+            handle.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                handle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                var layoutRect = layout.getBoundingClientRect();
+                var handleWidth = handle.offsetWidth;
+                var minWidth = 200;
+                
+                var leftWidth = e.clientX - layoutRect.left;
+                var rightWidth = layoutRect.right - e.clientX - handleWidth;
+                
+                if (leftWidth < minWidth) leftWidth = minWidth;
+                if (rightWidth < minWidth) rightWidth = minWidth;
+                
+                var totalWidth = layoutRect.width - handleWidth;
+                var leftPercent = (leftWidth / totalWidth) * 100;
+                var rightPercent = (rightWidth / totalWidth) * 100;
+                
+                textarea.style.flex = '0 0 ' + leftPercent + '%';
+                preview.style.flex = '0 0 ' + rightPercent + '%';
+            });
+            
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    handle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        })();
         </script>
 
         <div style="display: flex; gap: 1rem;">

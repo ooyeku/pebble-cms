@@ -527,6 +527,12 @@ pebble registry stop mysite
 # Stop all running sites
 pebble registry stop-all
 
+# View/edit site configuration
+pebble registry config mysite              # View all config
+pebble registry config mysite get <key>    # Get a value
+pebble registry config mysite set <key> <value>  # Set a value
+pebble registry config mysite edit         # Open in editor
+
 # Remove a site from registry
 pebble registry remove mysite
 
@@ -561,6 +567,143 @@ pebble registry list
 
 # Stop all when done
 pebble registry stop-all
+```
+
+### Site Configuration
+
+View and edit configuration for registry sites using `pebble registry config`.
+
+#### View Full Configuration
+
+```bash
+pebble registry config mysite
+```
+
+Displays all configuration values grouped by section:
+
+```
+# Site
+site.title                      My Site
+site.description                A Pebble site
+site.url                        http://localhost:3000
+site.language                   en
+
+# Server
+server.host                     127.0.0.1
+server.port                     3000
+
+# Content
+content.posts_per_page          10
+content.excerpt_length          200
+content.auto_excerpt            true
+
+# Theme
+theme.name                      default
+
+# Homepage
+homepage.show_hero              true
+homepage.hero_layout            centered
+homepage.show_posts             true
+homepage.posts_layout           grid
+homepage.show_pages             true
+```
+
+#### Get a Specific Value
+
+```bash
+pebble registry config mysite get <key>
+```
+
+Examples:
+
+```bash
+pebble registry config mysite get theme.name
+# default
+
+pebble registry config mysite get site.title
+# My Site
+
+pebble registry config mysite get content.posts_per_page
+# 10
+```
+
+#### Set a Value
+
+```bash
+pebble registry config mysite set <key> <value>
+```
+
+Examples:
+
+```bash
+# Change theme
+pebble registry config mysite set theme.name minimal
+
+# Update site title
+pebble registry config mysite set site.title "My Personal Blog"
+
+# Change posts per page
+pebble registry config mysite set content.posts_per_page 20
+
+# Disable hero section
+pebble registry config mysite set homepage.show_hero false
+
+# Change server port
+pebble registry config mysite set server.port 3005
+
+# Set custom theme color
+pebble registry config mysite set theme.custom.primary_color "#e63946"
+```
+
+If the site is running, it automatically restarts to apply the changes.
+
+#### Open in Editor
+
+```bash
+pebble registry config mysite edit
+```
+
+Opens the site's `pebble.toml` in your default editor (`$EDITOR`, or `vi` on Unix / `notepad` on Windows). The configuration is validated after saving, and the site restarts if it was running.
+
+#### Available Configuration Keys
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `site.title` | string | Site title |
+| `site.description` | string | Site description |
+| `site.url` | string | Site URL |
+| `site.language` | string | Language code (e.g., `en`) |
+| `server.host` | string | Server bind address |
+| `server.port` | number | Server port |
+| `content.posts_per_page` | number | Posts per page (1-100) |
+| `content.excerpt_length` | number | Excerpt length (1-10000) |
+| `content.auto_excerpt` | boolean | Auto-generate excerpts |
+| `theme.name` | string | Theme name (`default`, `minimal`, `magazine`, `brutalist`, `neon`) |
+| `theme.custom.primary_color` | string | Primary color (hex) |
+| `theme.custom.accent_color` | string | Accent color (hex) |
+| `theme.custom.background_color` | string | Background color (hex) |
+| `theme.custom.text_color` | string | Text color (hex) |
+| `theme.custom.font_family` | string | Font family |
+| `homepage.show_hero` | boolean | Show hero section |
+| `homepage.hero_layout` | string | Hero layout (`centered`, `split`, `minimal`) |
+| `homepage.hero_height` | string | Hero height (`small`, `medium`, `large`, `full`) |
+| `homepage.show_posts` | boolean | Show posts section |
+| `homepage.posts_layout` | string | Posts layout (`grid`, `list`) |
+| `homepage.posts_columns` | number | Grid columns (1-4) |
+| `homepage.show_pages` | boolean | Show pages section |
+| `homepage.pages_layout` | string | Pages layout (`grid`, `list`) |
+| `auth.session_lifetime` | string | Session duration (e.g., `7d`, `24h`) |
+
+### Site Logs
+
+Registry sites write logs to `~/.pebble/registry/{name}/logs/{name}.log`. View logs with:
+
+```bash
+# View recent logs
+tail ~/.pebble/registry/mysite/logs/mysite.log
+
+# Follow logs in real-time
+tail -f ~/.pebble/registry/mysite/logs/mysite.log
 ```
 
 ## Environment Variables

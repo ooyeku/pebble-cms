@@ -18,7 +18,7 @@ pub async fn run(config_path: &Path, output_dir: &Path, base_url: Option<String>
 
     let site_url = base_url.unwrap_or_else(|| config.site.url.clone());
 
-    let state = Arc::new(AppState::new(config.clone(), db.clone(), true)?);
+    let state = Arc::new(AppState::new(config.clone(), config_path.to_path_buf(), db.clone(), true)?);
 
     fs::create_dir_all(output_dir)?;
 
@@ -37,23 +37,24 @@ pub async fn run(config_path: &Path, output_dir: &Path, base_url: Option<String>
 }
 
 fn make_context(state: &AppState) -> Context {
+    let config = state.config();
     let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("theme", &state.config.theme);
-    ctx.insert("homepage_config", &state.config.homepage);
+    ctx.insert("site", &config.site);
+    ctx.insert("theme", &config.theme);
+    ctx.insert("homepage_config", &config.homepage);
     ctx.insert("production_mode", &true);
     ctx.insert("user", &None::<()>);
-    if state.config.theme.custom.has_customizations() {
+    if config.theme.custom.has_customizations() {
         ctx.insert(
             "theme_custom_css",
-            &state.config.theme.custom.to_css_variables(),
+            &config.theme.custom.to_css_variables(),
         );
     }
     ctx
 }
 
 fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<()> {
-    let posts_per_page = state.config.content.posts_per_page;
+    let posts_per_page = state.config().content.posts_per_page;
     let total = content::count_content(
         &state.db,
         Some(ContentType::Post),
@@ -276,11 +277,12 @@ fn generate_static_search_page(state: &AppState) -> Result<String> {
 
 fn build_feeds(state: &AppState, output_dir: &Path, site_url: &str) -> Result<()> {
     let posts = content::list_published_content(&state.db, ContentType::Post, 20, 0)?;
+    let config = state.config();
 
-    let rss = generate_rss(&state.config.site, site_url, &posts);
+    let rss = generate_rss(&config.site, site_url, &posts);
     fs::write(output_dir.join("feed.xml"), rss)?;
 
-    let json_feed = generate_json_feed(&state.config.site, site_url, &posts);
+    let json_feed = generate_json_feed(&config.site, site_url, &posts);
     fs::write(output_dir.join("feed.json"), json_feed)?;
 
     let sitemap = generate_sitemap(state, site_url)?;

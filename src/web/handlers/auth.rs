@@ -237,6 +237,19 @@ pub async fn setup(
             .into_response());
     }
 
+    if let Err(e) = auth::validate_password(&form.password) {
+        let mut ctx = Context::new();
+        ctx.insert("error", &e.to_string());
+        ctx.insert("csrf_token", &new_csrf);
+        let html = state.templates.render("admin/setup.html", &ctx)?;
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            jar.add(new_csrf_cookie),
+            Html(html),
+        )
+            .into_response());
+    }
+
     let user_id = auth::create_user(
         &state.db,
         &form.username,

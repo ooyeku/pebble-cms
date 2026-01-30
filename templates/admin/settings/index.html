@@ -1,137 +1,48 @@
 {% extends "admin/base.html" %}
-
 {% block title %}Settings{% endblock %}
-
 {% block content %}
-<div class="header">
-    <h2>Settings</h2>
-</div>
-
-<div class="card" style="margin-bottom: 1.5rem;">
-    <h3 style="margin-bottom: 1rem;">Homepage Customization</h3>
-    <form method="post" action="/admin/settings/homepage">
-        <div class="form-group">
-            <label for="homepage_title">Homepage Title</label>
-            <input type="text" id="homepage_title" name="homepage_title" value="{{ homepage.title }}"
-                placeholder="Welcome to {{ site.title }}" style="background: var(--bg); color: var(--text);">
-            <p class="form-hint">Custom title for the hero section. Leave empty to use site title.</p>
-        </div>
-
-        <div class="form-group">
-            <label for="homepage_subtitle">Homepage Subtitle</label>
-            <input type="text" id="homepage_subtitle" name="homepage_subtitle" value="{{ homepage.subtitle }}"
-                placeholder="{{ site.description }}" style="background: var(--bg); color: var(--text);">
-            <p class="form-hint">Custom subtitle/tagline. Leave empty to use site description.</p>
-        </div>
-
-        <div class="form-group">
-            <label for="custom_content">Custom Content (HTML)</label>
-            <textarea id="custom_content" name="custom_content" rows="4"
-                placeholder="<p>Add buttons, links, or other custom content here...</p>"
-                style="min-height: 100px; background: var(--bg); color: var(--text);">{{ homepage.custom_content }}</textarea>
-            <p class="form-hint">Optional HTML content displayed below the subtitle (e.g., CTA buttons).</p>
-        </div>
-
-        <div class="form-row" style="margin-bottom: 1rem;">
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="checkbox" name="show_pages" value="true" {% if homepage.show_pages %}checked{% endif %}
-                        style="width: auto;">
-                    Show Pages Section
-                </label>
-                <p class="form-hint">Display links to published pages on the homepage.</p>
-            </div>
-
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="checkbox" name="show_posts" value="true" {% if homepage.show_posts %}checked{% endif %}
-                        style="width: auto;">
-                    Show Recent Posts
-                </label>
-                <p class="form-hint">Display recent blog posts on the homepage.</p>
-            </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Save Homepage Settings</button>
-    </form>
-</div>
-
-<div class="card" style="margin-bottom: 1.5rem;">
-    <h3 style="margin-bottom: 1rem;">Site Information</h3>
-    <table>
-        <tr>
-            <td style="font-weight: 500; width: 200px;">Site Title</td>
-            <td>{{ site.title }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Description</td>
-            <td>{{ site.description }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">URL</td>
-            <td>{{ site.url }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Language</td>
-            <td>{{ site.language }}</td>
-        </tr>
-    </table>
-
-    <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.875rem;">
-        Edit <code>pebble.toml</code> to change these settings and restart the server.
-    </p>
-</div>
-
-<div class="card" style="margin-bottom: 1.5rem;">
-    <h3 style="margin-bottom: 1rem;">Content Settings</h3>
-    <table>
-        <tr>
-            <td style="font-weight: 500; width: 200px;">Posts per page</td>
-            <td>{{ config.content.posts_per_page }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Excerpt length</td>
-            <td>{{ config.content.excerpt_length }} characters</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Auto excerpt</td>
-            <td>{{ config.content.auto_excerpt }}</td>
-        </tr>
-    </table>
-</div>
-
-<div class="card" style="margin-bottom: 1.5rem;">
-    <h3 style="margin-bottom: 1rem;">Theme</h3>
-    <table>
-        <tr>
-            <td style="font-weight: 500; width: 200px;">Current Theme</td>
-            <td><strong>{{ config.theme.name }}</strong></td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Available Themes</td>
-            <td>default, minimal, magazine</td>
-        </tr>
-    </table>
-    <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.875rem;">
-        Change <code>[theme] name = "..."</code> in <code>pebble.toml</code> to switch themes.
-    </p>
-</div>
-
-<div class="card">
-    <h3 style="margin-bottom: 1rem;">Current User</h3>
-    <table>
-        <tr>
-            <td style="font-weight: 500; width: 200px;">Username</td>
-            <td>{{ user.username }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Email</td>
-            <td>{{ user.email }}</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Role</td>
-            <td>{{ user.role }}</td>
-        </tr>
-    </table>
-</div>
+<div class="header"><h2>Settings</h2></div>
+{% if error %}<div class="alert alert-error" style="margin-bottom:1.5rem;padding:1rem;background:rgba(220,53,69,0.1);border:1px solid var(--color-danger,#dc3545);border-radius:var(--radius,4px);color:var(--color-danger,#dc3545);">{{ error }}</div>{% endif %}
+<form method="post" action="/admin/settings">
+<div class="card" style="margin-bottom:1.5rem;"><h3 style="margin-bottom:1rem;">Site Information</h3>
+<div class="form-group"><label for="site_title">Site Title</label><input type="text" id="site_title" name="site_title" value="{{ config.site.title }}" required style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label for="site_description">Description</label><input type="text" id="site_description" name="site_description" value="{{ config.site.description }}" style="background:var(--bg);color:var(--text);"></div>
+<div class="form-row"><div class="form-group"><label for="site_url">Site URL</label><input type="url" id="site_url" name="site_url" value="{{ config.site.url }}" required style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label for="site_language">Language</label><select id="site_language" name="site_language" style="background:var(--bg);color:var(--text);"><option value="en"{% if config.site.language == "en" %} selected{% endif %}>English</option><option value="es"{% if config.site.language == "es" %} selected{% endif %}>Spanish</option><option value="fr"{% if config.site.language == "fr" %} selected{% endif %}>French</option><option value="de"{% if config.site.language == "de" %} selected{% endif %}>German</option></select></div></div></div>
+<div class="card" style="margin-bottom:1.5rem;"><h3 style="margin-bottom:1rem;">Content Settings</h3>
+<div class="form-row"><div class="form-group"><label for="posts_per_page">Posts per page</label><input type="number" id="posts_per_page" name="posts_per_page" value="{{ config.content.posts_per_page }}" min="1" max="100" style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label for="excerpt_length">Excerpt length</label><input type="number" id="excerpt_length" name="excerpt_length" value="{{ config.content.excerpt_length }}" min="1" max="10000" style="background:var(--bg);color:var(--text);"></div></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" name="auto_excerpt" value="true"{% if config.content.auto_excerpt %} checked{% endif %} style="width:auto;">Auto-generate excerpts</label></div></div>
+<div class="card" style="margin-bottom:1.5rem;"><h3 style="margin-bottom:1rem;">Theme</h3>
+<div class="form-group"><label for="theme_name">Theme</label><select id="theme_name" name="theme_name" style="background:var(--bg);color:var(--text);">{% for theme in available_themes %}<option value="{{ theme }}"{% if config.theme.name == theme %} selected{% endif %}>{{ theme | capitalize }}</option>{% endfor %}</select></div>
+<h4 style="margin:1.5rem 0 1rem;font-size:0.9rem;color:var(--text-muted);">Custom Colors (optional)</h4>
+<div class="form-row"><div class="form-group"><label>Primary Color</label><input type="text" name="theme_primary_color" value="{{ config.theme.custom.primary_color }}" placeholder="#007acc" style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label>Accent Color</label><input type="text" name="theme_accent_color" value="{{ config.theme.custom.accent_color }}" placeholder="#ff6b6b" style="background:var(--bg);color:var(--text);"></div></div>
+<div class="form-row"><div class="form-group"><label>Background Color</label><input type="text" name="theme_background_color" value="{{ config.theme.custom.background_color }}" placeholder="#ffffff" style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label>Text Color</label><input type="text" name="theme_text_color" value="{{ config.theme.custom.text_color }}" placeholder="#333333" style="background:var(--bg);color:var(--text);"></div></div>
+<p class="form-hint">Leave empty for theme defaults.</p></div>
+<div class="card" style="margin-bottom:1.5rem;"><h3 style="margin-bottom:1rem;">Homepage Layout</h3>
+<div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" name="homepage_show_hero" value="true"{% if config.homepage.show_hero %} checked{% endif %} style="width:auto;">Show Hero Section</label></div>
+<div class="form-row"><div class="form-group"><label>Hero Layout</label><select name="homepage_hero_layout" style="background:var(--bg);color:var(--text);"><option value="centered"{% if config.homepage.hero_layout == "centered" %} selected{% endif %}>Centered</option><option value="split"{% if config.homepage.hero_layout == "split" %} selected{% endif %}>Split</option><option value="minimal"{% if config.homepage.hero_layout == "minimal" %} selected{% endif %}>Minimal</option></select></div>
+<div class="form-group"><label>Hero Height</label><select name="homepage_hero_height" style="background:var(--bg);color:var(--text);"><option value="small"{% if config.homepage.hero_height == "small" %} selected{% endif %}>Small</option><option value="medium"{% if config.homepage.hero_height == "medium" %} selected{% endif %}>Medium</option><option value="large"{% if config.homepage.hero_height == "large" %} selected{% endif %}>Large</option><option value="full"{% if config.homepage.hero_height == "full" %} selected{% endif %}>Full</option></select></div>
+<div class="form-group"><label>Text Align</label><select name="homepage_hero_text_align" style="background:var(--bg);color:var(--text);"><option value="left"{% if config.homepage.hero_text_align == "left" %} selected{% endif %}>Left</option><option value="center"{% if config.homepage.hero_text_align == "center" %} selected{% endif %}>Center</option><option value="right"{% if config.homepage.hero_text_align == "right" %} selected{% endif %}>Right</option></select></div></div>
+<hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">
+<div class="form-row" style="margin-bottom:1rem;"><div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" name="homepage_show_posts" value="true"{% if config.homepage.show_posts %} checked{% endif %} style="width:auto;">Show Posts</label></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" name="homepage_show_pages" value="true"{% if config.homepage.show_pages %} checked{% endif %} style="width:auto;">Show Pages</label></div></div>
+<div class="form-row"><div class="form-group"><label>Posts Layout</label><select name="homepage_posts_layout" style="background:var(--bg);color:var(--text);"><option value="grid"{% if config.homepage.posts_layout == "grid" %} selected{% endif %}>Grid</option><option value="list"{% if config.homepage.posts_layout == "list" %} selected{% endif %}>List</option></select></div>
+<div class="form-group"><label>Grid Columns</label><select name="homepage_posts_columns" style="background:var(--bg);color:var(--text);"><option value="1"{% if config.homepage.posts_columns == 1 %} selected{% endif %}>1</option><option value="2"{% if config.homepage.posts_columns == 2 %} selected{% endif %}>2</option><option value="3"{% if config.homepage.posts_columns == 3 %} selected{% endif %}>3</option><option value="4"{% if config.homepage.posts_columns == 4 %} selected{% endif %}>4</option></select></div>
+<div class="form-group"><label>Pages Layout</label><select name="homepage_pages_layout" style="background:var(--bg);color:var(--text);"><option value="grid"{% if config.homepage.pages_layout == "grid" %} selected{% endif %}>Grid</option><option value="list"{% if config.homepage.pages_layout == "list" %} selected{% endif %}>List</option></select></div></div></div>
+<button type="submit" class="btn btn-primary" style="margin-bottom:2rem;">Save All Settings</button>
+</form>
+<div class="card" style="margin-bottom:1.5rem;"><h3 style="margin-bottom:1rem;">Homepage Content</h3>
+<form method="post" action="/admin/settings/homepage">
+<div class="form-group"><label>Homepage Title</label><input type="text" name="homepage_title" value="{{ homepage.title }}" placeholder="Welcome" style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label>Homepage Subtitle</label><input type="text" name="homepage_subtitle" value="{{ homepage.subtitle }}" placeholder="Tagline" style="background:var(--bg);color:var(--text);"></div>
+<div class="form-group"><label>Custom HTML</label><textarea name="custom_content" rows="4" style="background:var(--bg);color:var(--text);">{{ homepage.custom_content }}</textarea></div>
+<div class="form-row"><div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" name="show_pages" value="true"{% if homepage.show_pages %} checked{% endif %} style="width:auto;">Show Pages</label></div>
+<div class="form-group"><label style="display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" name="show_posts" value="true"{% if homepage.show_posts %} checked{% endif %} style="width:auto;">Show Posts</label></div></div>
+<button type="submit" class="btn btn-secondary">Save Homepage Content</button>
+</form></div>
+<div class="card"><h3 style="margin-bottom:1rem;">Current User</h3>
+<table><tr><td style="font-weight:500;width:200px;">Username</td><td>{{ user.username }}</td></tr><tr><td style="font-weight:500;">Email</td><td>{{ user.email }}</td></tr><tr><td style="font-weight:500;">Role</td><td>{{ user.role }}</td></tr></table></div>
 {% endblock %}

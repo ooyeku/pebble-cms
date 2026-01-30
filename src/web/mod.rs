@@ -20,16 +20,17 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::Router;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
 
-pub async fn serve(config: Config, db: Database, addr: &str) -> Result<()> {
+pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &str) -> Result<()> {
     let analytics = Arc::new(Analytics::new(db.clone()));
 
-    let state = AppState::new(config, db.clone(), false)?.with_analytics(analytics.clone());
+    let state = AppState::new(config, config_path, db.clone(), false)?.with_analytics(analytics.clone());
     let state = Arc::new(state);
 
     let analytics_aggregator = analytics.clone();
@@ -57,12 +58,12 @@ pub async fn serve(config: Config, db: Database, addr: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn serve_production(config: &Config, host: &str, port: u16) -> Result<()> {
+pub async fn serve_production(config: &Config, config_path: PathBuf, host: &str, port: u16) -> Result<()> {
     let db = Database::open(&config.database.path)?;
 
     let analytics = Arc::new(Analytics::new(db.clone()));
 
-    let state = AppState::new(config.clone(), db.clone(), true)?.with_analytics(analytics.clone());
+    let state = AppState::new(config.clone(), config_path, db.clone(), true)?.with_analytics(analytics.clone());
     let state = Arc::new(state);
 
     let analytics_aggregator = analytics.clone();

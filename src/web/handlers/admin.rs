@@ -12,15 +12,16 @@ use std::sync::Arc;
 use tera::Context;
 
 fn make_admin_context(state: &AppState, user: &User) -> Context {
+    let config = state.config();
     let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
+    ctx.insert("site", &config.site);
     ctx.insert("user", user);
-    ctx.insert("theme", &state.config.theme);
+    ctx.insert("theme", &config.theme);
     ctx.insert("version", env!("CARGO_PKG_VERSION"));
-    if state.config.theme.custom.has_customizations() {
+    if config.theme.custom.has_customizations() {
         ctx.insert(
             "theme_custom_css",
-            &state.config.theme.custom.to_css_variables(),
+            &config.theme.custom.to_css_variables(),
         );
     }
     ctx
@@ -206,7 +207,7 @@ pub async fn create_post(
         &state.db,
         input,
         Some(user.id),
-        state.config.content.excerpt_length,
+        state.config().content.excerpt_length,
     )?;
 
     Ok(Redirect::to("/admin/posts").into_response())
@@ -270,7 +271,7 @@ pub async fn update_post(
         metadata: Some(build_seo_metadata(&form)),
     };
 
-    content::update_content(&state.db, id, input, state.config.content.excerpt_length)?;
+    content::update_content(&state.db, id, input, state.config().content.excerpt_length)?;
 
     Ok(Redirect::to("/admin/posts").into_response())
 }
@@ -362,7 +363,7 @@ pub async fn create_page(
         &state.db,
         input,
         Some(user.id),
-        state.config.content.excerpt_length,
+        state.config().content.excerpt_length,
     )?;
 
     if is_htmx {
@@ -427,7 +428,7 @@ pub async fn update_page(
         metadata: Some(build_page_metadata(&form)),
     };
 
-    content::update_content(&state.db, id, input, state.config.content.excerpt_length)?;
+    content::update_content(&state.db, id, input, state.config().content.excerpt_length)?;
 
     if is_htmx {
         let mut ctx = Context::new();
@@ -633,10 +634,12 @@ pub async fn settings(
     }
 
     let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
+    let config = state.config();
 
     let mut ctx = make_admin_context(&state, &user);
-    ctx.insert("config", &state.config);
+    ctx.insert("config", &*config);
     ctx.insert("homepage", &homepage_settings);
+    ctx.insert("available_themes", &crate::config::ThemeConfig::AVAILABLE_THEMES);
 
     let html = state.templates.render("admin/settings/index.html", &ctx)?;
     Ok(Html(html).into_response())
@@ -671,6 +674,113 @@ pub async fn save_homepage_settings(
     };
 
     settings::save_homepage_settings(&state.db, &homepage)?;
+
+    Ok(Redirect::to("/admin/settings").into_response())
+}
+
+#[derive(Deserialize)]
+pub struct SiteSettingsForm {
+    // Site
+    site_title: String,
+    site_description: String,
+    site_url: String,
+    site_language: String,
+    // Content
+    posts_per_page: usize,
+    excerpt_length: usize,
+    #[serde(default)]
+    auto_excerpt: Option<String>,
+    // Theme
+    theme_name: String,
+    #[serde(default)]
+    theme_primary_color: Option<String>,
+    #[serde(default)]
+    theme_accent_color: Option<String>,
+    #[serde(default)]
+    theme_background_color: Option<String>,
+    #[serde(default)]
+    theme_text_color: Option<String>,
+    // Homepage
+    #[serde(default)]
+    homepage_show_hero: Option<String>,
+    homepage_hero_layout: String,
+    homepage_hero_height: String,
+    homepage_hero_text_align: String,
+    #[serde(default)]
+    homepage_show_posts: Option<String>,
+    homepage_posts_layout: String,
+    homepage_posts_columns: u8,
+    #[serde(default)]
+    homepage_show_pages: Option<String>,
+    homepage_pages_layout: String,
+}
+
+pub async fn save_settings(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Form(form): Form<SiteSettingsForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    // Get current config and update it
+    let current = state.config();
+
+    let new_config = crate::Config {
+        site: crate::config::SiteConfig {
+            title: form.site_title,
+            description: form.site_description,
+            url: form.site_url,
+            language: form.site_language,
+        },
+        server: current.server.clone(),
+        database: current.database.clone(),
+        content: crate::config::ContentConfig {
+            posts_per_page: form.posts_per_page.clamp(1, 100),
+            excerpt_length: form.excerpt_length.clamp(1, 10000),
+            auto_excerpt: form.auto_excerpt.is_some(),
+        },
+        media: current.media.clone(),
+        theme: crate::config::ThemeConfig {
+            name: form.theme_name,
+            custom: crate::config::CustomThemeOptions {
+                primary_color: form.theme_primary_color.filter(|s| !s.is_empty()),
+                accent_color: form.theme_accent_color.filter(|s| !s.is_empty()),
+                background_color: form.theme_background_color.filter(|s| !s.is_empty()),
+                text_color: form.theme_text_color.filter(|s| !s.is_empty()),
+                ..current.theme.custom.clone()
+            },
+        },
+        auth: current.auth.clone(),
+        homepage: crate::config::HomepageConfig {
+            show_hero: form.homepage_show_hero.is_some(),
+            hero_layout: form.homepage_hero_layout,
+            hero_height: form.homepage_hero_height,
+            hero_text_align: form.homepage_hero_text_align,
+            hero_image: current.homepage.hero_image.clone(),
+            show_posts: form.homepage_show_posts.is_some(),
+            posts_layout: form.homepage_posts_layout,
+            posts_columns: form.homepage_posts_columns,
+            show_pages: form.homepage_show_pages.is_some(),
+            pages_layout: form.homepage_pages_layout,
+            sections_order: current.homepage.sections_order.clone(),
+        },
+    };
+
+    // Drop the read lock before updating
+    drop(current);
+
+    // Update config (writes to file and updates in-memory)
+    if let Err(e) = state.update_config(new_config) {
+        let mut ctx = make_admin_context(&state, &user);
+        ctx.insert("error", &e.to_string());
+        ctx.insert("config", &*state.config());
+        ctx.insert("homepage", &settings::get_homepage_settings(&state.db).unwrap_or_default());
+        ctx.insert("available_themes", &crate::config::ThemeConfig::AVAILABLE_THEMES);
+        let html = state.templates.render("admin/settings/index.html", &ctx)?;
+        return Ok((StatusCode::BAD_REQUEST, Html(html)).into_response());
+    }
 
     Ok(Redirect::to("/admin/settings").into_response())
 }
@@ -843,7 +953,7 @@ pub async fn database_dashboard(
         return Ok(e);
     }
 
-    let db_path = &state.config.database.path;
+    let db_path = &state.config().database.path;
     let stats = database::get_database_stats(&state.db, db_path)?;
     let analysis = database::analyze_database(&state.db, db_path)?;
 

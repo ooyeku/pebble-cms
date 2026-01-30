@@ -1,6 +1,7 @@
+use crate::config::Config;
 use crate::global::{GlobalConfig, PebbleHome, Registry, RegistrySite, SiteStatus};
 use anyhow::{bail, Context, Result};
-use std::fs;
+use std::fs::{self, File};
 use std::process::{Command, Stdio};
 
 pub async fn run(command: super::RegistryCommand) -> Result<()> {
@@ -43,6 +44,10 @@ pub async fn run(command: super::RegistryCommand) -> Result<()> {
         }
         super::RegistryCommand::Path { name } => {
             show_path(&home, &registry, name)?;
+        }
+        super::RegistryCommand::Config { name, command } => {
+            site_config(&home, &global_config, &mut registry, &name, command).await?;
+            registry.save(&home.registry_path)?;
         }
     }
 
@@ -211,18 +216,32 @@ async fn serve_site(
         bail!("Site config not found: {}", config_path.display());
     }
 
-    let port = port.unwrap_or_else(|| {
-        registry
-            .find_available_port(
-                global_config.registry.auto_port_range_start,
-                global_config.registry.auto_port_range_end,
-            )
-            .unwrap_or(global_config.defaults.dev_port)
-    });
+    let port = match port {
+        Some(p) => p,
+        None => {
+            // Read port from site config, fall back to auto-assign if not available
+            Config::load(&config_path)
+                .map(|c| c.server.port)
+                .unwrap_or_else(|_| {
+                    registry
+                        .find_available_port(
+                            global_config.registry.auto_port_range_start,
+                            global_config.registry.auto_port_range_end,
+                        )
+                        .unwrap_or(global_config.defaults.dev_port)
+                })
+        }
+    };
 
     let exe = std::env::current_exe()?;
     let mode = if production { "deploy" } else { "serve" };
     let host = if production { "0.0.0.0" } else { "127.0.0.1" };
+
+    let logs_dir = site_path.join("logs");
+    fs::create_dir_all(&logs_dir)?;
+    let log_file = logs_dir.join(format!("{}.log", name));
+    let stdout_file = File::create(&log_file).context("Failed to create log file")?;
+    let stderr_file = stdout_file.try_clone().context("Failed to clone log file handle")?;
 
     let child = Command::new(&exe)
         .args([
@@ -236,8 +255,8 @@ async fn serve_site(
         ])
         .current_dir(&site_path)
         .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(Stdio::from(stdout_file))
+        .stderr(Stdio::from(stderr_file))
         .spawn()
         .context("Failed to spawn server process")?;
 
@@ -252,6 +271,7 @@ async fn serve_site(
 
     println!("Started '{}' ({}) on http://{}:{}", name, mode, host, port);
     println!("PID: {}", pid);
+    println!("Logs: {}", log_file.display());
 
     Ok(())
 }
@@ -391,5 +411,325 @@ fn kill_process(pid: u32) -> Result<()> {
         .args(["/PID", &pid.to_string(), "/F"])
         .output()
         .context("Failed to kill process")?;
+    Ok(())
+}
+
+async fn site_config(
+    home: &PebbleHome,
+    global_config: &GlobalConfig,
+    registry: &mut Registry,
+    name: &str,
+    command: Option<super::SiteConfigCommand>,
+) -> Result<()> {
+    let site = registry
+        .get_site(name)
+        .context(format!("Site '{}' not found in registry", name))?;
+
+    let was_running = site.status == SiteStatus::Running;
+
+    let site_path = home.site_path(name);
+    let config_path = site_path.join("pebble.toml");
+
+    if !config_path.exists() {
+        bail!("Config file not found: {}", config_path.display());
+    }
+
+    let needs_restart = match &command {
+        None => false,
+        Some(super::SiteConfigCommand::Get { .. }) => false,
+        Some(super::SiteConfigCommand::Set { .. }) => true,
+        Some(super::SiteConfigCommand::Edit) => true,
+    };
+
+    match command {
+        None => {
+            // Show full config
+            show_site_config(&config_path)?;
+        }
+        Some(super::SiteConfigCommand::Get { key }) => {
+            get_site_config_value(&config_path, &key)?;
+        }
+        Some(super::SiteConfigCommand::Set { key, value }) => {
+            set_site_config_value(&config_path, &key, &value)?;
+        }
+        Some(super::SiteConfigCommand::Edit) => {
+            edit_site_config(&config_path)?;
+        }
+    }
+
+    // Restart site if it was running and config was modified
+    if needs_restart && was_running {
+        println!("Restarting site to apply changes...");
+        stop_site(registry, name)?;
+        // Use None for port to let it read from the updated config
+        serve_site(home, global_config, registry, name, None, false).await?;
+    }
+
+    Ok(())
+}
+
+fn show_site_config(config_path: &std::path::Path) -> Result<()> {
+    let config = Config::load(config_path)?;
+
+    println!("# Site");
+    println!("{:<30}  {}", "site.title", config.site.title);
+    println!("{:<30}  {}", "site.description", config.site.description);
+    println!("{:<30}  {}", "site.url", config.site.url);
+    println!("{:<30}  {}", "site.language", config.site.language);
+    println!();
+
+    println!("# Server");
+    println!("{:<30}  {}", "server.host", config.server.host);
+    println!("{:<30}  {}", "server.port", config.server.port);
+    println!();
+
+    println!("# Content");
+    println!(
+        "{:<30}  {}",
+        "content.posts_per_page", config.content.posts_per_page
+    );
+    println!(
+        "{:<30}  {}",
+        "content.excerpt_length", config.content.excerpt_length
+    );
+    println!(
+        "{:<30}  {}",
+        "content.auto_excerpt", config.content.auto_excerpt
+    );
+    println!();
+
+    println!("# Theme");
+    println!("{:<30}  {}", "theme.name", config.theme.name);
+    if let Some(ref v) = config.theme.custom.primary_color {
+        println!("{:<30}  {}", "theme.custom.primary_color", v);
+    }
+    if let Some(ref v) = config.theme.custom.accent_color {
+        println!("{:<30}  {}", "theme.custom.accent_color", v);
+    }
+    if let Some(ref v) = config.theme.custom.background_color {
+        println!("{:<30}  {}", "theme.custom.background_color", v);
+    }
+    if let Some(ref v) = config.theme.custom.text_color {
+        println!("{:<30}  {}", "theme.custom.text_color", v);
+    }
+    if let Some(ref v) = config.theme.custom.font_family {
+        println!("{:<30}  {}", "theme.custom.font_family", v);
+    }
+    println!();
+
+    println!("# Homepage");
+    println!("{:<30}  {}", "homepage.show_hero", config.homepage.show_hero);
+    println!(
+        "{:<30}  {}",
+        "homepage.hero_layout", config.homepage.hero_layout
+    );
+    println!(
+        "{:<30}  {}",
+        "homepage.show_posts", config.homepage.show_posts
+    );
+    println!(
+        "{:<30}  {}",
+        "homepage.posts_layout", config.homepage.posts_layout
+    );
+    println!(
+        "{:<30}  {}",
+        "homepage.show_pages", config.homepage.show_pages
+    );
+
+    Ok(())
+}
+
+fn get_site_config_value(config_path: &std::path::Path, key: &str) -> Result<()> {
+    let config = Config::load(config_path)?;
+    let value = get_config_value(&config, key)?;
+    println!("{}", value);
+    Ok(())
+}
+
+fn get_config_value(config: &Config, key: &str) -> Result<String> {
+    let parts: Vec<&str> = key.split('.').collect();
+    match parts.as_slice() {
+        // Site
+        ["site", "title"] => Ok(config.site.title.clone()),
+        ["site", "description"] => Ok(config.site.description.clone()),
+        ["site", "url"] => Ok(config.site.url.clone()),
+        ["site", "language"] => Ok(config.site.language.clone()),
+        // Server
+        ["server", "host"] => Ok(config.server.host.clone()),
+        ["server", "port"] => Ok(config.server.port.to_string()),
+        // Content
+        ["content", "posts_per_page"] => Ok(config.content.posts_per_page.to_string()),
+        ["content", "excerpt_length"] => Ok(config.content.excerpt_length.to_string()),
+        ["content", "auto_excerpt"] => Ok(config.content.auto_excerpt.to_string()),
+        // Theme
+        ["theme", "name"] => Ok(config.theme.name.clone()),
+        ["theme", "custom", "primary_color"] => Ok(config
+            .theme
+            .custom
+            .primary_color
+            .clone()
+            .unwrap_or_default()),
+        ["theme", "custom", "accent_color"] => Ok(config
+            .theme
+            .custom
+            .accent_color
+            .clone()
+            .unwrap_or_default()),
+        ["theme", "custom", "background_color"] => Ok(config
+            .theme
+            .custom
+            .background_color
+            .clone()
+            .unwrap_or_default()),
+        ["theme", "custom", "text_color"] => {
+            Ok(config.theme.custom.text_color.clone().unwrap_or_default())
+        }
+        ["theme", "custom", "font_family"] => {
+            Ok(config.theme.custom.font_family.clone().unwrap_or_default())
+        }
+        // Homepage
+        ["homepage", "show_hero"] => Ok(config.homepage.show_hero.to_string()),
+        ["homepage", "hero_layout"] => Ok(config.homepage.hero_layout.clone()),
+        ["homepage", "hero_height"] => Ok(config.homepage.hero_height.clone()),
+        ["homepage", "show_posts"] => Ok(config.homepage.show_posts.to_string()),
+        ["homepage", "posts_layout"] => Ok(config.homepage.posts_layout.clone()),
+        ["homepage", "posts_columns"] => Ok(config.homepage.posts_columns.to_string()),
+        ["homepage", "show_pages"] => Ok(config.homepage.show_pages.to_string()),
+        ["homepage", "pages_layout"] => Ok(config.homepage.pages_layout.clone()),
+        // Auth
+        ["auth", "session_lifetime"] => Ok(config.auth.session_lifetime.clone()),
+        _ => bail!("Unknown config key: {}", key),
+    }
+}
+
+fn set_site_config_value(config_path: &std::path::Path, key: &str, value: &str) -> Result<()> {
+    let content = fs::read_to_string(config_path)?;
+    let mut doc = content
+        .parse::<toml_edit::DocumentMut>()
+        .context("Failed to parse config file")?;
+
+    let parts: Vec<&str> = key.split('.').collect();
+    match parts.as_slice() {
+        // Site
+        ["site", "title"] => doc["site"]["title"] = toml_edit::value(value),
+        ["site", "description"] => doc["site"]["description"] = toml_edit::value(value),
+        ["site", "url"] => doc["site"]["url"] = toml_edit::value(value),
+        ["site", "language"] => doc["site"]["language"] = toml_edit::value(value),
+        // Server
+        ["server", "host"] => doc["server"]["host"] = toml_edit::value(value),
+        ["server", "port"] => {
+            let port: i64 = value.parse().context("Invalid port number")?;
+            doc["server"]["port"] = toml_edit::value(port);
+        }
+        // Content
+        ["content", "posts_per_page"] => {
+            let n: i64 = value.parse().context("Invalid number")?;
+            doc["content"]["posts_per_page"] = toml_edit::value(n);
+        }
+        ["content", "excerpt_length"] => {
+            let n: i64 = value.parse().context("Invalid number")?;
+            doc["content"]["excerpt_length"] = toml_edit::value(n);
+        }
+        ["content", "auto_excerpt"] => {
+            let b: bool = value.parse().context("Invalid boolean (use true/false)")?;
+            doc["content"]["auto_excerpt"] = toml_edit::value(b);
+        }
+        // Theme
+        ["theme", "name"] => {
+            if !crate::config::ThemeConfig::is_valid_theme(value) {
+                bail!(
+                    "Invalid theme '{}'. Available: {}",
+                    value,
+                    crate::config::ThemeConfig::AVAILABLE_THEMES.join(", ")
+                );
+            }
+            doc["theme"]["name"] = toml_edit::value(value);
+        }
+        ["theme", "custom", field] => {
+            if !doc.contains_key("theme") {
+                doc["theme"] = toml_edit::Item::Table(toml_edit::Table::new());
+            }
+            if !doc["theme"].as_table().map_or(false, |t| t.contains_key("custom")) {
+                doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
+            }
+            doc["theme"]["custom"][*field] = toml_edit::value(value);
+        }
+        // Homepage
+        ["homepage", "show_hero"] => {
+            let b: bool = value.parse().context("Invalid boolean (use true/false)")?;
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["show_hero"] = toml_edit::value(b);
+        }
+        ["homepage", "hero_layout"] => {
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["hero_layout"] = toml_edit::value(value);
+        }
+        ["homepage", "hero_height"] => {
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["hero_height"] = toml_edit::value(value);
+        }
+        ["homepage", "show_posts"] => {
+            let b: bool = value.parse().context("Invalid boolean (use true/false)")?;
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["show_posts"] = toml_edit::value(b);
+        }
+        ["homepage", "posts_layout"] => {
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["posts_layout"] = toml_edit::value(value);
+        }
+        ["homepage", "posts_columns"] => {
+            let n: i64 = value.parse().context("Invalid number")?;
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["posts_columns"] = toml_edit::value(n);
+        }
+        ["homepage", "show_pages"] => {
+            let b: bool = value.parse().context("Invalid boolean (use true/false)")?;
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["show_pages"] = toml_edit::value(b);
+        }
+        ["homepage", "pages_layout"] => {
+            ensure_homepage_table(&mut doc);
+            doc["homepage"]["pages_layout"] = toml_edit::value(value);
+        }
+        // Auth
+        ["auth", "session_lifetime"] => {
+            doc["auth"]["session_lifetime"] = toml_edit::value(value);
+        }
+        _ => bail!("Unknown or read-only config key: {}", key),
+    }
+
+    fs::write(config_path, doc.to_string())?;
+    println!("Set {} = {}", key, value);
+    Ok(())
+}
+
+fn ensure_homepage_table(doc: &mut toml_edit::DocumentMut) {
+    if !doc.contains_key("homepage") {
+        doc["homepage"] = toml_edit::Item::Table(toml_edit::Table::new());
+    }
+}
+
+fn edit_site_config(config_path: &std::path::Path) -> Result<()> {
+    let editor = std::env::var("EDITOR").unwrap_or_else(|_| {
+        if cfg!(target_os = "windows") {
+            "notepad".to_string()
+        } else {
+            "vi".to_string()
+        }
+    });
+
+    let status = Command::new(&editor)
+        .arg(config_path)
+        .status()
+        .with_context(|| format!("Failed to open editor: {}", editor))?;
+
+    if !status.success() {
+        bail!("Editor exited with error");
+    }
+
+    // Validate the config after editing
+    Config::load(config_path).context("Config validation failed after editing")?;
+    println!("Config saved and validated successfully");
+
     Ok(())
 }

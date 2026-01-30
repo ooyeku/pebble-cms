@@ -11,15 +11,16 @@ use std::sync::Arc;
 use tera::Context;
 
 fn make_context(state: &AppState, user: &Option<User>) -> Context {
+    let config = state.config();
     let mut ctx = Context::new();
-    ctx.insert("site", &state.config.site);
-    ctx.insert("theme", &state.config.theme);
+    ctx.insert("site", &config.site);
+    ctx.insert("theme", &config.theme);
     ctx.insert("user", user);
     ctx.insert("production_mode", &state.production_mode);
-    if state.config.theme.custom.has_customizations() {
+    if config.theme.custom.has_customizations() {
         ctx.insert(
             "theme_custom_css",
-            &state.config.theme.custom.to_css_variables(),
+            &config.theme.custom.to_css_variables(),
         );
     }
     ctx
@@ -46,10 +47,11 @@ pub async fn index(
     OptionalUser(user): OptionalUser,
 ) -> AppResult<Html<String>> {
     let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
+    let config = state.config();
     let posts = content::list_published_content(
         &state.db,
         ContentType::Post,
-        state.config.content.posts_per_page,
+        config.content.posts_per_page,
         0,
     )?;
     let pages = content::list_published_content(&state.db, ContentType::Page, 100, 0)?;
@@ -58,7 +60,7 @@ pub async fn index(
     ctx.insert("posts", &posts);
     ctx.insert("pages", &pages);
     ctx.insert("homepage", &homepage_settings);
-    ctx.insert("homepage_config", &state.config.homepage);
+    ctx.insert("homepage_config", &config.homepage);
 
     let html = state.templates.render("public/index.html", &ctx)?;
     Ok(Html(html))
@@ -69,7 +71,7 @@ pub async fn posts(
     OptionalUser(user): OptionalUser,
     Query(pagination): Query<Pagination>,
 ) -> AppResult<Html<String>> {
-    let per_page = state.config.content.posts_per_page.max(1);
+    let per_page = state.config().content.posts_per_page.max(1);
     let page = clamp_page(pagination.page);
     let offset = page.saturating_sub(1).saturating_mul(per_page);
     let posts = content::list_published_content(&state.db, ContentType::Post, per_page, offset)?;
@@ -253,7 +255,8 @@ pub async fn search(
 
 pub async fn rss_feed(State(state): State<Arc<AppState>>) -> AppResult<Response> {
     let posts = content::list_published_content(&state.db, ContentType::Post, 20, 0)?;
-    let site = &state.config.site;
+    let config = state.config();
+    let site = &config.site;
 
     let mut items = String::new();
     for post in posts {
@@ -355,7 +358,8 @@ pub async fn serve_js(
 
 pub async fn json_feed(State(state): State<Arc<AppState>>) -> AppResult<Response> {
     let posts = content::list_published_content(&state.db, ContentType::Post, 20, 0)?;
-    let site = &state.config.site;
+    let config = state.config();
+    let site = &config.site;
 
     let items: Vec<serde_json::Value> = posts
         .iter()
@@ -394,7 +398,8 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
     let posts = content::list_published_content(&state.db, ContentType::Post, 1000, 0)?;
     let pages = content::list_published_content(&state.db, ContentType::Page, 100, 0)?;
     let tags_list = tags::list_tags_with_counts(&state.db)?;
-    let site = &state.config.site;
+    let config = state.config();
+    let site = &config.site;
 
     let mut urls = String::new();
 
