@@ -5,7 +5,7 @@ use anyhow::{bail, Result};
 use std::path::Path;
 use uuid::Uuid;
 
-pub const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
+pub const MAX_FILE_SIZE: usize = 50 * 1024 * 1024;
 
 pub const ALLOWED_MIME_TYPES: &[&str] = &[
     "image/jpeg",

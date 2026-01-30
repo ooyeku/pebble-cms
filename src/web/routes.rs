@@ -52,7 +52,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/media", get(handlers::admin::media))
         .route(
             "/admin/media",
-            post(handlers::admin::upload_media).layer(DefaultBodyLimit::max(10 * 1024 * 1024)),
+            post(handlers::admin::upload_media).layer(DefaultBodyLimit::max(100 * 1024 * 1024)),
         )
         .route("/admin/media/:id", delete(handlers::admin::delete_media))
         .route("/admin/tags", get(handlers::admin::tags))

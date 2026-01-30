@@ -31,6 +31,7 @@ impl AppState {
         templates.register_filter("truncate_str", truncate_str_filter);
         templates.register_filter("str_slice", str_slice_filter);
         templates.register_filter("strip_md", strip_markdown_filter);
+        templates.register_filter("filesizeformat", filesizeformat_filter);
         templates.add_raw_templates(vec![
             (
                 "css/bundle.css",
@@ -402,4 +403,29 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
     }
 
     Ok(Value::String(result.trim().to_string()))
+}
+
+fn filesizeformat_filter(value: &Value, _args: &HashMap<String, Value>) -> tera::Result<Value> {
+    let bytes = value
+        .as_i64()
+        .or_else(|| value.as_u64().map(|v| v as i64))
+        .or_else(|| value.as_f64().map(|v| v as i64))
+        .ok_or_else(|| tera::Error::msg("filesizeformat requires a number"))?;
+
+    let units = ["B", "KB", "MB", "GB", "TB"];
+    let mut size = bytes as f64;
+    let mut unit_idx = 0;
+
+    while size >= 1024.0 && unit_idx < units.len() - 1 {
+        size /= 1024.0;
+        unit_idx += 1;
+    }
+
+    let formatted = if unit_idx == 0 {
+        format!("{} {}", bytes, units[unit_idx])
+    } else {
+        format!("{:.1} {}", size, units[unit_idx])
+    };
+
+    Ok(Value::String(formatted))
 }
