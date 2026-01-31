@@ -613,7 +613,7 @@ session_lifetime = "7d"
 
         #[test]
         fn test_max_file_size() {
-            assert_eq!(MAX_FILE_SIZE, 10 * 1024 * 1024); // 10 MB
+            assert_eq!(MAX_FILE_SIZE, 50 * 1024 * 1024); // 50 MB
         }
 
         #[test]
