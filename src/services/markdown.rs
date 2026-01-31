@@ -517,10 +517,24 @@ impl MarkdownRenderer {
         let theme = &self.theme_set.themes["base16-ocean.dark"];
 
         match highlighted_html_for_string(code, &self.syntax_set, syntax, theme) {
-            Ok(html) => format!(
-                r#"<pre class="code-block"><code class="language-{}">{}</code></pre>"#,
-                lang, html
-            ),
+            Ok(html) => {
+                // syntect outputs <pre style="..."><span>...</span></pre>
+                // We need to strip the outer <pre> and just use the inner content
+                let inner = html
+                    .trim()
+                    .strip_prefix("<pre style=\"background-color:#2b303b;\">\n")
+                    .and_then(|s| s.strip_suffix("\n</pre>"))
+                    .or_else(|| {
+                        html.trim()
+                            .strip_prefix("<pre style=\"background-color:#2b303b;\">")
+                            .and_then(|s| s.strip_suffix("</pre>"))
+                    })
+                    .unwrap_or(&html);
+                format!(
+                    r#"<pre class="code-block"><code class="language-{}">{}</code></pre>"#,
+                    lang, inner
+                )
+            }
             Err(_) => format!(
                 r#"<pre class="code-block"><code class="language-{}">{}</code></pre>"#,
                 lang,

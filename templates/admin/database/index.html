@@ -160,11 +160,21 @@ content %}
     }
     .action-btn.primary {
         background: var(--color-primary);
-        color: white;
+        color: var(--color-primary-text, #fff);
         border-color: var(--color-primary);
     }
     .action-btn.primary:hover {
         opacity: 0.9;
+    }
+    /* Ensure Vacuum button visibility across all themes */
+    .action-btn.vacuum-btn {
+        background: #7c3aed;
+        color: #fff;
+        border-color: #7c3aed;
+    }
+    .action-btn.vacuum-btn:hover {
+        background: #6d28d9;
+        border-color: #6d28d9;
     }
     .action-btn svg {
         width: 16px;
@@ -251,7 +261,7 @@ content %}
             <input type="hidden" name="action" value="vacuum" />
             <button
                 type="submit"
-                class="action-btn primary"
+                class="action-btn vacuum-btn"
                 title="Rebuild database to reclaim space"
             >
                 <svg

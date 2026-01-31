@@ -419,12 +419,31 @@ h6 {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: var(--space-5);
+    padding: var(--space-4);
     overflow-x: auto;
     font-family: var(--font-mono);
     font-size: var(--font-size-sm);
     line-height: 1.6;
-    margin: var(--space-6) 0;
+    margin: var(--space-4) 0;
+}
+
+/* Handle nested pre elements from syntect syntax highlighting */
+.content pre pre {
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
 }
 
 .content code {

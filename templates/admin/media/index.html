@@ -1,202 +1,488 @@
-{% extends "admin/base.html" %}
-
-{% block title %}Media{% endblock %}
-
-{% block content %}
+{% extends "admin/base.html" %} {% block title %}Media{% endblock %} {% block
+content %}
 <style>
-.media-library-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
+    .media-library-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
 
-.media-card {
-    position: relative;
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    aspect-ratio: 1;
-}
+    .media-card {
+        position: relative;
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+        aspect-ratio: 1;
+    }
 
-.media-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
+    .media-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
 
-.media-card-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    cursor: pointer;
-}
+    .media-card-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        cursor: pointer;
+    }
 
-.media-card-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-tertiary);
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    padding: 1rem;
-    text-align: center;
-    cursor: pointer;
-}
+    .media-card-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        padding: 1rem;
+        text-align: center;
+        cursor: pointer;
+    }
 
-.media-card-placeholder svg {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 0.5rem;
-    opacity: 0.5;
-}
+    .media-card-placeholder svg {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 0.5rem;
+        opacity: 0.5;
+    }
 
-.media-card-overlay {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 40%, transparent 70%);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    padding: 0.75rem;
-    pointer-events: none;
-}
+    .media-card-overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.95) 0%,
+            rgba(0, 0, 0, 0.7) 40%,
+            transparent 70%
+        );
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 0.75rem;
+        pointer-events: none;
+    }
 
-.media-card:hover .media-card-overlay {
-    opacity: 1;
-    pointer-events: auto;
-}
+    .media-card:hover .media-card-overlay {
+        opacity: 1;
+        pointer-events: auto;
+    }
 
-.media-card-meta { color: #fff; margin-bottom: 0.5rem; }
-.media-card-name { font-weight: 600; font-size: 0.75rem; margin-bottom: 0.25rem; word-break: break-word; line-height: 1.3; color: #fff; }
-.media-card-details { font-size: 0.65rem; color: rgba(255,255,255,0.7); display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.media-card-actions { display: flex; gap: 0.25rem; }
-.media-card-actions .btn { flex: 1; font-size: 0.65rem; padding: 0.3rem 0.4rem; pointer-events: auto; }
-.media-card-actions .btn-preview { background: var(--color-primary); color: #fff; border: none; }
+    .media-card-meta {
+        color: #fff;
+        margin-bottom: 0.5rem;
+    }
+    .media-card-name {
+        font-weight: 600;
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+        word-break: break-word;
+        line-height: 1.3;
+        color: #fff;
+    }
+    .media-card-details {
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .media-card-actions {
+        display: flex;
+        gap: 0.25rem;
+    }
+    .media-card-actions .btn {
+        flex: 1;
+        font-size: 0.65rem;
+        padding: 0.3rem 0.4rem;
+        pointer-events: auto;
+    }
+    .media-card-actions .btn-preview {
+        background: #7c3aed;
+        color: #fff;
+        border: none;
+    }
+    .media-card-actions .btn-preview:hover {
+        background: #6d28d9;
+    }
+    .media-card-actions .btn-secondary {
+        background: #374151 !important;
+        color: #fff !important;
+        border: none !important;
+    }
+    .media-card-actions .btn-secondary:hover {
+        background: #4b5563 !important;
+    }
 
-.media-stats { display: flex; gap: 2rem; margin-bottom: 1rem; }
-.media-stat { display: flex; align-items: baseline; gap: 0.5rem; }
-.media-stat-value { font-size: 1.25rem; font-weight: 700; color: var(--color-primary); }
-.media-stat-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+    .media-stats {
+        display: flex;
+        gap: 2rem;
+        margin-bottom: 1rem;
+    }
+    .media-stat {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+    }
+    .media-stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+    .media-stat-label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
 
-.upload-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border: 2px dashed var(--border);
-    border-radius: var(--radius);
-    padding: 2rem;
-    text-align: center;
-    cursor: pointer;
-    margin-bottom: 1rem;
-    background: var(--bg-secondary);
-}
-.upload-zone:hover, .upload-zone.dragover { border-color: var(--color-primary); background: var(--bg-tertiary); }
-.upload-zone-icon { width: 40px; height: 40px; margin-bottom: 0.75rem; color: var(--text-muted); }
-.upload-zone-text { color: var(--text-secondary); margin-bottom: 0.25rem; font-size: 0.9rem; }
-.upload-zone-hint { font-size: 0.75rem; color: var(--text-muted); }
-.upload-zone input[type="file"] { display: none; }
+    .upload-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        margin-bottom: 1rem;
+        background: var(--bg-secondary);
+    }
+    .upload-zone:hover,
+    .upload-zone.dragover {
+        border-color: var(--color-primary);
+        background: var(--bg-tertiary);
+    }
+    .upload-zone-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 0.75rem;
+        color: var(--text-muted);
+    }
+    .upload-zone-text {
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+    }
+    .upload-zone-hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+    .upload-zone input[type="file"] {
+        display: none;
+    }
 
-.media-toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
-.media-toolbar .search-input {
-    flex: 1; min-width: 150px; padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border); border-radius: var(--radius);
-    background: var(--bg-secondary); color: var(--text); font-size: 0.875rem;
-}
-.media-toolbar .search-input::placeholder { color: var(--text-muted); }
-.media-toolbar .search-input:focus { outline: none; border-color: var(--color-primary); }
+    .media-toolbar {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .media-toolbar .search-input {
+        flex: 1;
+        min-width: 150px;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-secondary);
+        color: var(--text);
+        font-size: 0.875rem;
+    }
+    .media-toolbar .search-input::placeholder {
+        color: var(--text-muted);
+    }
+    .media-toolbar .search-input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+    }
 
-.view-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.view-toggle button { padding: 0.5rem 0.6rem; background: var(--bg-secondary); border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; }
-.view-toggle button:hover { background: var(--bg-tertiary); color: var(--text); }
-.view-toggle button.active { background: var(--color-primary); color: #fff; }
-.view-toggle button + button { border-left: 1px solid var(--border); }
+    .view-toggle {
+        display: flex;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+    .view-toggle button {
+        padding: 0.5rem 0.6rem;
+        background: var(--bg-secondary);
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+    .view-toggle button:hover {
+        background: var(--bg-tertiary);
+        color: var(--text);
+    }
+    .view-toggle button.active {
+        background: var(--color-primary);
+        color: #fff;
+    }
+    .view-toggle button + button {
+        border-left: 1px solid var(--border);
+    }
 
-.media-list { display: none; }
-.media-list.active { display: block; }
-.media-library-grid.hidden { display: none; }
+    .media-list {
+        display: none;
+    }
+    .media-list.active {
+        display: block;
+    }
+    .media-library-grid.hidden {
+        display: none;
+    }
 
-.media-list-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
-.media-list-item:first-child { border-top: 1px solid var(--border); }
-.media-list-item:hover { background: var(--bg-secondary); }
-.media-list-thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; background: var(--bg-tertiary); cursor: pointer; }
-.media-list-info { flex: 1; min-width: 0; }
-.media-list-name { font-weight: 500; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-.media-list-meta { font-size: 0.7rem; color: var(--text-muted); }
-.media-list-actions { display: flex; gap: 0.4rem; flex-shrink: 0; }
+    .media-list-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .media-list-item:first-child {
+        border-top: 1px solid var(--border);
+    }
+    .media-list-item:hover {
+        background: var(--bg-secondary);
+    }
+    .media-list-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-sm);
+        object-fit: cover;
+        flex-shrink: 0;
+        background: var(--bg-tertiary);
+        cursor: pointer;
+    }
+    .media-list-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .media-list-name {
+        font-weight: 500;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--text);
+    }
+    .media-list-meta {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+    .media-list-actions {
+        display: flex;
+        gap: 0.4rem;
+        flex-shrink: 0;
+    }
+    .media-list-actions .btn-secondary,
+    .media-list-actions .btn-secondary.btn-sm {
+        background: #374151 !important;
+        color: #fff !important;
+        border: none !important;
+    }
+    .media-list-actions .btn-secondary:hover,
+    .media-list-actions .btn-secondary.btn-sm:hover {
+        background: #4b5563 !important;
+    }
 
-/* Preview Modal */
-.preview-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: none; flex-direction: column; }
-.preview-modal.active { display: flex; }
+    /* Preview Modal */
+    .preview-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 9999;
+        display: none;
+        flex-direction: column;
+    }
+    .preview-modal.active {
+        display: flex;
+    }
 
-.preview-header {
-    display: flex; align-items: center; padding: 0.75rem 1rem;
-    background: #1a1a1a; border-bottom: 1px solid #333; gap: 1rem; flex-wrap: wrap;
-}
-.preview-title { color: #fff; font-weight: 600; font-size: 0.9rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 100px; }
-.preview-meta { color: #888; font-size: 0.75rem; }
-.preview-buttons { display: flex; gap: 0.5rem; align-items: center; }
-.preview-buttons a, .preview-buttons button {
-    background: #333; border: none; color: #fff; padding: 0.4rem 0.75rem;
-    font-size: 0.75rem; border-radius: 4px; cursor: pointer; text-decoration: none;
-}
-.preview-buttons a:hover, .preview-buttons button:hover { background: #444; }
-.preview-close { background: transparent !important; font-size: 1.5rem; padding: 0.25rem 0.5rem !important; opacity: 0.7; }
-.preview-close:hover { opacity: 1; background: transparent !important; }
+    .preview-header {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: #1a1a1a;
+        border-bottom: 1px solid #333;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .preview-title {
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.9rem;
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 100px;
+    }
+    .preview-meta {
+        color: #888;
+        font-size: 0.75rem;
+    }
+    .preview-buttons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .preview-buttons a,
+    .preview-buttons button {
+        background: #333;
+        border: none;
+        color: #fff;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .preview-buttons a:hover,
+    .preview-buttons button:hover {
+        background: #444;
+    }
+    .preview-close {
+        background: transparent !important;
+        font-size: 1.5rem;
+        padding: 0.25rem 0.5rem !important;
+        opacity: 0.7;
+    }
+    .preview-close:hover {
+        opacity: 1;
+        background: transparent !important;
+    }
 
-.preview-body { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: 1rem; }
-.preview-content { max-width: 100%; max-height: 100%; display: flex; align-items: center; justify-content: center; }
-.preview-content img { max-width: 95vw; max-height: calc(100vh - 100px); object-fit: contain; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    .preview-body {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+        padding: 1rem;
+    }
+    .preview-content {
+        max-width: 100%;
+        max-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .preview-content img {
+        max-width: 95vw;
+        max-height: calc(100vh - 100px);
+        object-fit: contain;
+        border-radius: 4px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
 
-.preview-nav {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    background: rgba(255,255,255,0.1); border: none; color: #fff;
-    width: 48px; height: 48px; border-radius: 50%; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-}
-.preview-nav:hover { background: rgba(255,255,255,0.2); }
-.preview-nav.prev { left: 1rem; }
-.preview-nav.next { right: 1rem; }
-.preview-nav svg { width: 24px; height: 24px; }
+    .preview-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: #fff;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .preview-nav:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    .preview-nav.prev {
+        left: 1rem;
+    }
+    .preview-nav.next {
+        right: 1rem;
+    }
+    .preview-nav svg {
+        width: 24px;
+        height: 24px;
+    }
 
-/* PDF Preview Card */
-.pdf-preview-card {
-    background: #2a2a2a;
-    border-radius: 12px;
-    padding: 3rem;
-    text-align: center;
-    max-width: 400px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-}
-.pdf-preview-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 1.5rem;
-    background: #dc2626;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.pdf-preview-icon svg { width: 40px; height: 40px; color: #fff; }
-.pdf-preview-name { color: #fff; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; word-break: break-word; }
-.pdf-preview-size { color: #888; font-size: 0.85rem; margin-bottom: 1.5rem; }
-.pdf-preview-actions { display: flex; flex-direction: column; gap: 0.75rem; }
-.pdf-preview-actions a {
-    display: block; padding: 0.75rem 1.5rem; border-radius: 6px;
-    text-decoration: none; font-weight: 500; font-size: 0.9rem;
-    transition: transform 0.1s ease;
-}
-.pdf-preview-actions a:hover { transform: translateY(-1px); }
-.pdf-preview-actions .primary { background: var(--color-primary); color: #fff; }
-.pdf-preview-actions .secondary { background: #444; color: #fff; }
+    /* PDF Preview Card */
+    .pdf-preview-card {
+        background: #2a2a2a;
+        border-radius: 12px;
+        padding: 3rem;
+        text-align: center;
+        max-width: 400px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .pdf-preview-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+        background: #dc2626;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .pdf-preview-icon svg {
+        width: 40px;
+        height: 40px;
+        color: #fff;
+    }
+    .pdf-preview-name {
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        word-break: break-word;
+    }
+    .pdf-preview-size {
+        color: #888;
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+    }
+    .pdf-preview-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .pdf-preview-actions a {
+        display: block;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: transform 0.1s ease;
+    }
+    .pdf-preview-actions a:hover {
+        transform: translateY(-1px);
+    }
+    .pdf-preview-actions .primary {
+        background: #7c3aed;
+        color: #fff;
+    }
+    .pdf-preview-actions .primary:hover {
+        background: #6d28d9;
+    }
+    .pdf-preview-actions .secondary {
+        background: #444;
+        color: #fff;
+    }
+    .pdf-preview-actions .secondary:hover {
+        background: #555;
+    }
 </style>
 
 <div class="header">
@@ -204,21 +490,46 @@
 </div>
 
 <div class="card">
-    <form method="post" action="/admin/media" enctype="multipart/form-data" id="uploadForm">
+    <form
+        method="post"
+        action="/admin/media"
+        enctype="multipart/form-data"
+        id="uploadForm"
+    >
         <label class="upload-zone" id="uploadZone">
-            <svg class="upload-zone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            <svg
+                class="upload-zone-icon"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
             </svg>
-            <div class="upload-zone-text">Drop files here or click to upload</div>
+            <div class="upload-zone-text">
+                Drop files here or click to upload
+            </div>
             <div class="upload-zone-hint">Images and PDFs up to 50MB each</div>
-            <input type="file" id="files" name="files" multiple accept="image/*,application/pdf">
+            <input
+                type="file"
+                id="files"
+                name="files"
+                multiple
+                accept="image/*,application/pdf"
+            />
         </label>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Upload Files</button>
+        <button type="submit" class="btn btn-primary" style="width: 100%">
+            Upload Files
+        </button>
     </form>
 </div>
 
 {% if media | length > 0 %}
-<div class="card" style="margin-top: 1rem;">
+<div class="card" style="margin-top: 1rem">
     <div class="media-stats">
         <div class="media-stat">
             <span class="media-stat-value">{{ media | length }}</span>
@@ -231,21 +542,74 @@
     </div>
 
     <div class="media-toolbar">
-        <input type="search" class="search-input" id="mediaSearch" placeholder="Search files..." oninput="filterMedia(this.value)">
+        <input
+            type="search"
+            class="search-input"
+            id="mediaSearch"
+            placeholder="Search files..."
+            oninput="filterMedia(this.value)"
+        />
         <div class="view-toggle">
-            <button type="button" class="active" onclick="setView('grid')"><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V7zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"/></svg></button>
-            <button type="button" onclick="setView('list')"><svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg></button>
+            <button type="button" class="active" onclick="setView('grid')">
+                <svg
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    viewBox="0 0 16 16"
+                >
+                    <path
+                        d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V7zM1 12a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"
+                    />
+                </svg>
+            </button>
+            <button type="button" onclick="setView('list')">
+                <svg
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    viewBox="0 0 16 16"
+                >
+                    <path
+                        fill-rule="evenodd"
+                        d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"
+                    />
+                </svg>
+            </button>
         </div>
     </div>
 
     <div class="media-library-grid" id="mediaGrid">
         {% for item in media %}
-        <div class="media-card" data-name="{{ item.original_name | lower }}" data-size="{{ item.size_bytes }}" data-mime="{{ item.mime_type }}" data-url="/media/{{ item.filename }}" data-filename="{{ item.original_name }}" data-sizetext="{{ item.size_bytes | filesizeformat }}">
+        <div
+            class="media-card"
+            data-name="{{ item.original_name | lower }}"
+            data-size="{{ item.size_bytes }}"
+            data-mime="{{ item.mime_type }}"
+            data-url="/media/{{ item.filename }}"
+            data-filename="{{ item.original_name }}"
+            data-sizetext="{{ item.size_bytes | filesizeformat }}"
+        >
             {% if item.mime_type is starting_with("image/") %}
-            <img src="/media/{{ item.filename }}" alt="{{ item.alt_text }}" class="media-card-image" loading="lazy" onclick="openPreview(this.closest('.media-card'))">
+            <img
+                src="/media/{{ item.filename }}"
+                alt="{{ item.alt_text }}"
+                class="media-card-image"
+                loading="lazy"
+                onclick="openPreview(this.closest('.media-card'))"
+            />
             {% else %}
-            <div class="media-card-placeholder" onclick="openPreview(this.closest('.media-card'))">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <div
+                class="media-card-placeholder"
+                onclick="openPreview(this.closest('.media-card'))"
+            >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                </svg>
                 <span>{{ item.original_name | truncate(length=20) }}</span>
             </div>
             {% endif %}
@@ -254,14 +618,35 @@
                     <div class="media-card-name">{{ item.original_name }}</div>
                     <div class="media-card-details">
                         <span>{{ item.size_bytes | filesizeformat }}</span>
-                        <span>{{ item.mime_type | split(pat="/") | last | upper }}</span>
-                        <span>{{ item.created_at | truncate_str(len=10) }}</span>
+                        <span
+                            >{{ item.mime_type | split(pat="/") | last | upper
+                            }}</span
+                        >
+                        <span
+                            >{{ item.created_at | truncate_str(len=10) }}</span
+                        >
                     </div>
                 </div>
                 <div class="media-card-actions">
-                    <button class="btn btn-preview" onclick="openPreview(this.closest('.media-card'))">Preview</button>
-                    <button class="btn btn-secondary" onclick="copyUrl('/media/{{ item.filename }}', this)">Copy</button>
-                    <button class="btn btn-danger" hx-delete="/admin/media/{{ item.id }}" hx-confirm="Delete {{ item.original_name }}?">Delete</button>
+                    <button
+                        class="btn btn-preview"
+                        onclick="openPreview(this.closest('.media-card'))"
+                    >
+                        Preview
+                    </button>
+                    <button
+                        class="btn btn-secondary"
+                        onclick="copyUrl('/media/{{ item.filename }}', this)"
+                    >
+                        Copy
+                    </button>
+                    <button
+                        class="btn btn-danger"
+                        hx-delete="/admin/media/{{ item.id }}"
+                        hx-confirm="Delete {{ item.original_name }}?"
+                    >
+                        Delete
+                    </button>
                 </div>
             </div>
         </div>
@@ -270,22 +655,79 @@
 
     <div class="media-list" id="mediaList">
         {% for item in media %}
-        <div class="media-list-item" data-name="{{ item.original_name | lower }}" data-size="{{ item.size_bytes }}" data-mime="{{ item.mime_type }}" data-url="/media/{{ item.filename }}" data-filename="{{ item.original_name }}" data-sizetext="{{ item.size_bytes | filesizeformat }}">
+        <div
+            class="media-list-item"
+            data-name="{{ item.original_name | lower }}"
+            data-size="{{ item.size_bytes }}"
+            data-mime="{{ item.mime_type }}"
+            data-url="/media/{{ item.filename }}"
+            data-filename="{{ item.original_name }}"
+            data-sizetext="{{ item.size_bytes | filesizeformat }}"
+        >
             {% if item.mime_type is starting_with("image/") %}
-            <img src="/media/{{ item.filename }}" alt="{{ item.alt_text }}" class="media-list-thumb" loading="lazy" onclick="openPreview(this.closest('.media-list-item'))">
+            <img
+                src="/media/{{ item.filename }}"
+                alt="{{ item.alt_text }}"
+                class="media-list-thumb"
+                loading="lazy"
+                onclick="openPreview(this.closest('.media-list-item'))"
+            />
             {% else %}
-            <div class="media-list-thumb" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="openPreview(this.closest('.media-list-item'))">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <div
+                class="media-list-thumb"
+                style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                "
+                onclick="openPreview(this.closest('.media-list-item'))"
+            >
+                <svg
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    style="color: var(--text-muted)"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                </svg>
             </div>
             {% endif %}
             <div class="media-list-info">
                 <div class="media-list-name">{{ item.original_name }}</div>
-                <div class="media-list-meta">{{ item.size_bytes | filesizeformat }} &bull; {{ item.mime_type | split(pat="/") | last | upper }} &bull; {{ item.created_at | truncate_str(len=10) }}</div>
+                <div class="media-list-meta">
+                    {{ item.size_bytes | filesizeformat }} &bull; {{
+                    item.mime_type | split(pat="/") | last | upper }} &bull; {{
+                    item.created_at | truncate_str(len=10) }}
+                </div>
             </div>
             <div class="media-list-actions">
-                <button class="btn btn-primary btn-sm" onclick="openPreview(this.closest('.media-list-item'))">Preview</button>
-                <button class="btn btn-secondary btn-sm" onclick="copyUrl('/media/{{ item.filename }}', this)">Copy</button>
-                <button class="btn btn-danger btn-sm" hx-delete="/admin/media/{{ item.id }}" hx-confirm="Delete {{ item.original_name }}?">Delete</button>
+                <button
+                    class="btn btn-primary btn-sm"
+                    onclick="openPreview(this.closest('.media-list-item'))"
+                >
+                    Preview
+                </button>
+                <button
+                    class="btn btn-secondary btn-sm"
+                    onclick="copyUrl('/media/{{ item.filename }}', this)"
+                >
+                    Copy
+                </button>
+                <button
+                    class="btn btn-danger btn-sm"
+                    hx-delete="/admin/media/{{ item.id }}"
+                    hx-confirm="Delete {{ item.original_name }}?"
+                >
+                    Delete
+                </button>
             </div>
         </div>
         {% endfor %}
@@ -293,7 +735,11 @@
 </div>
 
 <!-- Preview Modal -->
-<div class="preview-modal" id="previewModal" onclick="if(event.target===this)closePreview()">
+<div
+    class="preview-modal"
+    id="previewModal"
+    onclick="if(event.target===this)closePreview()"
+>
     <div class="preview-header">
         <div class="preview-title" id="previewTitle"></div>
         <div class="preview-meta" id="previewMeta"></div>
@@ -301,117 +747,201 @@
             <a id="previewOpen" href="#" target="_blank">Open</a>
             <a id="previewDownload" href="#" download>Download</a>
             <button id="previewCopy">Copy URL</button>
-            <button class="preview-close" onclick="closePreview()">&times;</button>
+            <button class="preview-close" onclick="closePreview()">
+                &times;
+            </button>
         </div>
     </div>
     <div class="preview-body">
-        <button class="preview-nav prev" onclick="navPreview(-1)"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+        <button class="preview-nav prev" onclick="navPreview(-1)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 19l-7-7 7-7"
+                />
+            </svg>
+        </button>
         <div class="preview-content" id="previewContent"></div>
-        <button class="preview-nav next" onclick="navPreview(1)"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        <button class="preview-nav next" onclick="navPreview(1)">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                />
+            </svg>
+        </button>
     </div>
 </div>
 {% endif %}
 
 <script>
-var cards = Array.from(document.querySelectorAll('.media-card'));
-var currentCard = null;
+    var cards = Array.from(document.querySelectorAll(".media-card"));
+    var currentCard = null;
 
-(function() {
-    var zone = document.getElementById('uploadZone');
-    var input = document.getElementById('files');
-    var form = document.getElementById('uploadForm');
-    if (zone) {
-        zone.ondragenter = zone.ondragover = function(e) { e.preventDefault(); zone.classList.add('dragover'); };
-        zone.ondragleave = function(e) { e.preventDefault(); zone.classList.remove('dragover'); };
-        zone.ondrop = function(e) { e.preventDefault(); zone.classList.remove('dragover'); if(e.dataTransfer.files.length) { input.files = e.dataTransfer.files; form.submit(); } };
-    }
-    
-    var total = 0;
-    document.querySelectorAll('[data-size]').forEach(function(el) { total += parseInt(el.dataset.size || 0); });
-    var el = document.getElementById('totalSize');
-    if (el && total > 0) {
-        var k = 1024, s = ['B','KB','MB','GB'], i = Math.floor(Math.log(total)/Math.log(k));
-        el.textContent = (total/Math.pow(k,i)).toFixed(1) + ' ' + s[i];
-    }
-    
-    document.onkeydown = function(e) {
-        if (!document.getElementById('previewModal').classList.contains('active')) return;
-        if (e.key === 'Escape') closePreview();
-        if (e.key === 'ArrowLeft') navPreview(-1);
-        if (e.key === 'ArrowRight') navPreview(1);
-    };
-})();
+    (function () {
+        var zone = document.getElementById("uploadZone");
+        var input = document.getElementById("files");
+        var form = document.getElementById("uploadForm");
+        if (zone) {
+            zone.ondragenter = zone.ondragover = function (e) {
+                e.preventDefault();
+                zone.classList.add("dragover");
+            };
+            zone.ondragleave = function (e) {
+                e.preventDefault();
+                zone.classList.remove("dragover");
+            };
+            zone.ondrop = function (e) {
+                e.preventDefault();
+                zone.classList.remove("dragover");
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    form.submit();
+                }
+            };
+        }
 
-function openPreview(card) {
-    currentCard = card;
-    var name = card.dataset.filename;
-    var mime = card.dataset.mime;
-    var url = card.dataset.url;
-    var size = card.dataset.sizetext;
-    
-    document.getElementById('previewTitle').textContent = name;
-    document.getElementById('previewMeta').textContent = size + ' • ' + mime;
-    document.getElementById('previewOpen').href = url;
-    document.getElementById('previewDownload').href = url;
-    document.getElementById('previewDownload').download = name;
-    document.getElementById('previewCopy').onclick = function() {
+        var total = 0;
+        document.querySelectorAll("[data-size]").forEach(function (el) {
+            total += parseInt(el.dataset.size || 0);
+        });
+        var el = document.getElementById("totalSize");
+        if (el && total > 0) {
+            var k = 1024,
+                s = ["B", "KB", "MB", "GB"],
+                i = Math.floor(Math.log(total) / Math.log(k));
+            el.textContent = (total / Math.pow(k, i)).toFixed(1) + " " + s[i];
+        }
+
+        document.onkeydown = function (e) {
+            if (
+                !document
+                    .getElementById("previewModal")
+                    .classList.contains("active")
+            )
+                return;
+            if (e.key === "Escape") closePreview();
+            if (e.key === "ArrowLeft") navPreview(-1);
+            if (e.key === "ArrowRight") navPreview(1);
+        };
+    })();
+
+    function openPreview(card) {
+        currentCard = card;
+        var name = card.dataset.filename;
+        var mime = card.dataset.mime;
+        var url = card.dataset.url;
+        var size = card.dataset.sizetext;
+
+        document.getElementById("previewTitle").textContent = name;
+        document.getElementById("previewMeta").textContent =
+            size + " • " + mime;
+        document.getElementById("previewOpen").href = url;
+        document.getElementById("previewDownload").href = url;
+        document.getElementById("previewDownload").download = name;
+        document.getElementById("previewCopy").onclick = function () {
+            navigator.clipboard.writeText(location.origin + url);
+            this.textContent = "Copied!";
+            var b = this;
+            setTimeout(function () {
+                b.textContent = "Copy URL";
+            }, 1500);
+        };
+
+        var content = document.getElementById("previewContent");
+
+        if (mime.indexOf("image/") === 0) {
+            content.innerHTML = '<img src="' + url + '" alt="' + name + '">';
+        } else if (mime === "application/pdf") {
+            content.innerHTML =
+                '<div class="pdf-preview-card">' +
+                '<div class="pdf-preview-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>' +
+                '<div class="pdf-preview-name">' +
+                name +
+                "</div>" +
+                '<div class="pdf-preview-size">' +
+                size +
+                "</div>" +
+                '<div class="pdf-preview-actions">' +
+                '<a href="' +
+                url +
+                '" target="_blank" class="primary">Open PDF</a>' +
+                '<a href="' +
+                url +
+                '" download="' +
+                name +
+                '" class="secondary">Download</a>' +
+                "</div></div>";
+        } else {
+            content.innerHTML =
+                '<div class="pdf-preview-card"><div class="pdf-preview-icon" style="background:#666;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="pdf-preview-name">' +
+                name +
+                '</div><div class="pdf-preview-size">' +
+                size +
+                " • " +
+                mime +
+                '</div><div class="pdf-preview-actions"><a href="' +
+                url +
+                '" download="' +
+                name +
+                '" class="primary">Download File</a></div></div>';
+        }
+
+        document.getElementById("previewModal").classList.add("active");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closePreview() {
+        document.getElementById("previewModal").classList.remove("active");
+        document.body.style.overflow = "";
+    }
+
+    function navPreview(dir) {
+        if (!currentCard) return;
+        var idx = cards.indexOf(currentCard);
+        var next = idx + dir;
+        if (next >= 0 && next < cards.length) openPreview(cards[next]);
+    }
+
+    function copyUrl(url, btn) {
         navigator.clipboard.writeText(location.origin + url);
-        this.textContent = 'Copied!';
-        var b = this; setTimeout(function() { b.textContent = 'Copy URL'; }, 1500);
-    };
-    
-    var content = document.getElementById('previewContent');
-    
-    if (mime.indexOf('image/') === 0) {
-        content.innerHTML = '<img src="' + url + '" alt="' + name + '">';
-    } else if (mime === 'application/pdf') {
-        content.innerHTML = '<div class="pdf-preview-card">' +
-            '<div class="pdf-preview-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>' +
-            '<div class="pdf-preview-name">' + name + '</div>' +
-            '<div class="pdf-preview-size">' + size + '</div>' +
-            '<div class="pdf-preview-actions">' +
-            '<a href="' + url + '" target="_blank" class="primary">Open PDF</a>' +
-            '<a href="' + url + '" download="' + name + '" class="secondary">Download</a>' +
-            '</div></div>';
-    } else {
-        content.innerHTML = '<div class="pdf-preview-card"><div class="pdf-preview-icon" style="background:#666;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="pdf-preview-name">' + name + '</div><div class="pdf-preview-size">' + size + ' • ' + mime + '</div><div class="pdf-preview-actions"><a href="' + url + '" download="' + name + '" class="primary">Download File</a></div></div>';
+        var t = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(function () {
+            btn.textContent = t;
+        }, 1500);
     }
-    
-    document.getElementById('previewModal').classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
 
-function closePreview() {
-    document.getElementById('previewModal').classList.remove('active');
-    document.body.style.overflow = '';
-}
+    function setView(v) {
+        document
+            .getElementById("mediaGrid")
+            .classList.toggle("hidden", v !== "grid");
+        document
+            .getElementById("mediaList")
+            .classList.toggle("active", v === "list");
+        document
+            .querySelectorAll(".view-toggle button")
+            .forEach(function (b, i) {
+                b.classList.toggle(
+                    "active",
+                    (v === "grid" && i === 0) || (v === "list" && i === 1),
+                );
+            });
+    }
 
-function navPreview(dir) {
-    if (!currentCard) return;
-    var idx = cards.indexOf(currentCard);
-    var next = idx + dir;
-    if (next >= 0 && next < cards.length) openPreview(cards[next]);
-}
-
-function copyUrl(url, btn) {
-    navigator.clipboard.writeText(location.origin + url);
-    var t = btn.textContent; btn.textContent = 'Copied!';
-    setTimeout(function() { btn.textContent = t; }, 1500);
-}
-
-function setView(v) {
-    document.getElementById('mediaGrid').classList.toggle('hidden', v !== 'grid');
-    document.getElementById('mediaList').classList.toggle('active', v === 'list');
-    document.querySelectorAll('.view-toggle button').forEach(function(b, i) {
-        b.classList.toggle('active', (v === 'grid' && i === 0) || (v === 'list' && i === 1));
-    });
-}
-
-function filterMedia(q) {
-    q = q.toLowerCase();
-    document.querySelectorAll('.media-card, .media-list-item').forEach(function(el) {
-        el.style.display = (el.dataset.name || '').includes(q) ? '' : 'none';
-    });
-}
+    function filterMedia(q) {
+        q = q.toLowerCase();
+        document
+            .querySelectorAll(".media-card, .media-list-item")
+            .forEach(function (el) {
+                el.style.display = (el.dataset.name || "").includes(q)
+                    ? ""
+                    : "none";
+            });
+    }
 </script>
 {% endblock %}
