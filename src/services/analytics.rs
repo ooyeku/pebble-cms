@@ -1497,14 +1497,15 @@ pub fn lookup_country(ip: &str) -> Option<String> {
     let first_octet = parts[0];
     let second_octet = parts[1];
 
-    // Check private/local ranges first - no country
+    // Check private/local ranges - return "LO" for local/private IPs
+    // This helps with testing and identifies local traffic in dashboards
     if first_octet == 10
         || first_octet == 127
         || (first_octet == 172 && (16..=31).contains(&second_octet))
         || (first_octet == 192 && second_octet == 168)
         || first_octet == 169
     {
-        return None;
+        return Some("LO".to_string());
     }
 
     // Simplified country lookup based on common IP allocations
@@ -1548,6 +1549,7 @@ pub fn lookup_country(ip: &str) -> Option<String> {
 
 fn country_name(code: &str) -> String {
     match code {
+        "LO" => "Local/Private",
         "US" => "United States",
         "GB" => "United Kingdom",
         "DE" => "Germany",
@@ -1676,11 +1678,11 @@ mod tests {
         assert_eq!(lookup_country("80.80.80.80"), Some("GB".to_string()));
 
         // Private IPs should return None
-        assert_eq!(lookup_country("192.168.1.1"), None);
-        assert_eq!(lookup_country("10.0.0.1"), None);
-        assert_eq!(lookup_country("127.0.0.1"), None);
-        assert_eq!(lookup_country("172.16.0.1"), None);
-        assert_eq!(lookup_country("172.31.255.255"), None);
+        assert_eq!(lookup_country("192.168.1.1"), Some("LO".to_string()));
+        assert_eq!(lookup_country("10.0.0.1"), Some("LO".to_string()));
+        assert_eq!(lookup_country("127.0.0.1"), Some("LO".to_string()));
+        assert_eq!(lookup_country("172.16.0.1"), Some("LO".to_string()));
+        assert_eq!(lookup_country("172.31.255.255"), Some("LO".to_string()));
 
         // Invalid IPs
         assert_eq!(lookup_country("invalid"), None);

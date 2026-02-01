@@ -381,6 +381,13 @@ impl MarkdownRenderer {
             "input",
             ["type", "checked", "disabled"].iter().cloned().collect(),
         );
+        // Allow id attributes on headings for TOC anchor links
+        attrs.insert("h1", ["id"].iter().cloned().collect());
+        attrs.insert("h2", ["id"].iter().cloned().collect());
+        attrs.insert("h3", ["id"].iter().cloned().collect());
+        attrs.insert("h4", ["id"].iter().cloned().collect());
+        attrs.insert("h5", ["id"].iter().cloned().collect());
+        attrs.insert("h6", ["id"].iter().cloned().collect());
         // Media element attributes (class is handled via add_allowed_classes)
         attrs.insert(
             "img",
@@ -470,13 +477,18 @@ impl MarkdownRenderer {
         let options = Options::ENABLE_TABLES
             | Options::ENABLE_FOOTNOTES
             | Options::ENABLE_STRIKETHROUGH
-            | Options::ENABLE_TASKLISTS;
+            | Options::ENABLE_TASKLISTS
+            | Options::ENABLE_HEADING_ATTRIBUTES;
 
         let parser = Parser::new_ext(&processed, options);
         let mut events: Vec<pulldown_cmark::Event> = Vec::new();
         let mut in_code_block = false;
         let mut code_lang = String::new();
         let mut code_content = String::new();
+
+        // Track heading state for adding IDs
+        let mut in_heading = false;
+        let mut heading_text = String::new();
 
         for event in parser {
             match event {
@@ -495,6 +507,45 @@ impl MarkdownRenderer {
                 }
                 pulldown_cmark::Event::Text(text) if in_code_block => {
                     code_content.push_str(&text);
+                }
+                // Handle headings to add ID attributes
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, id, classes, attrs }) => {
+                    in_heading = true;
+                    heading_text.clear();
+                    // If the heading already has an ID from {#custom-id} syntax, use it
+                    if id.is_some() {
+                        events.push(pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, id, classes, attrs }));
+                        in_heading = false; // Don't process further, it already has an ID
+                    }
+                }
+                pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(level)) => {
+                    if in_heading {
+                        // Generate slug from heading text
+                        let slug = slugify(&heading_text);
+                        let level_num = match level {
+                            pulldown_cmark::HeadingLevel::H1 => 1,
+                            pulldown_cmark::HeadingLevel::H2 => 2,
+                            pulldown_cmark::HeadingLevel::H3 => 3,
+                            pulldown_cmark::HeadingLevel::H4 => 4,
+                            pulldown_cmark::HeadingLevel::H5 => 5,
+                            pulldown_cmark::HeadingLevel::H6 => 6,
+                        };
+                        // Emit heading with ID as raw HTML
+                        let heading_html = format!(
+                            r#"<h{} id="{}">{}</h{}>"#,
+                            level_num,
+                            html_escape(&slug),
+                            html_escape(&heading_text),
+                            level_num
+                        );
+                        events.push(pulldown_cmark::Event::Html(heading_html.into()));
+                        in_heading = false;
+                    } else {
+                        events.push(pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(level)));
+                    }
+                }
+                pulldown_cmark::Event::Text(text) if in_heading => {
+                    heading_text.push_str(&text);
                 }
                 _ => events.push(event),
             }
@@ -589,6 +640,29 @@ fn html_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
+/// Convert text to a URL-friendly slug for heading IDs
+fn slugify(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() {
+                c
+            } else if c.is_whitespace() || c == '-' || c == '_' {
+                '-'
+            } else {
+                // Skip other characters
+                '\0'
+            }
+        })
+        .filter(|&c| c != '\0')
+        .collect::<String>()
+        // Collapse multiple dashes
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
 fn strip_markdown(text: &str) -> String {
     let mut result = text.to_string();
 
@@ -658,4 +732,49 @@ fn strip_markdown(text: &str) -> String {
     }
 
     result.trim().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_slugify() {
+        assert_eq!(slugify("Quick Start"), "quick-start");
+        assert_eq!(slugify("CLI Commands"), "cli-commands");
+        assert_eq!(slugify("Hello World!"), "hello-world");
+        assert_eq!(slugify("Test  Multiple   Spaces"), "test-multiple-spaces");
+        assert_eq!(slugify("Already-Hyphenated"), "already-hyphenated");
+    }
+
+    #[test]
+    fn test_heading_ids() {
+        let renderer = MarkdownRenderer::new();
+        let input = "## Quick Start\n\nSome content here.";
+        let output = renderer.render(input);
+        assert!(output.contains(r#"id="quick-start""#), "Output was: {}", output);
+    }
+
+    #[test]
+    fn test_toc_links_match_headings() {
+        let renderer = MarkdownRenderer::new();
+        let input = r#"## Table of Contents
+
+- [Quick Start](#quick-start)
+- [CLI Commands](#cli-commands)
+
+## Quick Start
+
+Getting started guide.
+
+## CLI Commands
+
+Command reference.
+"#;
+        let output = renderer.render(input);
+        // Check that heading IDs match TOC links
+        assert!(output.contains(r#"id="quick-start""#), "Missing quick-start ID. Output: {}", output);
+        assert!(output.contains(r#"id="cli-commands""#), "Missing cli-commands ID. Output: {}", output);
+        assert!(output.contains("href=\"#quick-start\""), "Missing quick-start link. Output: {}", output);
+    }
 }

@@ -79,7 +79,8 @@ mod tests {
         fn test_render_basic_markdown() {
             let renderer = MarkdownRenderer::new();
             let html = renderer.render("# Hello World");
-            assert!(html.contains("<h1>"));
+            assert!(html.contains("<h1"));
+            assert!(html.contains("id=\"hello-world\""));
             assert!(html.contains("Hello World"));
         }
 

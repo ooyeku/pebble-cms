@@ -45,6 +45,9 @@ pub async fn run(command: super::RegistryCommand) -> Result<()> {
         super::RegistryCommand::Path { name } => {
             show_path(&home, &registry, name)?;
         }
+        super::RegistryCommand::Rerender { name } => {
+            rerender_site(&home, &registry, &name)?;
+        }
         super::RegistryCommand::Config { name, command } => {
             site_config(&home, &global_config, &mut registry, &name, command).await?;
             registry.save(&home.registry_path)?;
@@ -382,6 +385,28 @@ fn show_path(home: &PebbleHome, registry: &Registry, name: Option<String>) -> Re
             println!("{}", home.registry_dir.display());
         }
     }
+    Ok(())
+}
+
+fn rerender_site(home: &PebbleHome, registry: &Registry, name: &str) -> Result<()> {
+    registry
+        .get_site(name)
+        .context(format!("Site '{}' not found in registry", name))?;
+
+    let site_path = home.site_path(name);
+    let config_path = site_path.join("pebble.toml");
+
+    if !config_path.exists() {
+        bail!("Config file not found: {}", config_path.display());
+    }
+
+    let config = Config::load(&config_path)?;
+    let db = crate::Database::open(&config.database.path)?;
+
+    println!("Re-rendering all content for '{}'...", name);
+    let count = crate::services::content::rerender_all_content(&db)?;
+    println!("Successfully re-rendered {} content items.", count);
+
     Ok(())
 }
 

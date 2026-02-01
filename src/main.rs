@@ -46,6 +46,9 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Migrate) => {
             pebble::cli::migrate::run(&cli.config).await?;
         }
+        Some(Commands::Rerender) => {
+            pebble::cli::rerender::run(&cli.config).await?;
+        }
         Some(Commands::User { command }) => {
             pebble::cli::user::run(&cli.config, command).await?;
         }

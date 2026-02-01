@@ -647,3 +647,31 @@ pub fn publish_scheduled(db: &Database) -> Result<usize> {
     tx.commit()?;
     Ok(ids.len())
 }
+
+/// Re-render all content HTML from markdown.
+/// Useful after updating the markdown renderer to apply changes to existing content.
+pub fn rerender_all_content(db: &Database) -> Result<usize> {
+    let renderer = super::markdown::MarkdownRenderer::new();
+    let mut conn = db.get()?;
+
+    // Get all content IDs and markdown
+    let items: Vec<(i64, String)> = {
+        let mut stmt = conn.prepare("SELECT id, body_markdown FROM content")?;
+        let rows = stmt.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?;
+        rows.collect::<Result<Vec<_>, _>>()?
+    };
+
+    let count = items.len();
+
+    let tx = conn.transaction()?;
+    for (id, markdown) in items {
+        let html = renderer.render(&markdown);
+        tx.execute(
+            "UPDATE content SET body_html = ? WHERE id = ?",
+            (&html, id),
+        )?;
+    }
+    tx.commit()?;
+
+    Ok(count)
+}
