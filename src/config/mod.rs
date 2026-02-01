@@ -35,6 +35,8 @@ pub struct ServerConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DatabaseConfig {
     pub path: String,
+    #[serde(default = "default_pool_size")]
+    pub pool_size: u32,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -270,6 +272,10 @@ fn default_port() -> u16 {
 }
 
 fn default_posts_per_page() -> usize {
+    10
+}
+
+fn default_pool_size() -> u32 {
     10
 }
 

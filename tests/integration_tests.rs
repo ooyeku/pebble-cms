@@ -637,7 +637,8 @@ mod content_integration_tests {
             .expect("Content should exist");
 
         // Metadata should have default values for custom code fields
-        assert_eq!(page.content.metadata["use_custom_code"], "");
+        // use_custom_code defaults to "none" for consistent handling
+        assert_eq!(page.content.metadata["use_custom_code"], "none");
         assert_eq!(page.content.metadata["custom_html"], "");
         assert_eq!(page.content.metadata["custom_css"], "");
         assert_eq!(page.content.metadata["custom_js"], "");

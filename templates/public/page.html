@@ -20,16 +20,18 @@
     </header>
 
     {% if content.metadata.use_custom_code == "only" %}
-    {% if content.metadata.custom_html %}
-    <div class="content custom-content">{{ content.metadata.custom_html | safe }}</div>
-    {% endif %}
+        {% if content.metadata.custom_html %}
+        <div class="content custom-content">{{ content.metadata.custom_html | safe }}</div>
+        {% else %}
+        <div class="content">{{ content.body_html | safe }}</div>
+        {% endif %}
     {% elif content.metadata.use_custom_code == "both" %}
-    <div class="content">{{ content.body_html | safe }}</div>
-    {% if content.metadata.custom_html %}
-    <div class="custom-content">{{ content.metadata.custom_html | safe }}</div>
-    {% endif %}
+        <div class="content">{{ content.body_html | safe }}</div>
+        {% if content.metadata.custom_html %}
+        <div class="custom-content">{{ content.metadata.custom_html | safe }}</div>
+        {% endif %}
     {% else %}
-    <div class="content">{{ content.body_html | safe }}</div>
+        <div class="content">{{ content.body_html | safe }}</div>
     {% endif %}
 </article>
 

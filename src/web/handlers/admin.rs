@@ -991,3 +991,101 @@ pub async fn database_action(
 
     Ok(Redirect::to("/admin/database").into_response())
 }
+
+/// Get content performance data for analytics dashboard
+pub async fn analytics_content(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<AnalyticsQuery>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let mut ctx = Context::new();
+
+    let content_performance: Vec<crate::services::analytics::ContentPerformance> =
+        if let Some(ref analytics) = state.analytics {
+            analytics.get_content_performance(query.days, 20).unwrap_or_default()
+        } else {
+            vec![]
+        };
+
+    ctx.insert("content", &content_performance);
+    ctx.insert("days", &query.days);
+
+    let html = state
+        .templates
+        .render("htmx/analytics_content.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+#[derive(Deserialize)]
+pub struct ExportQuery {
+    #[serde(default = "default_days")]
+    days: i64,
+    #[serde(default = "default_format")]
+    format: String,
+}
+
+fn default_format() -> String {
+    "json".to_string()
+}
+
+/// Export analytics data as JSON or CSV
+pub async fn analytics_export(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Query(query): Query<ExportQuery>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    if let Some(ref analytics) = state.analytics {
+        let format = match query.format.as_str() {
+            "csv" => crate::services::analytics::ExportFormat::Csv,
+            _ => crate::services::analytics::ExportFormat::Json,
+        };
+
+        let data = analytics.export(query.days, format)?;
+
+        let (content_type, filename) = match query.format.as_str() {
+            "csv" => ("text/csv", "analytics.csv"),
+            _ => ("application/json", "analytics.json"),
+        };
+
+        Ok((
+            StatusCode::OK,
+            [
+                (header::CONTENT_TYPE, content_type),
+                (
+                    header::CONTENT_DISPOSITION,
+                    &format!("attachment; filename=\"{}\"", filename),
+                ),
+            ],
+            data,
+        )
+            .into_response())
+    } else {
+        Ok((StatusCode::NOT_FOUND, "Analytics not available").into_response())
+    }
+}
+
+/// Get stats for a specific content item
+pub async fn analytics_content_stats(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(content_id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    if let Some(ref analytics) = state.analytics {
+        let stats = analytics.get_content_stats(content_id)?;
+        Ok(axum::Json(stats).into_response())
+    } else {
+        Ok((StatusCode::NOT_FOUND, "Analytics not available").into_response())
+    }
+}

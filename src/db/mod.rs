@@ -20,6 +20,10 @@ impl Clone for Database {
 
 impl Database {
     pub fn open(path: &str) -> Result<Self> {
+        Self::open_with_pool_size(path, 10)
+    }
+
+    pub fn open_with_pool_size(path: &str, pool_size: u32) -> Result<Self> {
         let path = Path::new(path);
         if let Some(parent) = path.parent() {
             if !parent.as_os_str().is_empty() {
@@ -28,7 +32,7 @@ impl Database {
         }
 
         let manager = SqliteConnectionManager::file(path);
-        let pool = Pool::builder().max_size(10).build(manager)?;
+        let pool = Pool::builder().max_size(pool_size).build(manager)?;
 
         let conn = pool.get()?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;

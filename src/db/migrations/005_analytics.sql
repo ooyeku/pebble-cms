@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON analytics_events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_path ON analytics_events(path);
 CREATE INDEX IF NOT EXISTS idx_events_session ON analytics_events(session_hash, timestamp);
+CREATE INDEX IF NOT EXISTS idx_events_content ON analytics_events(content_id);
 
 CREATE TABLE IF NOT EXISTS analytics_hourly (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

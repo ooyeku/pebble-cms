@@ -1,10 +1,19 @@
 use ammonia::Builder;
+use once_cell::sync::Lazy;
 use pulldown_cmark::{html, Options, Parser};
 use regex::Regex;
 use std::collections::HashMap;
 use syntect::highlighting::ThemeSet;
 use syntect::html::highlighted_html_for_string;
 use syntect::parsing::SyntaxSet;
+
+// Statically compiled regexes - avoids runtime panic and improves performance
+static SHORTCODE_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\[(\w+)([^\]]*)\]").expect("Invalid shortcode regex pattern")
+});
+static ATTR_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"(\w+)(?:="([^"]*)")?|(\w+)"#).expect("Invalid attribute regex pattern")
+});
 
 /// Shortcode processor for embedding media and other dynamic content.
 ///
@@ -14,10 +23,7 @@ use syntect::parsing::SyntaxSet;
 /// - `[video src="filename.mp4" controls]` - Embeds video player
 /// - `[audio src="filename.mp3" controls]` - Embeds audio player
 /// - `[gallery src="file1.jpg,file2.jpg,file3.jpg"]` - Embeds a gallery of images
-pub struct ShortcodeProcessor {
-    shortcode_regex: Regex,
-    attr_regex: Regex,
-}
+pub struct ShortcodeProcessor;
 
 impl Default for ShortcodeProcessor {
     fn default() -> Self {
@@ -27,20 +33,12 @@ impl Default for ShortcodeProcessor {
 
 impl ShortcodeProcessor {
     pub fn new() -> Self {
-        // Match shortcodes like [name attr="value" flag]
-        let shortcode_regex = Regex::new(r"\[(\w+)([^\]]*)\]").unwrap();
-        // Match attributes like attr="value" or just flag
-        let attr_regex = Regex::new(r#"(\w+)(?:="([^"]*)")?|(\w+)"#).unwrap();
-
-        Self {
-            shortcode_regex,
-            attr_regex,
-        }
+        Self
     }
 
     /// Process all shortcodes in the content and return the processed content.
     pub fn process(&self, content: &str) -> String {
-        self.shortcode_regex
+        SHORTCODE_REGEX
             .replace_all(content, |caps: &regex::Captures| {
                 let name = &caps[1];
                 let attrs_str = caps.get(2).map(|m| m.as_str()).unwrap_or("");
@@ -61,7 +59,7 @@ impl ShortcodeProcessor {
     fn parse_attributes(&self, attrs_str: &str) -> HashMap<String, String> {
         let mut attrs = HashMap::new();
 
-        for cap in self.attr_regex.captures_iter(attrs_str) {
+        for cap in ATTR_REGEX.captures_iter(attrs_str) {
             if let Some(name) = cap.get(1) {
                 let value = cap.get(2).map(|m| m.as_str()).unwrap_or("true");
                 attrs.insert(name.as_str().to_string(), value.to_string());

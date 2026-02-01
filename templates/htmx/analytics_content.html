@@ -1,0 +1,44 @@
+{% if content | length > 0 %}
+<table class="content-table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Views</th>
+            <th>Sessions</th>
+            <th>Bounce</th>
+            <th>Trend</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in content %}
+        <tr>
+            <td>
+                <a href="/{% if item.content_type == 'post' %}posts{% else %}pages{% endif %}/{{ item.slug }}" target="_blank">
+                    {{ item.title | truncate(length=40) }}
+                </a>
+            </td>
+            <td>
+                <span class="badge badge-{{ item.content_type }}">{{ item.content_type }}</span>
+            </td>
+            <td>{{ item.pageviews }}</td>
+            <td>{{ item.unique_sessions }}</td>
+            <td>{{ item.bounce_rate | round(precision=1) }}%</td>
+            <td>
+                {% if item.trend == "up" %}
+                <span class="trend trend-up" title="+{{ item.trend_percent | round(precision=1) }}%">+{{ item.trend_percent | round(precision=0) }}%</span>
+                {% elif item.trend == "down" %}
+                <span class="trend trend-down" title="{{ item.trend_percent | round(precision=1) }}%">{{ item.trend_percent | round(precision=0) }}%</span>
+                {% else %}
+                <span class="trend trend-stable">--</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>No content performance data available for this period.</p>
+</div>
+{% endif %}

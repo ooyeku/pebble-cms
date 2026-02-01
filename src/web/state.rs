@@ -135,6 +135,10 @@ impl AppState {
                 include_str!("../../templates/htmx/analytics_realtime.html"),
             ),
             (
+                "htmx/analytics_content.html",
+                include_str!("../../templates/htmx/analytics_content.html"),
+            ),
+            (
                 "admin/analytics/index.html",
                 include_str!("../../templates/admin/analytics/index.html"),
             ),

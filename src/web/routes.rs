@@ -89,6 +89,22 @@ pub fn htmx_routes() -> Router<Arc<AppState>> {
             "/htmx/analytics/realtime",
             get(handlers::admin::analytics_realtime),
         )
+        .route(
+            "/htmx/analytics/content",
+            get(handlers::admin::analytics_content),
+        )
+}
+
+pub fn api_routes() -> Router<Arc<AppState>> {
+    Router::new()
+        .route(
+            "/api/analytics/export",
+            get(handlers::admin::analytics_export),
+        )
+        .route(
+            "/api/analytics/content/:id",
+            get(handlers::admin::analytics_content_stats),
+        )
 }
 
 async fn admin_not_available() -> impl IntoResponse {

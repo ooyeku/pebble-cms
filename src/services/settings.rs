@@ -14,8 +14,8 @@ pub fn get_setting(db: &Database, key: &str) -> Result<Option<String>> {
 pub fn set_setting(db: &Database, key: &str, value: &str) -> Result<()> {
     let conn = db.get()?;
     conn.execute(
-        "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, CURRENT_TIMESTAMP)
-         ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = CURRENT_TIMESTAMP",
+        "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP",
         [key, value],
     )?;
     Ok(())

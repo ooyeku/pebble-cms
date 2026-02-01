@@ -3,27 +3,69 @@ block content %}
 <div class="analytics-page">
     <div class="analytics-header">
         <h2>Analytics</h2>
-        <div class="period-selector">
-            <a
-                href="?days=1"
-                class="btn btn-sm {% if days == 1 %}btn-primary{% else %}btn-secondary{% endif %}"
-                >Today</a
-            >
-            <a
-                href="?days=7"
-                class="btn btn-sm {% if days == 7 %}btn-primary{% else %}btn-secondary{% endif %}"
-                >7 Days</a
-            >
-            <a
-                href="?days=30"
-                class="btn btn-sm {% if days == 30 %}btn-primary{% else %}btn-secondary{% endif %}"
-                >30 Days</a
-            >
-            <a
-                href="?days=90"
-                class="btn btn-sm {% if days == 90 %}btn-primary{% else %}btn-secondary{% endif %}"
-                >90 Days</a
-            >
+        <div class="header-actions">
+            <div class="period-selector">
+                <a
+                    href="?days=1"
+                    class="btn btn-sm {% if days == 1 %}btn-primary{% else %}btn-secondary{% endif %}"
+                    >Today</a
+                >
+                <a
+                    href="?days=7"
+                    class="btn btn-sm {% if days == 7 %}btn-primary{% else %}btn-secondary{% endif %}"
+                    >7 Days</a
+                >
+                <a
+                    href="?days=30"
+                    class="btn btn-sm {% if days == 30 %}btn-primary{% else %}btn-secondary{% endif %}"
+                    >30 Days</a
+                >
+                <a
+                    href="?days=90"
+                    class="btn btn-sm {% if days == 90 %}btn-primary{% else %}btn-secondary{% endif %}"
+                    >90 Days</a
+                >
+            </div>
+            <div class="export-buttons">
+                <a
+                    href="/api/analytics/export?days={{ days }}&format=json"
+                    class="btn btn-sm btn-secondary"
+                    title="Export as JSON"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    JSON
+                </a>
+                <a
+                    href="/api/analytics/export?days={{ days }}&format=csv"
+                    class="btn btn-sm btn-secondary"
+                    title="Export as CSV"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    CSV
+                </a>
+            </div>
         </div>
     </div>
 
@@ -50,276 +92,348 @@ block content %}
     </div>
     {% else %}
 
-    <!-- Realtime Stats -->
-    <div
-        class="analytics-realtime"
-        hx-get="/htmx/analytics/realtime"
-        hx-trigger="every 30s"
-        hx-swap="innerHTML"
-    >
-        {% include "htmx/analytics_realtime.html" %}
+    <!-- Tab Navigation -->
+    <div class="analytics-tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="content">Content Performance</button>
     </div>
 
-    <!-- Summary Stats -->
-    <div class="analytics-summary">
-        <div class="summary-card">
-            <div class="summary-value primary">
-                {{ summary.total_pageviews | default(value=0) }}
-            </div>
-            <div class="summary-label">Pageviews</div>
-            {% if summary.pageviews_change %}
-            <div
-                class="summary-change {% if summary.pageviews_change > 0 %}positive{% elif summary.pageviews_change < 0 %}negative{% endif %}"
-            >
-                {% if summary.pageviews_change > 0 %}↑{% elif
-                summary.pageviews_change < 0 %}↓{% endif %} {{
-                summary.pageviews_change | round(precision=1) }}%
-            </div>
-            {% endif %}
+    <!-- Overview Tab -->
+    <div id="tab-overview" class="tab-content active">
+        <!-- Realtime Stats -->
+        <div
+            class="analytics-realtime"
+            hx-get="/htmx/analytics/realtime"
+            hx-trigger="every 30s"
+            hx-swap="innerHTML"
+        >
+            {% include "htmx/analytics_realtime.html" %}
         </div>
-        <div class="summary-card">
-            <div class="summary-value accent">
-                {{ summary.unique_sessions | default(value=0) }}
-            </div>
-            <div class="summary-label">Unique Visitors</div>
-            {% if summary.sessions_change %}
-            <div
-                class="summary-change {% if summary.sessions_change > 0 %}positive{% elif summary.sessions_change < 0 %}negative{% endif %}"
-            >
-                {% if summary.sessions_change > 0 %}↑{% elif
-                summary.sessions_change < 0 %}↓{% endif %} {{
-                summary.sessions_change | round(precision=1) }}%
-            </div>
-            {% endif %}
-        </div>
-        <div class="summary-card">
-            <div class="summary-value">
-                {{ summary.avg_response_time_ms | default(value=0) }}<span
-                    class="summary-unit"
-                    >ms</span
-                >
-            </div>
-            <div class="summary-label">Avg Response</div>
-        </div>
-        <div class="summary-card">
-            <div
-                class="summary-value {% if summary.error_rate > 5 %}error{% endif %}"
-            >
-                {{ summary.error_rate | default(value=0) | round(precision=2)
-                }}<span class="summary-unit">%</span>
-            </div>
-            <div class="summary-label">Error Rate</div>
-        </div>
-    </div>
 
-    <!-- Chart -->
-    {% if summary.pageviews_over_time | length > 0 %}
-    <div class="analytics-chart card">
-        <h3>Pageviews Over Time</h3>
-        <div class="chart-container">
-            <div class="bar-chart">
-                {% for point in summary.pageviews_over_time %}
+        <!-- Summary Stats -->
+        <div class="analytics-summary">
+            <div class="summary-card">
+                <div class="summary-value primary">
+                    {{ summary.total_pageviews | default(value=0) }}
+                </div>
+                <div class="summary-label">Pageviews</div>
+                {% if summary.pageviews_change %}
                 <div
-                    class="bar-wrapper"
-                    title="{{ point.timestamp }}: {{ point.value }} views"
+                    class="summary-change {% if summary.pageviews_change > 0 %}positive{% elif summary.pageviews_change < 0 %}negative{% endif %}"
                 >
-                    <div
-                        class="bar"
-                        style="height: {% if summary.pageviews_max > 0 %}{{ (point.value / summary.pageviews_max) * 100 }}{% else %}0{% endif %}%"
-                    ></div>
-                    <span class="bar-label"
-                        >{{ point.timestamp | str_slice(start=5, end=10)
-                        }}</span
+                    {% if summary.pageviews_change > 0 %}+{% endif %}{{
+                    summary.pageviews_change | round(precision=1) }}%
+                </div>
+                {% endif %}
+            </div>
+            <div class="summary-card">
+                <div class="summary-value accent">
+                    {{ summary.unique_sessions | default(value=0) }}
+                </div>
+                <div class="summary-label">Unique Visitors</div>
+                {% if summary.sessions_change %}
+                <div
+                    class="summary-change {% if summary.sessions_change > 0 %}positive{% elif summary.sessions_change < 0 %}negative{% endif %}"
+                >
+                    {% if summary.sessions_change > 0 %}+{% endif %}{{
+                    summary.sessions_change | round(precision=1) }}%
+                </div>
+                {% endif %}
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">
+                    {{ summary.avg_response_time_ms | default(value=0) }}<span
+                        class="summary-unit"
+                        >ms</span
                     >
                 </div>
-                {% endfor %}
+                <div class="summary-label">Avg Response</div>
+            </div>
+            <div class="summary-card">
+                <div
+                    class="summary-value {% if summary.error_rate > 5 %}error{% endif %}"
+                >
+                    {{ summary.error_rate | default(value=0) |
+                    round(precision=2) }}<span class="summary-unit">%</span>
+                </div>
+                <div class="summary-label">Error Rate</div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        {% if summary.pageviews_over_time | length > 0 %}
+        <div class="analytics-chart card">
+            <h3>Pageviews Over Time</h3>
+            <div class="chart-container">
+                <div class="bar-chart">
+                    {% for point in summary.pageviews_over_time %}
+                    <div
+                        class="bar-wrapper"
+                        title="{{ point.timestamp }}: {{ point.value }} views"
+                    >
+                        <div
+                            class="bar"
+                            style="height: {% if summary.pageviews_max > 0 %}{{ (point.value / summary.pageviews_max) * 100 }}{% else %}0{% endif %}%"
+                        ></div>
+                        <span class="bar-label"
+                            >{{ point.timestamp | str_slice(start=5, end=10)
+                            }}</span
+                        >
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Analytics Grid -->
+        <div class="analytics-grid">
+            <!-- Top Pages -->
+            <div class="analytics-card card">
+                <h3>Top Pages</h3>
+                {% if summary.top_pages | length > 0 %}
+                <div class="analytics-table-wrapper">
+                    <table class="analytics-table">
+                        <thead>
+                            <tr>
+                                <th>Page</th>
+                                <th class="num">Views</th>
+                                <th class="num">Visitors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for page in summary.top_pages %}
+                            <tr>
+                                <td class="path-cell" title="{{ page.path }}">
+                                    <span class="path-text"
+                                        >{{ page.path | truncate(length=40)
+                                        }}</span
+                                    >
+                                </td>
+                                <td class="num">{{ page.pageviews }}</td>
+                                <td class="num">{{ page.unique_sessions }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="no-data">No page data available</p>
+                {% endif %}
+            </div>
+
+            <!-- Top Referrers -->
+            <div class="analytics-card card">
+                <h3>Traffic Sources</h3>
+                {% if summary.top_referrers | length > 0 %}
+                <div class="analytics-table-wrapper">
+                    <table class="analytics-table">
+                        <thead>
+                            <tr>
+                                <th>Source</th>
+                                <th class="num">Visitors</th>
+                                <th class="num">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ref in summary.top_referrers %}
+                            <tr>
+                                <td>{{ ref.domain }}</td>
+                                <td class="num">{{ ref.sessions }}</td>
+                                <td class="num">
+                                    {{ ref.percentage | round(precision=1) }}%
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="no-data">No referrer data (direct traffic only)</p>
+                {% endif %}
+            </div>
+
+            <!-- Countries -->
+            <div class="analytics-card card">
+                <h3>Countries</h3>
+                {% if summary.countries | length > 0 %}
+                <div class="breakdown-list">
+                    {% for country in summary.countries %}
+                    <div class="breakdown-item">
+                        <div class="breakdown-flag">{{ country.code }}</div>
+                        <div class="breakdown-info">
+                            <span class="breakdown-name"
+                                >{{ country.name }}</span
+                            >
+                            <span class="breakdown-count"
+                                >{{ country.sessions }}</span
+                            >
+                        </div>
+                        <div class="breakdown-bar">
+                            <div
+                                class="breakdown-bar-fill"
+                                style="width: {{ country.percentage }}%"
+                            ></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No country data available</p>
+                {% endif %}
+            </div>
+
+            <!-- Devices -->
+            <div class="analytics-card card">
+                <h3>Devices</h3>
+                {% if summary.devices %}
+                <div class="breakdown-list">
+                    {% for device, count in summary.devices %}
+                    <div class="breakdown-item">
+                        <div class="breakdown-icon">
+                            {% if device == "desktop" %}
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect
+                                    x="2"
+                                    y="3"
+                                    width="20"
+                                    height="14"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <line x1="8" y1="21" x2="16" y2="21" />
+                                <line x1="12" y1="17" x2="12" y2="21" />
+                            </svg>
+                            {% elif device == "mobile" %}
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect
+                                    x="5"
+                                    y="2"
+                                    width="14"
+                                    height="20"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <line x1="12" y1="18" x2="12.01" y2="18" />
+                            </svg>
+                            {% else %}
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect
+                                    x="4"
+                                    y="2"
+                                    width="16"
+                                    height="20"
+                                    rx="2"
+                                    ry="2"
+                                />
+                                <line x1="12" y1="18" x2="12.01" y2="18" />
+                            </svg>
+                            {% endif %}
+                        </div>
+                        <div class="breakdown-info">
+                            <span class="breakdown-name"
+                                >{{ device | capitalize }}</span
+                            >
+                            <span class="breakdown-count">{{ count }}</span>
+                        </div>
+                        <div class="breakdown-bar">
+                            <div
+                                class="breakdown-bar-fill"
+                                style="width: {% if summary.total_devices > 0 %}{{ (count / summary.total_devices) * 100 }}{% else %}0{% endif %}%"
+                            ></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No device data available</p>
+                {% endif %}
+            </div>
+
+            <!-- Browsers -->
+            <div class="analytics-card card">
+                <h3>Browsers</h3>
+                {% if summary.browsers %}
+                <div class="breakdown-list">
+                    {% for browser, count in summary.browsers %}
+                    <div class="breakdown-item">
+                        <div class="breakdown-info">
+                            <span class="breakdown-name">{{ browser }}</span>
+                            <span class="breakdown-count">{{ count }}</span>
+                        </div>
+                        <div class="breakdown-bar">
+                            <div
+                                class="breakdown-bar-fill"
+                                style="width: {% if summary.total_browsers > 0 %}{{ (count / summary.total_browsers) * 100 }}{% else %}0{% endif %}%"
+                            ></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No browser data available</p>
+                {% endif %}
             </div>
         </div>
     </div>
-    {% endif %}
 
-    <!-- Analytics Grid -->
-    <div class="analytics-grid">
-        <!-- Top Pages -->
-        <div class="analytics-card card">
-            <h3>Top Pages</h3>
-            {% if summary.top_pages | length > 0 %}
-            <div class="analytics-table-wrapper">
-                <table class="analytics-table">
-                    <thead>
-                        <tr>
-                            <th>Page</th>
-                            <th class="num">Views</th>
-                            <th class="num">Visitors</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for page in summary.top_pages %}
-                        <tr>
-                            <td class="path-cell" title="{{ page.path }}">
-                                <span class="path-text"
-                                    >{{ page.path | truncate(length=40) }}</span
-                                >
-                            </td>
-                            <td class="num">{{ page.pageviews }}</td>
-                            <td class="num">{{ page.unique_sessions }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Content Performance Tab -->
+    <div id="tab-content" class="tab-content">
+        <div
+            class="content-performance card"
+            hx-get="/htmx/analytics/content?days={{ days }}"
+            hx-trigger="load"
+            hx-swap="innerHTML"
+        >
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading content performance...</p>
             </div>
-            {% else %}
-            <p class="no-data">No page data available</p>
-            {% endif %}
-        </div>
-
-        <!-- Top Referrers -->
-        <div class="analytics-card card">
-            <h3>Top Referrers</h3>
-            {% if summary.top_referrers | length > 0 %}
-            <div class="analytics-table-wrapper">
-                <table class="analytics-table">
-                    <thead>
-                        <tr>
-                            <th>Source</th>
-                            <th class="num">Visitors</th>
-                            <th class="num">%</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for ref in summary.top_referrers %}
-                        <tr>
-                            <td>{{ ref.domain }}</td>
-                            <td class="num">{{ ref.sessions }}</td>
-                            <td class="num">
-                                {{ ref.percentage | round(precision=1) }}%
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p class="no-data">No referrer data (direct traffic only)</p>
-            {% endif %}
-        </div>
-
-        <!-- Devices -->
-        <div class="analytics-card card">
-            <h3>Devices</h3>
-            {% if summary.devices %}
-            <div class="breakdown-list">
-                {% for device, count in summary.devices %}
-                <div class="breakdown-item">
-                    <div class="breakdown-icon">
-                        {% if device == "desktop" %}
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        >
-                            <rect
-                                x="2"
-                                y="3"
-                                width="20"
-                                height="14"
-                                rx="2"
-                                ry="2"
-                            />
-                            <line x1="8" y1="21" x2="16" y2="21" />
-                            <line x1="12" y1="17" x2="12" y2="21" />
-                        </svg>
-                        {% elif device == "mobile" %}
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        >
-                            <rect
-                                x="5"
-                                y="2"
-                                width="14"
-                                height="20"
-                                rx="2"
-                                ry="2"
-                            />
-                            <line x1="12" y1="18" x2="12.01" y2="18" />
-                        </svg>
-                        {% else %}
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        >
-                            <rect
-                                x="4"
-                                y="2"
-                                width="16"
-                                height="20"
-                                rx="2"
-                                ry="2"
-                            />
-                            <line x1="12" y1="18" x2="12.01" y2="18" />
-                        </svg>
-                        {% endif %}
-                    </div>
-                    <div class="breakdown-info">
-                        <span class="breakdown-name"
-                            >{{ device | capitalize }}</span
-                        >
-                        <span class="breakdown-count">{{ count }}</span>
-                    </div>
-                    <div class="breakdown-bar">
-                        <div
-                            class="breakdown-bar-fill"
-                            style="width: {% if summary.total_devices > 0 %}{{ (count / summary.total_devices) * 100 }}{% else %}0{% endif %}%"
-                        ></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="no-data">No device data available</p>
-            {% endif %}
-        </div>
-
-        <!-- Browsers -->
-        <div class="analytics-card card">
-            <h3>Browsers</h3>
-            {% if summary.browsers %}
-            <div class="breakdown-list">
-                {% for browser, count in summary.browsers %}
-                <div class="breakdown-item">
-                    <div class="breakdown-info">
-                        <span class="breakdown-name">{{ browser }}</span>
-                        <span class="breakdown-count">{{ count }}</span>
-                    </div>
-                    <div class="breakdown-bar">
-                        <div
-                            class="breakdown-bar-fill"
-                            style="width: {% if summary.total_browsers > 0 %}{{ (count / summary.total_browsers) * 100 }}{% else %}0{% endif %}%"
-                        ></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="no-data">No browser data available</p>
-            {% endif %}
         </div>
     </div>
 
     {% endif %}
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const tabs = document.querySelectorAll(".tab-btn");
+        const contents = document.querySelectorAll(".tab-content");
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", function () {
+                const tabId = this.dataset.tab;
+
+                tabs.forEach((t) => t.classList.remove("active"));
+                contents.forEach((c) => c.classList.remove("active"));
+
+                this.classList.add("active");
+                document.getElementById("tab-" + tabId).classList.add("active");
+            });
+        });
+    });
+</script>
 
 <style>
     /* Analytics Page Layout */
@@ -341,9 +455,64 @@ block content %}
         margin: 0;
     }
 
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
     .period-selector {
         display: flex;
         gap: 0.5rem;
+    }
+
+    .export-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .export-buttons .btn {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+    }
+
+    /* Tabs */
+    .analytics-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1.25rem;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+        color: var(--text);
+    }
+
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
     }
 
     /* Realtime Section */
@@ -572,7 +741,7 @@ block content %}
         white-space: nowrap;
     }
 
-    /* Breakdown List (Devices/Browsers) */
+    /* Breakdown List (Devices/Browsers/Countries) */
     .breakdown-list {
         display: flex;
         flex-direction: column;
@@ -585,7 +754,8 @@ block content %}
         gap: 0.75rem;
     }
 
-    .breakdown-icon {
+    .breakdown-icon,
+    .breakdown-flag {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -595,13 +765,15 @@ block content %}
         border-radius: var(--radius);
         color: var(--text-muted);
         flex-shrink: 0;
+        font-size: 0.75rem;
+        font-weight: 600;
     }
 
     .breakdown-info {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        min-width: 100px;
+        min-width: 120px;
         gap: 0.5rem;
     }
 
@@ -642,6 +814,98 @@ block content %}
         text-align: center;
         padding: 2rem 1rem;
         margin: 0;
+    }
+
+    /* Loading State */
+    .loading-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        color: var(--text-muted);
+    }
+
+    .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--border);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Content Performance Table */
+    .content-performance {
+        padding: 1.5rem;
+    }
+
+    .content-table {
+        width: 100%;
+        font-size: 0.875rem;
+        border-collapse: collapse;
+    }
+
+    .content-table th,
+    .content-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .content-table th {
+        font-weight: 500;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        background: var(--bg-secondary);
+    }
+
+    .content-table tbody tr:hover {
+        background: var(--bg-secondary);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 500;
+        border-radius: 9999px;
+        text-transform: uppercase;
+    }
+
+    .badge-post {
+        background: rgba(124, 58, 237, 0.1);
+        color: #7c3aed;
+    }
+
+    .badge-page {
+        background: rgba(14, 165, 233, 0.1);
+        color: #0ea5e9;
+    }
+
+    .trend {
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .trend-up {
+        color: #10b981;
+    }
+
+    .trend-down {
+        color: #ef4444;
+    }
+
+    .trend-stable {
+        color: var(--text-muted);
     }
 
     /* Realtime Stats Styling (embedded in htmx template) */

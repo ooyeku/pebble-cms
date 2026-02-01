@@ -2005,6 +2005,7 @@ dependencies = [
  "infer",
  "libc",
  "mime_guess",
+ "once_cell",
  "pulldown-cmark",
  "r2d2",
  "r2d2_sqlite",

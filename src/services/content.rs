@@ -49,9 +49,11 @@ pub fn create_content(
         );
     }
 
-    // Check for slug uniqueness before insert for better error messages
-    let conn = db.get()?;
-    let existing: Option<i64> = conn
+    let mut conn = db.get()?;
+    let tx = conn.transaction()?;
+
+    // Check for slug uniqueness within transaction to prevent race conditions
+    let existing: Option<i64> = tx
         .query_row("SELECT id FROM content WHERE slug = ?", [&slug], |row| {
             row.get(0)
         })
@@ -77,7 +79,24 @@ pub fn create_content(
 
     let scheduled_at = if input.status == ContentStatus::Scheduled {
         match &input.scheduled_at {
-            Some(dt) if !dt.is_empty() => Some(dt.clone()),
+            Some(dt) if !dt.is_empty() => {
+                // Validate the timestamp format and ensure it's in the future
+                if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(dt) {
+                    if parsed <= chrono::Utc::now() {
+                        bail!("Scheduled time must be in the future");
+                    }
+                    Some(dt.clone())
+                } else if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M") {
+                    // Handle datetime-local format from HTML forms
+                    let utc_time = parsed.and_utc();
+                    if utc_time <= chrono::Utc::now() {
+                        bail!("Scheduled time must be in the future");
+                    }
+                    Some(utc_time.to_rfc3339())
+                } else {
+                    bail!("Invalid scheduled_at timestamp format. Use ISO 8601 format (e.g., 2024-01-15T10:30:00Z)");
+                }
+            }
             _ => bail!("Scheduled status requires a scheduled_at timestamp"),
         }
     } else {
@@ -89,7 +108,7 @@ pub fn create_content(
     let mut metadata = input.metadata.unwrap_or(serde_json::json!({}));
     metadata["reading_time_minutes"] = serde_json::json!(reading_time);
 
-    conn.execute(
+    tx.execute(
         r#"
         INSERT INTO content (slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -110,20 +129,21 @@ pub fn create_content(
         ),
     )?;
 
-    let content_id = conn.last_insert_rowid();
+    let content_id = tx.last_insert_rowid();
 
     for tag_name in input.tags {
         let tag_slug = generate_slug(&tag_name);
-        conn.execute(
+        tx.execute(
             "INSERT OR IGNORE INTO tags (name, slug) VALUES (?, ?)",
             (&tag_name, &tag_slug),
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT OR IGNORE INTO content_tags (content_id, tag_id) SELECT ?, id FROM tags WHERE slug = ?",
             (content_id, &tag_slug),
         )?;
     }
 
+    tx.commit()?;
     Ok(content_id)
 }
 
@@ -131,7 +151,7 @@ pub fn update_content(
     db: &Database,
     id: i64,
     input: UpdateContent,
-    excerpt_length: usize,
+    _excerpt_length: usize, // Preserved for API compatibility; excerpt is now only updated when explicitly provided
 ) -> Result<()> {
     let renderer = MarkdownRenderer::new();
     let conn = db.get()?;
@@ -168,9 +188,11 @@ pub fn update_content(
     }
 
     let body_html = renderer.render(&body_markdown);
-    let excerpt = input
-        .excerpt
-        .or_else(|| Some(renderer.generate_excerpt(&body_markdown, excerpt_length)));
+    // Only regenerate excerpt if explicitly provided in input, otherwise keep current
+    let excerpt = match input.excerpt {
+        Some(new_excerpt) => Some(new_excerpt),
+        None => current.excerpt, // Preserve existing excerpt
+    };
     let featured_image = input.featured_image.or(current.featured_image);
     let status = input.status.unwrap_or(current.status);
 
@@ -194,7 +216,24 @@ pub fn update_content(
 
     let scheduled_at = if status == ContentStatus::Scheduled {
         match input.scheduled_at.or(current.scheduled_at) {
-            Some(dt) if !dt.is_empty() => Some(dt),
+            Some(dt) if !dt.is_empty() => {
+                // Validate the timestamp format and ensure it's in the future
+                if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(&dt) {
+                    if parsed <= chrono::Utc::now() {
+                        bail!("Scheduled time must be in the future");
+                    }
+                    Some(dt)
+                } else if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(&dt, "%Y-%m-%dT%H:%M") {
+                    // Handle datetime-local format from HTML forms
+                    let utc_time = parsed.and_utc();
+                    if utc_time <= chrono::Utc::now() {
+                        bail!("Scheduled time must be in the future");
+                    }
+                    Some(utc_time.to_rfc3339())
+                } else {
+                    bail!("Invalid scheduled_at timestamp format. Use ISO 8601 format (e.g., 2024-01-15T10:30:00Z)");
+                }
+            }
             _ => bail!("Scheduled status requires a scheduled_at timestamp"),
         }
     } else {
@@ -382,8 +421,14 @@ pub fn count_content(
 
 pub fn ensure_metadata_defaults(mut metadata: serde_json::Value) -> serde_json::Value {
     // Ensure custom code fields have default values for template compatibility
+    // use_custom_code: "none" (default), "only" (custom code only), "both" (markdown + custom)
     if metadata.get("use_custom_code").is_none() {
-        metadata["use_custom_code"] = serde_json::json!("");
+        metadata["use_custom_code"] = serde_json::json!("none");
+    } else if let Some(val) = metadata.get("use_custom_code") {
+        // Normalize empty string to "none" for consistency
+        if val.as_str() == Some("") {
+            metadata["use_custom_code"] = serde_json::json!("none");
+        }
     }
     if metadata.get("custom_html").is_none() {
         metadata["custom_html"] = serde_json::json!("");

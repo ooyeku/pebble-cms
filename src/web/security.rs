@@ -1,28 +1,31 @@
 use axum::body::Body;
+use axum::http::header::HeaderValue;
 use axum::http::{header, Request, Response};
 use axum::middleware::Next;
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
 
+// Pre-computed header values to avoid runtime parsing and unwrap
+static HEADER_NOSNIFF: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("nosniff"));
+static HEADER_DENY: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("DENY"));
+static HEADER_XSS_PROTECTION: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("1; mode=block"));
+static HEADER_REFERRER_POLICY: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("strict-origin-when-cross-origin"));
+static HEADER_CSP: Lazy<HeaderValue> = Lazy::new(|| {
+    HeaderValue::from_static(
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    )
+});
+
 pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
     let headers = response.headers_mut();
 
-    headers.insert(header::X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
-
-    headers.insert(header::X_FRAME_OPTIONS, "DENY".parse().unwrap());
-
-    headers.insert(header::X_XSS_PROTECTION, "1; mode=block".parse().unwrap());
-
-    headers.insert(
-        header::REFERRER_POLICY,
-        "strict-origin-when-cross-origin".parse().unwrap(),
-    );
-
-    headers.insert(
-        header::CONTENT_SECURITY_POLICY,
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'".parse().unwrap(),
-    );
+    headers.insert(header::X_CONTENT_TYPE_OPTIONS, HEADER_NOSNIFF.clone());
+    headers.insert(header::X_FRAME_OPTIONS, HEADER_DENY.clone());
+    headers.insert(header::X_XSS_PROTECTION, HEADER_XSS_PROTECTION.clone());
+    headers.insert(header::REFERRER_POLICY, HEADER_REFERRER_POLICY.clone());
+    headers.insert(header::CONTENT_SECURITY_POLICY, HEADER_CSP.clone());
 
     response
 }

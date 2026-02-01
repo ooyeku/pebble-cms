@@ -25,6 +25,18 @@
             {% endfor %}
         </div>
     </div>
+    {% endif %} {% if realtime.recent_referrers | length > 0 %}
+    <div class="realtime-referrers">
+        <div class="realtime-label">Recent traffic from:</div>
+        <div class="recent-referrers-list">
+            {% for ref in realtime.recent_referrers | slice(end=3) %}
+            <span class="recent-referrer"
+                >{{ ref.domain }}
+                <small>({{ ref.seconds_ago }}s ago)</small></span
+            >
+            {% endfor %}
+        </div>
+    </div>
     {% endif %}
 </div>
 {% else %}
@@ -47,3 +59,28 @@
     </div>
 </div>
 {% endif %}
+
+<style>
+    .realtime-referrers {
+        flex: 1;
+        min-width: 150px;
+    }
+    .realtime-referrers .realtime-label {
+        margin-bottom: 0.375rem;
+    }
+    .recent-referrers-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .recent-referrer {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.625rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+        color: var(--text);
+    }
+    .recent-referrer small {
+        color: var(--text-muted);
+    }
+</style>

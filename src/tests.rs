@@ -658,7 +658,8 @@ session_lifetime = "7d"
             let metadata = serde_json::json!({});
             let result = ensure_metadata_defaults(metadata);
 
-            assert_eq!(result["use_custom_code"], "");
+            // use_custom_code defaults to "none" for consistent handling
+            assert_eq!(result["use_custom_code"], "none");
             assert_eq!(result["custom_html"], "");
             assert_eq!(result["custom_css"], "");
             assert_eq!(result["custom_js"], "");
@@ -687,7 +688,8 @@ session_lifetime = "7d"
             });
             let result = ensure_metadata_defaults(metadata);
 
-            assert_eq!(result["use_custom_code"], "");
+            // use_custom_code defaults to "none" for consistent handling
+            assert_eq!(result["use_custom_code"], "none");
             assert_eq!(result["custom_html"], "");
             assert_eq!(result["custom_css"], "body { color: red; }");
             assert_eq!(result["custom_js"], "");

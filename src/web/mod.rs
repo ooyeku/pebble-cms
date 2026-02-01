@@ -9,7 +9,7 @@ pub use state::AppState;
 
 use crate::services::analytics::{
     extract_browser_family, extract_device_type, extract_referrer_domain, generate_session_hash,
-    get_daily_salt, run_aggregation_job, Analytics, AnalyticsEvent,
+    get_daily_salt, lookup_country, run_aggregation_job, Analytics, AnalyticsConfig, AnalyticsEvent,
 };
 use crate::{Config, Database};
 use anyhow::Result;
@@ -28,7 +28,8 @@ use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
 
 pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &str) -> Result<()> {
-    let analytics = Arc::new(Analytics::new(db.clone()));
+    let analytics_config = AnalyticsConfig::default();
+    let analytics = Arc::new(Analytics::with_config(db.clone(), analytics_config));
 
     let state = AppState::new(config, config_path, db.clone(), false)?.with_analytics(analytics.clone());
     let state = Arc::new(state);
@@ -42,6 +43,7 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
         .merge(routes::public_routes())
         .merge(routes::admin_routes())
         .merge(routes::htmx_routes())
+        .merge(routes::api_routes())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             analytics_middleware,
@@ -61,7 +63,8 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
 pub async fn serve_production(config: &Config, config_path: PathBuf, host: &str, port: u16) -> Result<()> {
     let db = Database::open(&config.database.path)?;
 
-    let analytics = Arc::new(Analytics::new(db.clone()));
+    let analytics_config = AnalyticsConfig::default();
+    let analytics = Arc::new(Analytics::with_config(db.clone(), analytics_config));
 
     let state = AppState::new(config.clone(), config_path, db.clone(), true)?.with_analytics(analytics.clone());
     let state = Arc::new(state);
@@ -73,6 +76,7 @@ pub async fn serve_production(config: &Config, config_path: PathBuf, host: &str,
 
     let app = Router::new()
         .merge(routes::public_routes())
+        .merge(routes::api_routes())
         .merge(routes::production_fallback_routes())
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -100,7 +104,19 @@ async fn analytics_middleware(
     let start = Instant::now();
     let path = request.uri().path().to_string();
 
-    if should_skip_tracking(&path) {
+    // Get DNT header before moving request
+    let dnt_header = request
+        .headers()
+        .get("dnt")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    // Check if we should track this request using analytics config
+    if let Some(analytics) = &state.analytics {
+        if !analytics.should_track(&path, dnt_header.as_deref()) {
+            return next.run(request).await;
+        }
+    } else if should_skip_tracking(&path) {
         return next.run(request).await;
     }
 
@@ -118,20 +134,9 @@ async fn analytics_middleware(
         .unwrap_or("")
         .to_string();
 
-    let dnt = request
-        .headers()
-        .get("dnt")
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v == "1")
-        .unwrap_or(false);
-
     let ip = addr.ip().to_string();
 
     let response = next.run(request).await;
-
-    if dnt {
-        return response;
-    }
 
     if let Some(analytics) = &state.analytics {
         let daily_salt = get_daily_salt(&state.db).unwrap_or_else(|_| "default".to_string());
@@ -140,10 +145,17 @@ async fn analytics_middleware(
 
         let (content_id, content_type) = extract_content_info(&path, &state.db);
 
+        // Lookup country from IP (privacy-preserving: IP is not stored)
+        let country_code = if analytics.config().geo_lookup {
+            lookup_country(&ip)
+        } else {
+            None
+        };
+
         let event = AnalyticsEvent {
             path: path.clone(),
             referrer_domain: extract_referrer_domain(&referrer),
-            country_code: None,
+            country_code,
             device_type: extract_device_type(&user_agent),
             browser_family: extract_browser_family(&user_agent),
             session_hash,
