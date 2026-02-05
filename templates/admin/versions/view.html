@@ -1,0 +1,138 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Version {{ version.version_number }} - {{ content.title }}{% endblock %}
+
+{% block content %}
+<div class="version-view-page">
+    <div class="page-header">
+        <div class="header-left">
+            <a href="/admin/{{ content_type }}s/{{ content.id }}/versions" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5L12 19l-7-7 7-7"/>
+                </svg>
+                Back to History
+            </a>
+            <h1>Version {{ version.version_number }}</h1>
+            <p class="subtitle">{{ content.title }}</p>
+        </div>
+        <div class="header-actions">
+            <a href="/admin/{{ content_type }}s/{{ content.id }}/diff?old={{ version.id }}&new={{ versions[0].id | default(value=version.id) }}" class="btn btn-secondary">
+                Compare with Current
+            </a>
+            <form method="post" action="/admin/{{ content_type }}s/{{ content.id }}/versions/{{ version.id }}/restore" class="inline-form" onsubmit="return confirm('Restore this version? The current content will be saved as a new version first.');">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    Restore This Version
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="version-meta card">
+        <div class="meta-item">
+            <span class="meta-label">Saved</span>
+            <span class="meta-value">{{ version.created_at | format_date(format="%B %d, %Y at %H:%M") }}</span>
+        </div>
+        <div class="meta-item">
+            <span class="meta-label">By</span>
+            <span class="meta-value">{{ version.created_by | default(value="Unknown") }}</span>
+        </div>
+    </div>
+
+    <div class="version-content">
+        <div class="content-section card">
+            <h3>Title</h3>
+            <p class="content-value">{{ version.title }}</p>
+        </div>
+
+        <div class="content-section card">
+            <h3>Slug</h3>
+            <p class="content-value mono">{{ version.slug }}</p>
+        </div>
+
+        {% if version.excerpt %}
+        <div class="content-section card">
+            <h3>Excerpt</h3>
+            <p class="content-value">{{ version.excerpt }}</p>
+        </div>
+        {% endif %}
+
+        {% if version.tags | length > 0 %}
+        <div class="content-section card">
+            <h3>Tags</h3>
+            <div class="tags-list">
+                {% for tag in version.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="content-section card">
+            <h3>Content</h3>
+            <div class="content-tabs">
+                <button class="tab-btn active" data-tab="preview">Preview</button>
+                <button class="tab-btn" data-tab="markdown">Markdown</button>
+            </div>
+            <div class="tab-content active" id="tab-preview">
+                <div class="content-preview">
+                    {{ body_html | safe }}
+                </div>
+            </div>
+            <div class="tab-content" id="tab-markdown">
+                <pre class="markdown-source">{{ version.body_markdown }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        });
+    });
+});
+</script>
+
+<style>
+.version-view-page { max-width: 900px; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+.back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); text-decoration: none; font-size: 0.875rem; margin-bottom: 0.5rem; }
+.back-link:hover { color: var(--primary); }
+.page-header h1 { margin: 0; font-size: 1.5rem; }
+.subtitle { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.875rem; }
+.header-actions { display: flex; gap: 0.75rem; align-items: center; }
+.inline-form { display: inline; }
+.header-actions .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
+.version-meta { display: flex; gap: 2rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+.meta-item { display: flex; flex-direction: column; gap: 0.25rem; }
+.meta-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.025em; color: var(--text-muted); }
+.meta-value { font-weight: 500; }
+.version-content { display: flex; flex-direction: column; gap: 1rem; }
+.content-section { padding: 1.25rem; }
+.content-section h3 { margin: 0 0 0.75rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.025em; color: var(--text-muted); }
+.content-value { margin: 0; }
+.content-value.mono { font-family: var(--font-mono, monospace); font-size: 0.875rem; color: var(--text-muted); }
+.tags-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.tag { padding: 0.25rem 0.75rem; background: var(--bg-secondary); border-radius: 9999px; font-size: 0.875rem; }
+.content-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.tab-btn { padding: 0.5rem 1rem; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); font-size: 0.875rem; cursor: pointer; transition: all 0.2s ease; }
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.content-preview { padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); max-height: 500px; overflow-y: auto; }
+.markdown-source { margin: 0; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); font-size: 0.875rem; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-height: 500px; overflow-y: auto; }
+</style>
+{% endblock %}

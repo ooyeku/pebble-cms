@@ -9,3 +9,4 @@ pub mod search;
 pub mod settings;
 pub mod slug;
 pub mod tags;
+pub mod versions;

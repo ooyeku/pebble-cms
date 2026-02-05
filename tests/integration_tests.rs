@@ -488,7 +488,7 @@ mod content_integration_tests {
             metadata: None,
         };
 
-        content::update_content(&db, content_id, update, 200).unwrap();
+        content::update_content(&db, content_id, update, 200, None, 50).unwrap();
 
         let updated = content::get_content_by_id(&db, content_id)
             .unwrap()

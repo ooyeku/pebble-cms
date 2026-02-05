@@ -47,6 +47,9 @@ pub struct ContentConfig {
     pub excerpt_length: usize,
     #[serde(default = "default_true")]
     pub auto_excerpt: bool,
+    /// Number of versions to keep per content item (0 = unlimited)
+    #[serde(default = "default_version_retention")]
+    pub version_retention: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -297,6 +300,10 @@ fn default_theme() -> String {
 
 fn default_session_lifetime() -> String {
     "7d".to_string()
+}
+
+fn default_version_retention() -> usize {
+    50
 }
 
 impl Config {

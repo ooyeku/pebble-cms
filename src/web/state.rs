@@ -146,6 +146,18 @@ impl AppState {
                 "admin/database/index.html",
                 include_str!("../../templates/admin/database/index.html"),
             ),
+            (
+                "admin/versions/history.html",
+                include_str!("../../templates/admin/versions/history.html"),
+            ),
+            (
+                "admin/versions/view.html",
+                include_str!("../../templates/admin/versions/view.html"),
+            ),
+            (
+                "admin/versions/diff.html",
+                include_str!("../../templates/admin/versions/diff.html"),
+            ),
         ])?;
 
         let media_dir = PathBuf::from(&config.media.upload_dir);

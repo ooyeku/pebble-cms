@@ -40,6 +40,20 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/posts/:id/delete",
             post(handlers::admin::delete_post),
         )
+        // Post version routes
+        .route(
+            "/admin/posts/:id/versions",
+            get(handlers::admin::post_versions),
+        )
+        .route(
+            "/admin/posts/:id/versions/:vid",
+            get(handlers::admin::post_version_view),
+        )
+        .route(
+            "/admin/posts/:id/versions/:vid/restore",
+            post(handlers::admin::post_version_restore),
+        )
+        .route("/admin/posts/:id/diff", get(handlers::admin::post_version_diff))
         .route("/admin/pages", get(handlers::admin::pages))
         .route("/admin/pages/new", get(handlers::admin::new_page))
         .route("/admin/pages", post(handlers::admin::create_page))
@@ -49,6 +63,20 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/pages/:id/delete",
             post(handlers::admin::delete_page),
         )
+        // Page version routes
+        .route(
+            "/admin/pages/:id/versions",
+            get(handlers::admin::page_versions),
+        )
+        .route(
+            "/admin/pages/:id/versions/:vid",
+            get(handlers::admin::page_version_view),
+        )
+        .route(
+            "/admin/pages/:id/versions/:vid/restore",
+            post(handlers::admin::page_version_restore),
+        )
+        .route("/admin/pages/:id/diff", get(handlers::admin::page_version_diff))
         .route("/admin/media", get(handlers::admin::media))
         .route(
             "/admin/media",

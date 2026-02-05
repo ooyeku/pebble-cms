@@ -1,0 +1,117 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Version History - {{ content.title }}{% endblock %}
+
+{% block content %}
+<div class="versions-page">
+    <div class="page-header">
+        <div class="header-left">
+            <a href="/admin/{{ content_type }}s/{{ content.id }}/edit" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Edit
+            </a>
+            <h1>Version History</h1>
+            <p class="subtitle">{{ content.title }}</p>
+        </div>
+    </div>
+
+    {% if versions | length > 0 %}
+    <div class="compare-bar card">
+        <form method="get" action="/admin/{{ content_type }}s/{{ content.id }}/diff" class="compare-form">
+            <span class="compare-label">Compare:</span>
+            <select name="old" class="compare-select">
+                {% for v in versions %}
+                <option value="{{ v.id }}">v{{ v.version_number }}{% if loop.first %} (latest){% endif %}</option>
+                {% endfor %}
+            </select>
+            <span class="compare-vs">vs</span>
+            <select name="new" class="compare-select">
+                {% for v in versions %}
+                <option value="{{ v.id }}"{% if loop.index == 2 %} selected{% endif %}>v{{ v.version_number }}{% if loop.first %} (latest){% endif %}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-sm btn-secondary">Compare</button>
+        </form>
+    </div>
+
+    <div class="versions-list card">
+        <table class="versions-table">
+            <thead>
+                <tr>
+                    <th>Version</th>
+                    <th>Title</th>
+                    <th>Saved By</th>
+                    <th>Date</th>
+                    <th>Summary</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in versions %}
+                <tr>
+                    <td class="version-number">
+                        <span class="version-badge{% if loop.first %} current{% endif %}">
+                            v{{ v.version_number }}
+                            {% if loop.first %}<span class="current-label">current</span>{% endif %}
+                        </span>
+                    </td>
+                    <td class="version-title">{{ v.title | truncate(length=40) }}</td>
+                    <td class="version-author">{{ v.created_by_username | default(value="Unknown") }}</td>
+                    <td class="version-date">{{ v.created_at | format_date(format="%b %d, %Y %H:%M") }}</td>
+                    <td class="version-summary">{{ v.changes_summary }}</td>
+                    <td class="version-actions">
+                        <a href="/admin/{{ content_type }}s/{{ content.id }}/versions/{{ v.id }}" class="btn btn-sm btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="versions-info">
+        <p>{{ total_versions }} version{% if total_versions != 1 %}s{% endif %} saved</p>
+    </div>
+    {% else %}
+    <div class="empty-state card">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3>No version history yet</h3>
+        <p>Version history will appear here after you make edits to this {{ content_type }}.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.versions-page { max-width: 1000px; }
+.page-header { margin-bottom: 1.5rem; }
+.back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); text-decoration: none; font-size: 0.875rem; margin-bottom: 0.5rem; }
+.back-link:hover { color: var(--primary); }
+.page-header h1 { margin: 0; font-size: 1.5rem; }
+.subtitle { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.875rem; }
+.compare-bar { padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.compare-form { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.compare-label { font-weight: 500; color: var(--text-muted); }
+.compare-select { padding: 0.375rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 0.875rem; }
+.compare-vs { color: var(--text-muted); font-size: 0.875rem; }
+.versions-list { padding: 0; overflow: hidden; }
+.versions-table { width: 100%; border-collapse: collapse; }
+.versions-table th, .versions-table td { padding: 0.875rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+.versions-table th { background: var(--bg-secondary); font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.025em; color: var(--text-muted); }
+.versions-table tbody tr:hover { background: var(--bg-secondary); }
+.versions-table tbody tr:last-child td { border-bottom: none; }
+.version-badge { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.5rem; background: var(--bg-secondary); border-radius: var(--radius); font-weight: 600; font-size: 0.875rem; }
+.version-badge.current { background: var(--primary); color: white; }
+.current-label { font-size: 0.625rem; font-weight: 500; text-transform: uppercase; opacity: 0.8; }
+.version-title { font-weight: 500; }
+.version-author, .version-date, .version-summary { color: var(--text-muted); font-size: 0.875rem; }
+.version-actions { text-align: right; }
+.versions-info { margin-top: 1rem; text-align: center; color: var(--text-muted); font-size: 0.875rem; }
+.empty-state { padding: 3rem; text-align: center; }
+.empty-state svg { color: var(--text-muted); margin-bottom: 1rem; }
+.empty-state h3 { margin: 0 0 0.5rem; }
+.empty-state p { margin: 0; color: var(--text-muted); }
+</style>
+{% endblock %}

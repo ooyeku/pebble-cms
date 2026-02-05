@@ -38,7 +38,7 @@
 
 <div class="header">
     <h2>{% if is_new %}New Page{% else %}Edit Page{% endif %}</h2>
-    <div>{% if not is_new %}<a href="/pages/{{ content.slug }}" target="_blank" class="btn btn-secondary">View</a>{% endif %}</div>
+    <div>{% if not is_new %}<a href="/pages/{{ content.slug }}" target="_blank" class="btn btn-secondary">View</a> <a href="/admin/pages/{{ content.id }}/versions" class="btn btn-secondary">Version History</a>{% endif %}</div>
 </div>
 
 <form method="post" action="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}" hx-post="{% if is_new %}/admin/pages{% else %}/admin/pages/{{ content.id }}{% endif %}" hx-target="#flash-container" hx-swap="innerHTML">
@@ -185,11 +185,11 @@
             var handle = document.getElementById('resize-handle');
             var textarea = document.getElementById('body_markdown');
             var preview = document.getElementById('preview');
-            
+
             if (!layout || !handle || !textarea || !preview) return;
-            
+
             var isDragging = false;
-            
+
             handle.addEventListener('mousedown', function(e) {
                 isDragging = true;
                 handle.classList.add('dragging');
@@ -197,28 +197,28 @@
                 document.body.style.userSelect = 'none';
                 e.preventDefault();
             });
-            
+
             document.addEventListener('mousemove', function(e) {
                 if (!isDragging) return;
-                
+
                 var layoutRect = layout.getBoundingClientRect();
                 var handleWidth = handle.offsetWidth;
                 var minWidth = 200;
-                
+
                 var leftWidth = e.clientX - layoutRect.left;
                 var rightWidth = layoutRect.right - e.clientX - handleWidth;
-                
+
                 if (leftWidth < minWidth) leftWidth = minWidth;
                 if (rightWidth < minWidth) rightWidth = minWidth;
-                
+
                 var totalWidth = layoutRect.width - handleWidth;
                 var leftPercent = (leftWidth / totalWidth) * 100;
                 var rightPercent = (rightWidth / totalWidth) * 100;
-                
+
                 textarea.style.flex = '0 0 ' + leftPercent + '%';
                 preview.style.flex = '0 0 ' + rightPercent + '%';
             });
-            
+
             document.addEventListener('mouseup', function() {
                 if (isDragging) {
                     isDragging = false;

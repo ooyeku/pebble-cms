@@ -152,7 +152,15 @@ pub fn update_content(
     id: i64,
     input: UpdateContent,
     _excerpt_length: usize, // Preserved for API compatibility; excerpt is now only updated when explicitly provided
+    user_id: Option<i64>,
+    version_retention: usize,
 ) -> Result<()> {
+    // Create a version snapshot BEFORE applying changes
+    if let Err(e) = super::versions::create_version(db, id, user_id) {
+        tracing::warn!("Failed to create version snapshot: {}", e);
+        // Continue with update even if versioning fails
+    }
+
     let renderer = MarkdownRenderer::new();
     let conn = db.get()?;
 
@@ -272,6 +280,13 @@ pub fn update_content(
                 "INSERT OR IGNORE INTO content_tags (content_id, tag_id) SELECT ?, id FROM tags WHERE slug = ?",
                 (id, &tag_slug),
             )?;
+        }
+    }
+
+    // Cleanup old versions based on retention policy
+    if version_retention > 0 {
+        if let Err(e) = super::versions::cleanup_old_versions(db, id, version_retention) {
+            tracing::warn!("Failed to cleanup old versions: {}", e);
         }
     }
 

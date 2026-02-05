@@ -271,7 +271,15 @@ pub async fn update_post(
         metadata: Some(build_seo_metadata(&form)),
     };
 
-    content::update_content(&state.db, id, input, state.config().content.excerpt_length)?;
+    let config = state.config();
+    content::update_content(
+        &state.db,
+        id,
+        input,
+        config.content.excerpt_length,
+        Some(user.id),
+        config.content.version_retention,
+    )?;
 
     Ok(Redirect::to("/admin/posts").into_response())
 }
@@ -428,7 +436,15 @@ pub async fn update_page(
         metadata: Some(build_page_metadata(&form)),
     };
 
-    content::update_content(&state.db, id, input, state.config().content.excerpt_length)?;
+    let config = state.config();
+    content::update_content(
+        &state.db,
+        id,
+        input,
+        config.content.excerpt_length,
+        Some(user.id),
+        config.content.version_retention,
+    )?;
 
     if is_htmx {
         let mut ctx = Context::new();
@@ -740,6 +756,7 @@ pub async fn save_settings(
             posts_per_page: form.posts_per_page.clamp(1, 100),
             excerpt_length: form.excerpt_length.clamp(1, 10000),
             auto_excerpt: form.auto_excerpt.is_some(),
+            version_retention: current.content.version_retention,
         },
         media: current.media.clone(),
         theme: crate::config::ThemeConfig {
@@ -1088,4 +1105,264 @@ pub async fn analytics_content_stats(
     } else {
         Ok((StatusCode::NOT_FOUND, "Analytics not available").into_response())
     }
+}
+
+// ============================================================================
+// Content Versioning Handlers
+// ============================================================================
+
+#[derive(Deserialize)]
+pub struct VersionQuery {
+    #[serde(default = "default_limit")]
+    limit: usize,
+    #[serde(default)]
+    offset: usize,
+}
+
+fn default_limit() -> usize {
+    50
+}
+
+#[derive(Deserialize)]
+pub struct DiffQuery {
+    old: i64,
+    new: i64,
+}
+
+/// List version history for a post
+pub async fn post_versions(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+    Query(query): Query<VersionQuery>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Post not found"))?;
+
+    if content.content.content_type != ContentType::Post {
+        return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
+    }
+
+    let versions = crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
+    let total = crate::services::versions::count_versions(&state.db, id)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &content);
+    ctx.insert("versions", &versions);
+    ctx.insert("total_versions", &total);
+    ctx.insert("content_type", "post");
+
+    let html = state.templates.render("admin/versions/history.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+/// View a specific version of a post
+pub async fn post_version_view(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path((id, vid)): Path<(i64, i64)>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Post not found"))?;
+
+    if content.content.content_type != ContentType::Post {
+        return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
+    }
+
+    let version = crate::services::versions::get_version(&state.db, vid)?;
+
+    if version.content_id != id {
+        return Ok((StatusCode::NOT_FOUND, "Version not found").into_response());
+    }
+
+    // Render the markdown for preview
+    let renderer = crate::services::markdown::MarkdownRenderer::new();
+    let body_html = renderer.render(&version.body_markdown);
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &content);
+    ctx.insert("version", &version);
+    ctx.insert("body_html", &body_html);
+    ctx.insert("content_type", "post");
+
+    let html = state.templates.render("admin/versions/view.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+/// Restore a post to a previous version
+pub async fn post_version_restore(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path((id, vid)): Path<(i64, i64)>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Post not found"))?;
+
+    if content.content.content_type != ContentType::Post {
+        return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
+    }
+
+    crate::services::versions::restore_version(&state.db, id, vid, Some(user.id))?;
+
+    Ok(Redirect::to(&format!("/admin/posts/{}/edit", id)).into_response())
+}
+
+/// Compare two versions of a post
+pub async fn post_version_diff(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+    Query(query): Query<DiffQuery>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Post not found"))?;
+
+    if content.content.content_type != ContentType::Post {
+        return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
+    }
+
+    let diff = crate::services::versions::diff_versions(&state.db, query.old, query.new)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &content);
+    ctx.insert("diff", &diff);
+    ctx.insert("content_type", "post");
+
+    let html = state.templates.render("admin/versions/diff.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+/// List version history for a page
+pub async fn page_versions(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+    Query(query): Query<VersionQuery>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Page not found"))?;
+
+    if content.content.content_type != ContentType::Page {
+        return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
+    }
+
+    let versions = crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
+    let total = crate::services::versions::count_versions(&state.db, id)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &content);
+    ctx.insert("versions", &versions);
+    ctx.insert("total_versions", &total);
+    ctx.insert("content_type", "page");
+
+    let html = state.templates.render("admin/versions/history.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+/// View a specific version of a page
+pub async fn page_version_view(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path((id, vid)): Path<(i64, i64)>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Page not found"))?;
+
+    if content.content.content_type != ContentType::Page {
+        return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
+    }
+
+    let version = crate::services::versions::get_version(&state.db, vid)?;
+
+    if version.content_id != id {
+        return Ok((StatusCode::NOT_FOUND, "Version not found").into_response());
+    }
+
+    // Render the markdown for preview
+    let renderer = crate::services::markdown::MarkdownRenderer::new();
+    let body_html = renderer.render(&version.body_markdown);
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &content);
+    ctx.insert("version", &version);
+    ctx.insert("body_html", &body_html);
+    ctx.insert("content_type", "page");
+
+    let html = state.templates.render("admin/versions/view.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+/// Restore a page to a previous version
+pub async fn page_version_restore(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path((id, vid)): Path<(i64, i64)>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Page not found"))?;
+
+    if content.content.content_type != ContentType::Page {
+        return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
+    }
+
+    crate::services::versions::restore_version(&state.db, id, vid, Some(user.id))?;
+
+    Ok(Redirect::to(&format!("/admin/pages/{}/edit", id)).into_response())
+}
+
+/// Compare two versions of a page
+pub async fn page_version_diff(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+    Query(query): Query<DiffQuery>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let content = content::get_content_by_id(&state.db, id)?
+        .ok_or_else(|| anyhow::anyhow!("Page not found"))?;
+
+    if content.content.content_type != ContentType::Page {
+        return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
+    }
+
+    let diff = crate::services::versions::diff_versions(&state.db, query.old, query.new)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &content);
+    ctx.insert("diff", &diff);
+    ctx.insert("content_type", "page");
+
+    let html = state.templates.render("admin/versions/diff.html", &ctx)?;
+    Ok(Html(html).into_response())
 }

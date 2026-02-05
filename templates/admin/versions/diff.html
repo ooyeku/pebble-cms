@@ -1,0 +1,177 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Compare Versions - {{ content.title }}{% endblock %}
+
+{% block content %}
+<div class="diff-page">
+    <div class="page-header">
+        <div class="header-left">
+            <a href="/admin/{{ content_type }}s/{{ content.id }}/versions" class="back-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5L12 19l-7-7 7-7"/>
+                </svg>
+                Back to History
+            </a>
+            <h1>Compare Versions</h1>
+            <p class="subtitle">{{ content.title }}</p>
+        </div>
+        <div class="header-actions">
+            <form method="post" action="/admin/{{ content_type }}s/{{ content.id }}/versions/{{ diff.old_version.id }}/restore" class="inline-form" onsubmit="return confirm('Restore version {{ diff.old_version.version_number }}? The current content will be saved as a new version first.');">
+                <button type="submit" class="btn btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    Restore v{{ diff.old_version.version_number }}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="diff-header card">
+        <div class="diff-column old">
+            <div class="version-badge">v{{ diff.old_version.version_number }}</div>
+            <div class="version-date">{{ diff.old_version.created_at | format_date(format="%b %d, %Y %H:%M") }}</div>
+        </div>
+        <div class="diff-arrow">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </div>
+        <div class="diff-column new">
+            <div class="version-badge current">v{{ diff.new_version.version_number }}</div>
+            <div class="version-date">{{ diff.new_version.created_at | format_date(format="%b %d, %Y %H:%M") }}</div>
+        </div>
+    </div>
+
+    {% if diff.title_changed %}
+    <div class="diff-section card">
+        <h3>Title Changed</h3>
+        <div class="diff-comparison">
+            <div class="diff-old">
+                <span class="change-indicator removed">-</span>
+                {{ diff.old_version.title }}
+            </div>
+            <div class="diff-new">
+                <span class="change-indicator added">+</span>
+                {{ diff.new_version.title }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if diff.slug_changed %}
+    <div class="diff-section card">
+        <h3>Slug Changed</h3>
+        <div class="diff-comparison">
+            <div class="diff-old">
+                <span class="change-indicator removed">-</span>
+                <code>{{ diff.old_version.slug }}</code>
+            </div>
+            <div class="diff-new">
+                <span class="change-indicator added">+</span>
+                <code>{{ diff.new_version.slug }}</code>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if diff.excerpt_changed %}
+    <div class="diff-section card">
+        <h3>Excerpt Changed</h3>
+        <div class="diff-comparison">
+            <div class="diff-old">
+                <span class="change-indicator removed">-</span>
+                {{ diff.old_version.excerpt | default(value="(none)") }}
+            </div>
+            <div class="diff-new">
+                <span class="change-indicator added">+</span>
+                {{ diff.new_version.excerpt | default(value="(none)") }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if diff.tags_changed %}
+    <div class="diff-section card">
+        <h3>Tags Changed</h3>
+        <div class="diff-comparison">
+            <div class="diff-old">
+                <span class="change-indicator removed">-</span>
+                {% if diff.old_version.tags | length > 0 %}
+                    {{ diff.old_version.tags | join(sep=", ") }}
+                {% else %}
+                    (no tags)
+                {% endif %}
+            </div>
+            <div class="diff-new">
+                <span class="change-indicator added">+</span>
+                {% if diff.new_version.tags | length > 0 %}
+                    {{ diff.new_version.tags | join(sep=", ") }}
+                {% else %}
+                    (no tags)
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="diff-section card">
+        <h3>Content</h3>
+        <div class="diff-body">
+            {% for line in diff.body_diff %}
+            <div class="diff-line {{ line.line_type }}">
+                <span class="line-indicator">
+                    {% if line.line_type == "added" %}+{% elif line.line_type == "removed" %}-{% else %} {% endif %}
+                </span>
+                <span class="line-content">{{ line.content }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if not diff.title_changed and not diff.slug_changed and not diff.excerpt_changed and not diff.tags_changed and diff.body_diff | length == 0 %}
+    <div class="no-changes card">
+        <p>No differences found between these versions.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.diff-page { max-width: 1000px; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+.back-link { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--text-muted); text-decoration: none; font-size: 0.875rem; margin-bottom: 0.5rem; }
+.back-link:hover { color: var(--primary); }
+.page-header h1 { margin: 0; font-size: 1.5rem; }
+.subtitle { margin: 0.25rem 0 0; color: var(--text-muted); font-size: 0.875rem; }
+.header-actions .btn { display: inline-flex; align-items: center; gap: 0.5rem; }
+.inline-form { display: inline; }
+.diff-header { display: flex; align-items: center; justify-content: center; gap: 2rem; padding: 1.25rem; margin-bottom: 1.5rem; }
+.diff-column { text-align: center; }
+.diff-arrow { color: var(--text-muted); }
+.version-badge { display: inline-block; padding: 0.375rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius); font-weight: 600; margin-bottom: 0.25rem; }
+.version-badge.current { background: var(--primary); color: white; }
+.version-date { font-size: 0.875rem; color: var(--text-muted); }
+.diff-section { padding: 1.25rem; margin-bottom: 1rem; }
+.diff-section h3 { margin: 0 0 1rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.025em; color: var(--text-muted); }
+.diff-comparison { display: flex; flex-direction: column; gap: 0.5rem; }
+.diff-old, .diff-new { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem; border-radius: var(--radius); font-size: 0.875rem; }
+.diff-old { background: rgba(239, 68, 68, 0.1); }
+.diff-new { background: rgba(34, 197, 94, 0.1); }
+.change-indicator { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: 700; font-size: 0.875rem; }
+.change-indicator.removed { background: #ef4444; color: white; }
+.change-indicator.added { background: #22c55e; color: white; }
+.diff-body { font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.6; background: var(--bg-secondary); border-radius: var(--radius); overflow-x: auto; max-height: 600px; overflow-y: auto; }
+.diff-line { display: flex; padding: 0.125rem 0.75rem; border-left: 3px solid transparent; }
+.diff-line.added { background: rgba(34, 197, 94, 0.15); border-left-color: #22c55e; }
+.diff-line.removed { background: rgba(239, 68, 68, 0.15); border-left-color: #ef4444; }
+.diff-line.same { color: var(--text-muted); }
+.line-indicator { flex-shrink: 0; width: 1.5rem; color: var(--text-muted); user-select: none; }
+.diff-line.added .line-indicator { color: #22c55e; }
+.diff-line.removed .line-indicator { color: #ef4444; }
+.line-content { white-space: pre-wrap; word-wrap: break-word; }
+.no-changes { padding: 2rem; text-align: center; color: var(--text-muted); }
+.no-changes p { margin: 0; }
+code { padding: 0.125rem 0.375rem; background: var(--bg-secondary); border-radius: 3px; font-size: 0.875rem; }
+</style>
+{% endblock %}
