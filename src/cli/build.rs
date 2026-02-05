@@ -18,7 +18,12 @@ pub async fn run(config_path: &Path, output_dir: &Path, base_url: Option<String>
 
     let site_url = base_url.unwrap_or_else(|| config.site.url.clone());
 
-    let state = Arc::new(AppState::new(config.clone(), config_path.to_path_buf(), db.clone(), true)?);
+    let state = Arc::new(AppState::new(
+        config.clone(),
+        config_path.to_path_buf(),
+        db.clone(),
+        true,
+    )?);
 
     fs::create_dir_all(output_dir)?;
 
@@ -45,10 +50,7 @@ fn make_context(state: &AppState) -> Context {
     ctx.insert("production_mode", &true);
     ctx.insert("user", &None::<()>);
     if config.theme.custom.has_customizations() {
-        ctx.insert(
-            "theme_custom_css",
-            &config.theme.custom.to_css_variables(),
-        );
+        ctx.insert("theme_custom_css", &config.theme.custom.to_css_variables());
     }
     ctx
 }

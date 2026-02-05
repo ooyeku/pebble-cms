@@ -244,7 +244,9 @@ async fn serve_site(
     fs::create_dir_all(&logs_dir)?;
     let log_file = logs_dir.join(format!("{}.log", name));
     let stdout_file = File::create(&log_file).context("Failed to create log file")?;
-    let stderr_file = stdout_file.try_clone().context("Failed to clone log file handle")?;
+    let stderr_file = stdout_file
+        .try_clone()
+        .context("Failed to clone log file handle")?;
 
     let child = Command::new(&exe)
         .args([
@@ -543,7 +545,10 @@ fn show_site_config(config_path: &std::path::Path) -> Result<()> {
     println!();
 
     println!("# Homepage");
-    println!("{:<30}  {}", "homepage.show_hero", config.homepage.show_hero);
+    println!(
+        "{:<30}  {}",
+        "homepage.show_hero", config.homepage.show_hero
+    );
     println!(
         "{:<30}  {}",
         "homepage.hero_layout", config.homepage.hero_layout
@@ -594,12 +599,9 @@ fn get_config_value(config: &Config, key: &str) -> Result<String> {
             .primary_color
             .clone()
             .unwrap_or_default()),
-        ["theme", "custom", "accent_color"] => Ok(config
-            .theme
-            .custom
-            .accent_color
-            .clone()
-            .unwrap_or_default()),
+        ["theme", "custom", "accent_color"] => {
+            Ok(config.theme.custom.accent_color.clone().unwrap_or_default())
+        }
         ["theme", "custom", "background_color"] => Ok(config
             .theme
             .custom
@@ -674,7 +676,10 @@ fn set_site_config_value(config_path: &std::path::Path, key: &str, value: &str) 
             if !doc.contains_key("theme") {
                 doc["theme"] = toml_edit::Item::Table(toml_edit::Table::new());
             }
-            if !doc["theme"].as_table().map_or(false, |t| t.contains_key("custom")) {
+            if !doc["theme"]
+                .as_table()
+                .map_or(false, |t| t.contains_key("custom"))
+            {
                 doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
             }
             doc["theme"]["custom"][*field] = toml_edit::value(value);

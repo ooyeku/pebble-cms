@@ -1,0 +1,233 @@
+{% extends "admin/base.html" %}
+{% block title %}Audit Log{% endblock %}
+{% block content %}
+<div class="audit-page">
+    <div class="audit-header">
+        <h2>Audit Log</h2>
+        <div class="header-actions">
+            <div class="export-buttons">
+                <a href="/admin/audit/export?format=json{% if filter.from_date %}&from_date={{ filter.from_date }}{% endif %}{% if filter.to_date %}&to_date={{ filter.to_date }}{% endif %}" class="btn btn-sm btn-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> JSON</a>
+                <a href="/admin/audit/export?format=csv{% if filter.from_date %}&from_date={{ filter.from_date }}{% endif %}{% if filter.to_date %}&to_date={{ filter.to_date }}{% endif %}" class="btn btn-sm btn-secondary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> CSV</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="audit-summary">
+        <div class="summary-card">
+            <div class="summary-value">{{ summary.total_events }}</div>
+            <div class="summary-label">Total Events</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value accent">{{ summary.events_today }}</div>
+            <div class="summary-label">Today</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value {% if summary.failed_events > 0 %}error{% endif %}">{{ summary.failed_events }}</div>
+            <div class="summary-label">Failures (7d)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ summary.active_users_today }}</div>
+            <div class="summary-label">Active Users Today</div>
+        </div>
+    </div>
+
+    <div class="audit-filters card">
+        <form method="get" action="/admin/audit" class="filter-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="username">User</label>
+                    <select name="username" id="username">
+                        <option value="">All Users</option>
+                        {% for u in audit_users %}<option value="{{ u.1 }}" {% if filter.username == u.1 %}selected{% endif %}>{{ u.1 }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="action">Action</label>
+                    <select name="action" id="action">
+                        <option value="">All Actions</option>
+                        {% for a in actions %}<option value="{{ a.0 }}" {% if filter.action == a.0 %}selected{% endif %}>{{ a.1 }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="category">Category</label>
+                    <select name="category" id="category">
+                        <option value="">All Categories</option>
+                        {% for c in categories %}<option value="{{ c.0 }}" {% if filter.category == c.0 %}selected{% endif %}>{{ c.1 }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="status">Status</label>
+                    <select name="status" id="status">
+                        <option value="">All</option>
+                        <option value="success" {% if filter.status == "success" %}selected{% endif %}>Success</option>
+                        <option value="failure" {% if filter.status == "failure" %}selected{% endif %}>Failure</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="from_date">From</label>
+                    <input type="date" name="from_date" id="from_date" value="{{ filter.from_date | default(value='') }}">
+                </div>
+                <div class="filter-group">
+                    <label for="to_date">To</label>
+                    <input type="date" name="to_date" id="to_date" value="{{ filter.to_date | default(value='') }}">
+                </div>
+                <div class="filter-group filter-search">
+                    <label for="search">Search</label>
+                    <input type="text" name="search" id="search" placeholder="Search..." value="{{ filter.search | default(value='') }}">
+                </div>
+                <div class="filter-group filter-actions">
+                    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                    <a href="/admin/audit" class="btn btn-secondary btn-sm">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="audit-table-container card">
+        {% if logs | length > 0 %}
+        <div class="table-wrapper">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th class="col-time">Time</th>
+                        <th class="col-user">User</th>
+                        <th class="col-action">Action</th>
+                        <th class="col-category">Category</th>
+                        <th class="col-entity">Entity</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-actions"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="{% if log.status == 'failure' %}row-failure{% endif %}">
+                        <td class="col-time"><span class="time-value" title="{{ log.timestamp }}">{{ log.timestamp | truncate(length=19, end="") }}</span></td>
+                        <td class="col-user">{% if log.username %}<span class="user-badge">{{ log.username }}</span>{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                        <td class="col-action"><span class="action-badge action-{{ log.action }}">{{ log.action | replace(from="_", to=" ") | title }}</span></td>
+                        <td class="col-category"><span class="category-badge">{{ log.category | title }}</span></td>
+                        <td class="col-entity">{% if log.entity_type %}<span class="entity-type">{{ log.entity_type }}</span>{% if log.entity_title %}: <span class="entity-title" title="{{ log.entity_title }}">{{ log.entity_title | truncate(length=30) }}</span>{% elif log.entity_id %} #{{ log.entity_id }}{% endif %}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                        <td class="col-status">{% if log.status == "success" %}<span class="status-success">&#10003;</span>{% else %}<span class="status-failure" title="{{ log.error_message | default(value='') }}">&#10007;</span>{% endif %}</td>
+                        <td class="col-actions"><a href="/admin/audit/{{ log.id }}" class="btn btn-sm btn-secondary">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <div class="pagination-info">Showing {{ logs | length }} of {{ total }} events</div>
+            <div class="pagination-controls">
+                {% if page > 1 %}<a href="/admin/audit?page={{ page - 1 }}{% if filter.username %}&username={{ filter.username }}{% endif %}{% if filter.action %}&action={{ filter.action }}{% endif %}{% if filter.category %}&category={{ filter.category }}{% endif %}{% if filter.status %}&status={{ filter.status }}{% endif %}{% if filter.from_date %}&from_date={{ filter.from_date }}{% endif %}{% if filter.to_date %}&to_date={{ filter.to_date }}{% endif %}{% if filter.search %}&search={{ filter.search }}{% endif %}" class="btn btn-sm btn-secondary">&laquo; Prev</a>{% endif %}
+                <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+                {% if page < total_pages %}<a href="/admin/audit?page={{ page + 1 }}{% if filter.username %}&username={{ filter.username }}{% endif %}{% if filter.action %}&action={{ filter.action }}{% endif %}{% if filter.category %}&category={{ filter.category }}{% endif %}{% if filter.status %}&status={{ filter.status }}{% endif %}{% if filter.from_date %}&from_date={{ filter.from_date }}{% endif %}{% if filter.to_date %}&to_date={{ filter.to_date }}{% endif %}{% if filter.search %}&search={{ filter.search }}{% endif %}" class="btn btn-sm btn-secondary">Next &raquo;</a>{% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 12h6M9 16h6"/></svg>
+            <h3>No audit events found</h3>
+            <p>{% if filter.action or filter.category or filter.username or filter.status or filter.search or filter.from_date or filter.to_date %}Try adjusting your filters.{% else %}Audit events will appear here as actions are performed.{% endif %}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if summary.recent_failures | length > 0 %}
+    <div class="recent-failures card">
+        <h3>Recent Failures</h3>
+        <div class="failures-list">
+            {% for fail in summary.recent_failures %}
+            <div class="failure-item">
+                <div class="failure-info">
+                    <span class="failure-action">{{ fail.action | replace(from="_", to=" ") | title }}</span>
+                    <span class="failure-time">{{ fail.timestamp | truncate(length=16, end="") }}</span>
+                </div>
+                <div class="failure-message">{{ fail.error_message | default(value="Unknown error") }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.audit-page { display: flex; flex-direction: column; gap: 1.5rem; }
+.audit-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.audit-header h2 { margin: 0; }
+.header-actions { display: flex; gap: 0.5rem; }
+.export-buttons { display: flex; gap: 0.5rem; }
+.export-buttons .btn { display: flex; align-items: center; gap: 0.375rem; }
+
+.audit-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+@media (max-width: 900px) { .audit-summary { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .audit-summary { grid-template-columns: 1fr; } }
+.summary-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; }
+.summary-value { font-size: 2rem; font-weight: 700; line-height: 1.2; color: var(--text); }
+.summary-value.accent { color: var(--color-primary); }
+.summary-value.error { color: #ef4444; }
+.summary-label { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+.audit-filters { padding: 1rem 1.25rem; }
+.filter-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.filter-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 0.25rem; min-width: 120px; }
+.filter-group label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+.filter-group select, .filter-group input { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 0.875rem; }
+.filter-search { flex: 1; min-width: 200px; }
+.filter-actions { flex-direction: row; gap: 0.5rem; align-items: flex-end; padding-bottom: 1px; }
+
+.audit-table-container { padding: 0; overflow: hidden; }
+.table-wrapper { overflow-x: auto; }
+.audit-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.audit-table th, .audit-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+.audit-table th { font-weight: 600; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.025em; background: var(--bg-secondary); position: sticky; top: 0; }
+.audit-table tbody tr:hover { background: var(--bg-secondary); }
+.audit-table tbody tr.row-failure { background: rgba(239, 68, 68, 0.05); }
+.audit-table tbody tr.row-failure:hover { background: rgba(239, 68, 68, 0.1); }
+
+.col-time { width: 160px; }
+.col-user { width: 100px; }
+.col-action { width: 120px; }
+.col-category { width: 100px; }
+.col-entity { min-width: 150px; }
+.col-status { width: 60px; text-align: center; }
+.col-actions { width: 70px; text-align: right; }
+
+.time-value { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); }
+.user-badge { display: inline-block; padding: 0.125rem 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); font-weight: 500; font-size: 0.8rem; }
+.action-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: var(--radius-sm); font-weight: 500; font-size: 0.75rem; text-transform: capitalize; background: var(--bg-secondary); }
+.action-badge.action-create, .action-badge.action-user_create, .action-badge.action-tag_create, .action-badge.action-upload { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.action-badge.action-update, .action-badge.action-user_update, .action-badge.action-settings_update { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.action-badge.action-delete, .action-badge.action-user_delete, .action-badge.action-tag_delete, .action-badge.action-media_delete { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.action-badge.action-publish { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.action-badge.action-login { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+.action-badge.action-login_failed { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.action-badge.action-logout { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
+.category-badge { display: inline-block; padding: 0.125rem 0.5rem; background: var(--bg-secondary); border-radius: var(--radius-sm); font-size: 0.75rem; color: var(--text-muted); }
+.entity-type { font-weight: 500; }
+.entity-title { color: var(--text-muted); }
+.status-success { color: #10b981; font-weight: bold; }
+.status-failure { color: #ef4444; font-weight: bold; cursor: help; }
+.text-muted { color: var(--text-muted); }
+
+.pagination { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 0.75rem; }
+.pagination-info { font-size: 0.875rem; color: var(--text-muted); }
+.pagination-controls { display: flex; align-items: center; gap: 0.75rem; }
+.page-info { font-size: 0.875rem; color: var(--text-muted); }
+
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; text-align: center; color: var(--text-muted); }
+.empty-state svg { margin-bottom: 1rem; opacity: 0.5; }
+.empty-state h3 { margin: 0 0 0.5rem; color: var(--text); }
+.empty-state p { margin: 0; font-size: 0.875rem; }
+
+.recent-failures { padding: 1.25rem; }
+.recent-failures h3 { margin: 0 0 1rem; font-size: 1rem; color: #ef4444; }
+.failures-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.failure-item { padding: 0.75rem; background: rgba(239, 68, 68, 0.05); border-radius: var(--radius-sm); border-left: 3px solid #ef4444; }
+.failure-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+.failure-action { font-weight: 500; font-size: 0.875rem; }
+.failure-time { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+.failure-message { font-size: 0.8rem; color: var(--text-muted); }
+</style>
+{% endblock %}

@@ -86,7 +86,9 @@ pub fn create_content(
                         bail!("Scheduled time must be in the future");
                     }
                     Some(dt.clone())
-                } else if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M") {
+                } else if let Ok(parsed) =
+                    chrono::NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M")
+                {
                     // Handle datetime-local format from HTML forms
                     let utc_time = parsed.and_utc();
                     if utc_time <= chrono::Utc::now() {
@@ -231,7 +233,9 @@ pub fn update_content(
                         bail!("Scheduled time must be in the future");
                     }
                     Some(dt)
-                } else if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(&dt, "%Y-%m-%dT%H:%M") {
+                } else if let Ok(parsed) =
+                    chrono::NaiveDateTime::parse_from_str(&dt, "%Y-%m-%dT%H:%M")
+                {
                     // Handle datetime-local format from HTML forms
                     let utc_time = parsed.and_utc();
                     if utc_time <= chrono::Utc::now() {
@@ -681,10 +685,7 @@ pub fn rerender_all_content(db: &Database) -> Result<usize> {
     let tx = conn.transaction()?;
     for (id, markdown) in items {
         let html = renderer.render(&markdown);
-        tx.execute(
-            "UPDATE content SET body_html = ? WHERE id = ?",
-            (&html, id),
-        )?;
+        tx.execute("UPDATE content SET body_html = ? WHERE id = ?", (&html, id))?;
     }
     tx.commit()?;
 

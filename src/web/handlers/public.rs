@@ -18,10 +18,7 @@ fn make_context(state: &AppState, user: &Option<User>) -> Context {
     ctx.insert("user", user);
     ctx.insert("production_mode", &state.production_mode);
     if config.theme.custom.has_customizations() {
-        ctx.insert(
-            "theme_custom_css",
-            &config.theme.custom.to_css_variables(),
-        );
+        ctx.insert("theme_custom_css", &config.theme.custom.to_css_variables());
     }
     ctx
 }

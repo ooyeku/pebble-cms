@@ -331,14 +331,23 @@ impl Analytics {
 
         // Update content analytics if we have a content_id
         if let Some(content_id) = event.content_id {
-            self.update_content_analytics(content_id, &event.session_hash, event.referrer_domain.as_deref())?;
+            self.update_content_analytics(
+                content_id,
+                &event.session_hash,
+                event.referrer_domain.as_deref(),
+            )?;
         }
 
         Ok(())
     }
 
     /// Update the analytics_content table for a specific content item
-    fn update_content_analytics(&self, content_id: i64, session_hash: &str, referrer: Option<&str>) -> Result<()> {
+    fn update_content_analytics(
+        &self,
+        content_id: i64,
+        session_hash: &str,
+        referrer: Option<&str>,
+    ) -> Result<()> {
         let conn = self.db.get()?;
         let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
@@ -380,7 +389,8 @@ impl Analytics {
                 )
                 .unwrap_or_else(|_| "[]".to_string());
 
-            let mut referrers: Vec<(String, i64)> = serde_json::from_str(&existing_referrers).unwrap_or_default();
+            let mut referrers: Vec<(String, i64)> =
+                serde_json::from_str(&existing_referrers).unwrap_or_default();
 
             // Find and update or add the referrer
             if let Some(entry) = referrers.iter_mut().find(|(d, _)| d == domain) {
@@ -792,7 +802,14 @@ impl Analytics {
         let conn = self.db.get()?;
 
         // Try to get from analytics_content first
-        let cached: Option<(i64, i64, Option<String>, Option<String>, String, Option<f64>)> = conn
+        let cached: Option<(
+            i64,
+            i64,
+            Option<String>,
+            Option<String>,
+            String,
+            Option<f64>,
+        )> = conn
             .query_row(
                 r#"
                 SELECT total_pageviews, unique_sessions, first_viewed_at, last_viewed_at,
@@ -801,11 +818,28 @@ impl Analytics {
                 WHERE content_id = ?1
                 "#,
                 [content_id],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                    ))
+                },
             )
             .ok();
 
-        if let Some((total_pageviews, unique_sessions, first_viewed_at, last_viewed_at, referrers_json, bounce_rate)) = cached {
+        if let Some((
+            total_pageviews,
+            unique_sessions,
+            first_viewed_at,
+            last_viewed_at,
+            referrers_json,
+            bounce_rate,
+        )) = cached
+        {
             // Get view trend from events
             let mut stmt = conn.prepare(
                 r#"
@@ -821,7 +855,8 @@ impl Analytics {
                 .filter_map(|r| r.ok())
                 .collect();
 
-            let referrer_data: Vec<(String, i64)> = serde_json::from_str(&referrers_json).unwrap_or_default();
+            let referrer_data: Vec<(String, i64)> =
+                serde_json::from_str(&referrers_json).unwrap_or_default();
             let total_ref: i64 = referrer_data.iter().map(|(_, c)| c).sum();
             let top_referrers: Vec<ReferrerStats> = referrer_data
                 .into_iter()
@@ -904,7 +939,11 @@ impl Analytics {
     }
 
     /// Get content performance data for dashboard
-    pub fn get_content_performance(&self, days: i64, limit: i64) -> Result<Vec<ContentPerformance>> {
+    pub fn get_content_performance(
+        &self,
+        days: i64,
+        limit: i64,
+    ) -> Result<Vec<ContentPerformance>> {
         let conn = self.db.get()?;
 
         let cutoff = (chrono::Utc::now() - chrono::TimeDelta::days(days))
@@ -1049,7 +1088,12 @@ impl Analytics {
         let start = format!("{}T00:00:00Z", yesterday);
         let end = format!("{}T23:59:59Z", yesterday);
 
-        let (total_pageviews, unique_sessions, avg_response, error_count): (i64, i64, Option<f64>, i64) = conn
+        let (total_pageviews, unique_sessions, avg_response, error_count): (
+            i64,
+            i64,
+            Option<f64>,
+            i64,
+        ) = conn
             .query_row(
                 r#"
                 SELECT
@@ -1485,10 +1529,7 @@ pub fn extract_referrer_domain(referrer: &str) -> Option<String> {
 /// This uses a simplified approach based on IP ranges for major regions
 pub fn lookup_country(ip: &str) -> Option<String> {
     // Parse IPv4 address
-    let parts: Vec<u8> = ip
-        .split('.')
-        .filter_map(|p| p.parse().ok())
-        .collect();
+    let parts: Vec<u8> = ip.split('.').filter_map(|p| p.parse().ok()).collect();
 
     if parts.len() != 4 {
         return None;
@@ -1512,30 +1553,35 @@ pub fn lookup_country(ip: &str) -> Option<String> {
     // This is a rough approximation - for production, use MaxMind GeoLite2
     match first_octet {
         // Europe - RIPE allocations
-        77..=95 | 145..=151 | 176..=185 | 193..=195 => {
-            match second_octet {
-                0..=50 => Some("DE".to_string()),
-                51..=100 => Some("GB".to_string()),
-                101..=150 => Some("FR".to_string()),
-                151..=200 => Some("NL".to_string()),
-                _ => Some("EU".to_string()),
-            }
-        }
+        77..=95 | 145..=151 | 176..=185 | 193..=195 => match second_octet {
+            0..=50 => Some("DE".to_string()),
+            51..=100 => Some("GB".to_string()),
+            101..=150 => Some("FR".to_string()),
+            151..=200 => Some("NL".to_string()),
+            _ => Some("EU".to_string()),
+        },
 
         // Asia-Pacific - APNIC allocations
-        1 | 2 | 27 | 36..=39 | 42..=49 | 58..=61 | 101..=126 | 202..=223 => {
-            match second_octet {
-                0..=50 => Some("JP".to_string()),
-                51..=100 => Some("CN".to_string()),
-                101..=150 => Some("AU".to_string()),
-                151..=200 => Some("IN".to_string()),
-                _ => Some("AP".to_string()),
-            }
-        }
+        1 | 2 | 27 | 36..=39 | 42..=49 | 58..=61 | 101..=126 | 202..=223 => match second_octet {
+            0..=50 => Some("JP".to_string()),
+            51..=100 => Some("CN".to_string()),
+            101..=150 => Some("AU".to_string()),
+            151..=200 => Some("IN".to_string()),
+            _ => Some("AP".to_string()),
+        },
 
         // North America (US/CA) - ARIN allocations
-        3..=26 | 28..=35 | 40 | 41 | 50..=57 | 63..=76 | 96..=100 | 128..=144 |
-        152..=175 | 186..=191 | 196..=201 => {
+        3..=26
+        | 28..=35
+        | 40
+        | 41
+        | 50..=57
+        | 63..=76
+        | 96..=100
+        | 128..=144
+        | 152..=175
+        | 186..=191
+        | 196..=201 => {
             if second_octet < 128 {
                 Some("US".to_string())
             } else {
@@ -1693,18 +1739,25 @@ mod tests {
     fn test_anonymize_ip() {
         assert_eq!(anonymize_ip("192.168.1.100"), "192.168.0.0");
         assert_eq!(anonymize_ip("10.20.30.40"), "10.20.0.0");
-        assert_eq!(anonymize_ip("2001:db8:85a3:8d3:1319:8a2e:370:7348"), "2001:db8:85a3:*");
+        assert_eq!(
+            anonymize_ip("2001:db8:85a3:8d3:1319:8a2e:370:7348"),
+            "2001:db8:85a3:*"
+        );
         assert_eq!(anonymize_ip("invalid"), "unknown");
     }
 
     #[test]
     fn test_extract_browser_family() {
         assert_eq!(
-            extract_browser_family("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/91.0"),
+            extract_browser_family(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/91.0"
+            ),
             "Chrome"
         );
         assert_eq!(
-            extract_browser_family("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"),
+            extract_browser_family(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"
+            ),
             "Firefox"
         );
         assert_eq!(

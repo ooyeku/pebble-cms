@@ -12,6 +12,8 @@ pub struct Config {
     pub theme: ThemeConfig,
     pub auth: AuthConfig,
     #[serde(default)]
+    pub audit: AuditConfig,
+    #[serde(default)]
     pub homepage: HomepageConfig,
 }
 
@@ -185,6 +187,29 @@ pub struct AuthConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AuditConfig {
+    #[serde(default = "default_audit_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_audit_retention_days")]
+    pub retention_days: u32,
+    #[serde(default = "default_audit_log_auth")]
+    pub log_auth_events: bool,
+    #[serde(default)]
+    pub log_content_views: bool,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_audit_enabled(),
+            retention_days: default_audit_retention_days(),
+            log_auth_events: default_audit_log_auth(),
+            log_content_views: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HomepageConfig {
     #[serde(default = "default_hero_layout")]
     pub hero_layout: String,
@@ -304,6 +329,18 @@ fn default_session_lifetime() -> String {
 
 fn default_version_retention() -> usize {
     50
+}
+
+fn default_audit_enabled() -> bool {
+    true
+}
+
+fn default_audit_retention_days() -> u32 {
+    90
+}
+
+fn default_audit_log_auth() -> bool {
+    true
 }
 
 impl Config {

@@ -305,25 +305,27 @@ pub fn restore_version(
     )?;
 
     // Restore tags
-    conn.execute("DELETE FROM content_tags WHERE content_id = ?1", [content_id])?;
+    conn.execute(
+        "DELETE FROM content_tags WHERE content_id = ?1",
+        [content_id],
+    )?;
 
     for tag_name in &version.tags {
         // Get or create tag
-        let tag_id: i64 = match conn.query_row(
-            "SELECT id FROM tags WHERE name = ?1",
-            [tag_name],
-            |row| row.get(0),
-        ) {
-            Ok(id) => id,
-            Err(_) => {
-                let slug = crate::services::slug::generate_slug(tag_name);
-                conn.execute(
-                    "INSERT INTO tags (name, slug) VALUES (?1, ?2)",
-                    rusqlite::params![tag_name, slug],
-                )?;
-                conn.last_insert_rowid()
-            }
-        };
+        let tag_id: i64 =
+            match conn.query_row("SELECT id FROM tags WHERE name = ?1", [tag_name], |row| {
+                row.get(0)
+            }) {
+                Ok(id) => id,
+                Err(_) => {
+                    let slug = crate::services::slug::generate_slug(tag_name);
+                    conn.execute(
+                        "INSERT INTO tags (name, slug) VALUES (?1, ?2)",
+                        rusqlite::params![tag_name, slug],
+                    )?;
+                    conn.last_insert_rowid()
+                }
+            };
 
         conn.execute(
             "INSERT OR IGNORE INTO content_tags (content_id, tag_id) VALUES (?1, ?2)",
@@ -543,7 +545,10 @@ mod tests {
         let new = "line 1\nline 3";
         let diff = compute_line_diff(old, new);
 
-        let removed_count = diff.iter().filter(|d| d.line_type == DiffLineType::Removed).count();
+        let removed_count = diff
+            .iter()
+            .filter(|d| d.line_type == DiffLineType::Removed)
+            .count();
         assert_eq!(removed_count, 1);
     }
 
@@ -554,7 +559,11 @@ mod tests {
         let diff = compute_line_diff(old, new);
 
         // Should show old removed and new added
-        assert!(diff.iter().any(|d| d.line_type == DiffLineType::Removed && d.content == "hello world"));
-        assert!(diff.iter().any(|d| d.line_type == DiffLineType::Added && d.content == "hello rust"));
+        assert!(diff
+            .iter()
+            .any(|d| d.line_type == DiffLineType::Removed && d.content == "hello world"));
+        assert!(diff
+            .iter()
+            .any(|d| d.line_type == DiffLineType::Added && d.content == "hello rust"));
     }
 }

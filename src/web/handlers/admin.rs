@@ -1,7 +1,8 @@
 use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
-use crate::services::{auth, content, database, media, settings, tags};
+use crate::services::audit::{AuditAction, AuditCategory, AuditLogBuilder};
+use crate::services::{audit, auth, content, database, media, settings, tags};
 use crate::web::error::AppResult;
-use crate::web::extractors::{CurrentUser, HxRequest};
+use crate::web::extractors::{AuditInfo, CurrentUser, HxRequest};
 use crate::web::state::AppState;
 use axum::extract::{Multipart, Path, Query, State};
 use axum::http::{header, StatusCode};
@@ -19,10 +20,7 @@ fn make_admin_context(state: &AppState, user: &User) -> Context {
     ctx.insert("theme", &config.theme);
     ctx.insert("version", env!("CARGO_PKG_VERSION"));
     if config.theme.custom.has_customizations() {
-        ctx.insert(
-            "theme_custom_css",
-            &config.theme.custom.to_css_variables(),
-        );
+        ctx.insert("theme_custom_css", &config.theme.custom.to_css_variables());
     }
     ctx
 }
@@ -176,6 +174,7 @@ fn build_page_metadata(form: &ContentForm) -> serde_json::Value {
 pub async fn create_post(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     HxRequest(_is_htmx): HxRequest,
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
@@ -203,12 +202,26 @@ pub async fn create_post(
         metadata: Some(build_seo_metadata(&form)),
     };
 
-    content::create_content(
+    let content_id = content::create_content(
         &state.db,
         input,
         Some(user.id),
         state.config().content.excerpt_length,
     )?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Content).entity(
+            "post",
+            content_id,
+            Some(&form.title),
+        ),
+    );
 
     Ok(Redirect::to("/admin/posts").into_response())
 }
@@ -244,6 +257,7 @@ pub async fn edit_post(
 pub async fn update_post(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     HxRequest(_is_htmx): HxRequest,
     Path(id): Path<i64>,
     Form(form): Form<ContentForm>,
@@ -281,12 +295,27 @@ pub async fn update_post(
         config.content.version_retention,
     )?;
 
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Update, AuditCategory::Content).entity(
+            "post",
+            id,
+            Some(&form.title),
+        ),
+    );
+
     Ok(Redirect::to("/admin/posts").into_response())
 }
 
 pub async fn delete_post(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
@@ -294,7 +323,26 @@ pub async fn delete_post(
         return Ok(e);
     }
 
+    // Get title before delete for audit
+    let title = content::get_content_by_id(&state.db, id)?
+        .map(|c| c.content.title)
+        .unwrap_or_default();
+
     content::delete_content(&state.db, id)?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Content).entity(
+            "post",
+            id,
+            Some(&title),
+        ),
+    );
 
     if is_htmx {
         Ok((
@@ -347,6 +395,7 @@ pub async fn new_page(
 pub async fn create_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     HxRequest(is_htmx): HxRequest,
     Form(form): Form<ContentForm>,
 ) -> AppResult<Response> {
@@ -373,6 +422,20 @@ pub async fn create_page(
         Some(user.id),
         state.config().content.excerpt_length,
     )?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Content).entity(
+            "page",
+            id,
+            Some(&form.title),
+        ),
+    );
 
     if is_htmx {
         Ok((
@@ -416,6 +479,7 @@ pub async fn edit_page(
 pub async fn update_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
     Form(form): Form<ContentForm>,
@@ -446,6 +510,20 @@ pub async fn update_page(
         config.content.version_retention,
     )?;
 
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Update, AuditCategory::Content).entity(
+            "page",
+            id,
+            Some(&form.title),
+        ),
+    );
+
     if is_htmx {
         let mut ctx = Context::new();
         ctx.insert("message", "Page saved successfully");
@@ -460,6 +538,7 @@ pub async fn update_page(
 pub async fn delete_page(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
@@ -467,7 +546,26 @@ pub async fn delete_page(
         return Ok(e);
     }
 
+    // Get title before delete for audit
+    let title = content::get_content_by_id(&state.db, id)?
+        .map(|c| c.content.title)
+        .unwrap_or_default();
+
     content::delete_content(&state.db, id)?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Content).entity(
+            "page",
+            id,
+            Some(&title),
+        ),
+    );
 
     if is_htmx {
         Ok((
@@ -655,7 +753,10 @@ pub async fn settings(
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("config", &*config);
     ctx.insert("homepage", &homepage_settings);
-    ctx.insert("available_themes", &crate::config::ThemeConfig::AVAILABLE_THEMES);
+    ctx.insert(
+        "available_themes",
+        &crate::config::ThemeConfig::AVAILABLE_THEMES,
+    );
 
     let html = state.templates.render("admin/settings/index.html", &ctx)?;
     Ok(Html(html).into_response())
@@ -783,6 +884,7 @@ pub async fn save_settings(
             pages_layout: form.homepage_pages_layout,
             sections_order: current.homepage.sections_order.clone(),
         },
+        audit: current.audit.clone(),
     };
 
     // Drop the read lock before updating
@@ -793,8 +895,14 @@ pub async fn save_settings(
         let mut ctx = make_admin_context(&state, &user);
         ctx.insert("error", &e.to_string());
         ctx.insert("config", &*state.config());
-        ctx.insert("homepage", &settings::get_homepage_settings(&state.db).unwrap_or_default());
-        ctx.insert("available_themes", &crate::config::ThemeConfig::AVAILABLE_THEMES);
+        ctx.insert(
+            "homepage",
+            &settings::get_homepage_settings(&state.db).unwrap_or_default(),
+        );
+        ctx.insert(
+            "available_themes",
+            &crate::config::ThemeConfig::AVAILABLE_THEMES,
+        );
         let html = state.templates.render("admin/settings/index.html", &ctx)?;
         return Ok((StatusCode::BAD_REQUEST, Html(html)).into_response());
     }
@@ -830,6 +938,7 @@ pub struct CreateUserForm {
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     Form(form): Form<CreateUserForm>,
 ) -> AppResult<Response> {
     if let Err(e) = require_admin(&user) {
@@ -837,7 +946,20 @@ pub async fn create_user(
     }
 
     let role: UserRole = form.role.parse().unwrap_or(UserRole::Author);
-    auth::create_user(&state.db, &form.username, &form.email, &form.password, role)?;
+    let new_user_id =
+        auth::create_user(&state.db, &form.username, &form.email, &form.password, role)?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::UserCreate, AuditCategory::User)
+            .entity("user", new_user_id, Some(&form.username))
+            .metadata_value("role", serde_json::json!(format!("{:?}", role))),
+    );
 
     Ok(Redirect::to("/admin/users").into_response())
 }
@@ -867,6 +989,7 @@ pub async fn update_user(
 pub async fn delete_user(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
     if let Err(e) = require_admin(&user) {
@@ -877,7 +1000,26 @@ pub async fn delete_user(
         return Ok((StatusCode::BAD_REQUEST, "Cannot delete yourself").into_response());
     }
 
+    // Get username before delete for audit
+    let deleted_username = auth::get_user(&state.db, id)?
+        .map(|u| u.username)
+        .unwrap_or_default();
+
     auth::delete_user(&state.db, id)?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::UserDelete, AuditCategory::User).entity(
+            "user",
+            id,
+            Some(&deleted_username),
+        ),
+    );
 
     Ok(Redirect::to("/admin/users").into_response())
 }
@@ -1023,7 +1165,9 @@ pub async fn analytics_content(
 
     let content_performance: Vec<crate::services::analytics::ContentPerformance> =
         if let Some(ref analytics) = state.analytics {
-            analytics.get_content_performance(query.days, 20).unwrap_or_default()
+            analytics
+                .get_content_performance(query.days, 20)
+                .unwrap_or_default()
         } else {
             vec![]
         };
@@ -1147,7 +1291,8 @@ pub async fn post_versions(
         return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
     }
 
-    let versions = crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
+    let versions =
+        crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
     let total = crate::services::versions::count_versions(&state.db, id)?;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -1156,7 +1301,9 @@ pub async fn post_versions(
     ctx.insert("total_versions", &total);
     ctx.insert("content_type", "post");
 
-    let html = state.templates.render("admin/versions/history.html", &ctx)?;
+    let html = state
+        .templates
+        .render("admin/versions/history.html", &ctx)?;
     Ok(Html(html).into_response())
 }
 
@@ -1248,6 +1395,150 @@ pub async fn post_version_diff(
     Ok(Html(html).into_response())
 }
 
+// ============================================================================
+// Audit Log Handlers
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct AuditFilterParams {
+    pub user_id: Option<i64>,
+    pub username: Option<String>,
+    pub action: Option<String>,
+    pub category: Option<String>,
+    pub entity_type: Option<String>,
+    pub status: Option<String>,
+    pub search: Option<String>,
+    pub from_date: Option<String>,
+    pub to_date: Option<String>,
+    pub page: Option<usize>,
+}
+
+impl From<AuditFilterParams> for audit::AuditFilter {
+    fn from(params: AuditFilterParams) -> Self {
+        Self {
+            user_id: params.user_id,
+            username: params.username,
+            action: params.action,
+            category: params.category,
+            entity_type: params.entity_type,
+            status: params.status,
+            search: params.search,
+            from_date: params.from_date,
+            to_date: params.to_date,
+        }
+    }
+}
+
+/// List audit logs with filtering and pagination
+pub async fn audit_logs(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Query(params): Query<AuditFilterParams>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let page = params.page.unwrap_or(1).max(1);
+    let per_page = 50usize;
+    let offset = (page - 1) * per_page;
+
+    let filter = audit::AuditFilter::from(params);
+    let logs = audit::list_logs(&state.db, &filter, per_page, offset)?;
+    let total = audit::count_logs(&state.db, &filter)?;
+    let total_pages = ((total as usize + per_page - 1) / per_page).max(1);
+    let summary = audit::get_summary(&state.db, 7)?;
+
+    // Get filter options
+    let audit_users = audit::get_audit_users(&state.db)?;
+    let actions = audit::get_all_actions();
+    let categories = audit::get_all_categories();
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("logs", &logs);
+    ctx.insert("summary", &summary);
+    ctx.insert("filter", &filter);
+    ctx.insert("page", &page);
+    ctx.insert("total_pages", &total_pages);
+    ctx.insert("total", &total);
+    ctx.insert("audit_users", &audit_users);
+    ctx.insert("actions", &actions);
+    ctx.insert("categories", &categories);
+
+    let html = state.templates.render("admin/audit/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+/// View single audit log entry
+pub async fn audit_log_detail(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let log =
+        audit::get_log(&state.db, id)?.ok_or_else(|| anyhow::anyhow!("Audit log not found"))?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("log", &log);
+
+    let html = state.templates.render("admin/audit/view.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuditExportParams {
+    pub format: Option<String>,
+    pub user_id: Option<i64>,
+    pub action: Option<String>,
+    pub category: Option<String>,
+    pub from_date: Option<String>,
+    pub to_date: Option<String>,
+}
+
+/// Export audit logs as JSON or CSV
+pub async fn audit_export(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Query(params): Query<AuditExportParams>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let filter = audit::AuditFilter {
+        user_id: params.user_id,
+        action: params.action,
+        category: params.category,
+        from_date: params.from_date,
+        to_date: params.to_date,
+        ..Default::default()
+    };
+
+    let format = params.format.as_deref().unwrap_or("json");
+    let data = audit::export_logs(&state.db, &filter, format)?;
+
+    let (content_type, filename) = match format {
+        "csv" => ("text/csv", "audit_logs.csv"),
+        _ => ("application/json", "audit_logs.json"),
+    };
+
+    Ok((
+        [
+            (header::CONTENT_TYPE, content_type),
+            (
+                header::CONTENT_DISPOSITION,
+                &format!("attachment; filename={}", filename),
+            ),
+        ],
+        data,
+    )
+        .into_response())
+}
+
 /// List version history for a page
 pub async fn page_versions(
     State(state): State<Arc<AppState>>,
@@ -1266,7 +1557,8 @@ pub async fn page_versions(
         return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
     }
 
-    let versions = crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
+    let versions =
+        crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
     let total = crate::services::versions::count_versions(&state.db, id)?;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -1275,7 +1567,9 @@ pub async fn page_versions(
     ctx.insert("total_versions", &total);
     ctx.insert("content_type", "page");
 
-    let html = state.templates.render("admin/versions/history.html", &ctx)?;
+    let html = state
+        .templates
+        .render("admin/versions/history.html", &ctx)?;
     Ok(Html(html).into_response())
 }
 

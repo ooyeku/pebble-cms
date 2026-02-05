@@ -1,5 +1,6 @@
 use crate::models::UserRole;
-use crate::services::auth;
+use crate::services::audit::{AuditAction, AuditCategory, AuditContext, AuditLogBuilder};
+use crate::services::{audit, auth};
 use crate::web::error::AppResult;
 use crate::web::state::AppState;
 use axum::extract::{ConnectInfo, State};
@@ -114,6 +115,11 @@ pub async fn login(
         return Ok((StatusCode::FORBIDDEN, jar.add(new_csrf_cookie), Html(html)).into_response());
     }
 
+    let user_agent = headers
+        .get(axum::http::header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
     match auth::authenticate(&state.db, &form.username, &form.password)? {
         Some(user) => {
             state.rate_limiter.clear(&client_key);
@@ -131,10 +137,34 @@ pub async fn login(
                 .max_age(Duration::days(7))
                 .build();
 
+            // Log successful login
+            let audit_ctx = AuditContext::new()
+                .with_user(user.id, &user.username, &format!("{:?}", user.role))
+                .with_request(Some(client_key), user_agent);
+            let _ = audit::log(
+                &state.db,
+                &audit_ctx,
+                AuditLogBuilder::new(AuditAction::Login, AuditCategory::Auth).entity(
+                    "user",
+                    user.id,
+                    Some(&user.username),
+                ),
+            );
+
             Ok((jar.add(session_cookie), Redirect::to("/admin")).into_response())
         }
         None => {
             state.rate_limiter.record_attempt(&client_key);
+
+            // Log failed login
+            let audit_ctx = AuditContext::new().with_request(Some(client_key), user_agent);
+            let _ = audit::log(
+                &state.db,
+                &audit_ctx,
+                AuditLogBuilder::new(AuditAction::LoginFailed, AuditCategory::Auth)
+                    .metadata_value("attempted_username", serde_json::json!(&form.username))
+                    .failure("Invalid credentials"),
+            );
 
             let mut ctx = Context::new();
             ctx.insert("error", "Invalid username or password");
@@ -150,8 +180,34 @@ pub async fn login(
     }
 }
 
-pub async fn logout(State(state): State<Arc<AppState>>, jar: CookieJar) -> AppResult<Response> {
+pub async fn logout(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
+    jar: CookieJar,
+) -> AppResult<Response> {
+    let client_ip = get_client_ip(&headers, connect_info.map(|c| c.0));
+    let user_agent = headers
+        .get(axum::http::header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
     if let Some(cookie) = jar.get("session") {
+        // Get user info before deleting session for audit log
+        if let Ok(Some(user)) = auth::validate_session(&state.db, cookie.value()) {
+            let audit_ctx = AuditContext::new()
+                .with_user(user.id, &user.username, &format!("{:?}", user.role))
+                .with_request(Some(client_ip), user_agent);
+            let _ = audit::log(
+                &state.db,
+                &audit_ctx,
+                AuditLogBuilder::new(AuditAction::Logout, AuditCategory::Auth).entity(
+                    "user",
+                    user.id,
+                    Some(&user.username),
+                ),
+            );
+        }
         let _ = auth::delete_session(&state.db, cookie.value());
     }
 

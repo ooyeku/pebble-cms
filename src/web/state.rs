@@ -24,7 +24,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(config: Config, config_path: PathBuf, db: Database, production_mode: bool) -> Result<Self> {
+    pub fn new(
+        config: Config,
+        config_path: PathBuf,
+        db: Database,
+        production_mode: bool,
+    ) -> Result<Self> {
         let mut templates = Tera::default();
 
         templates.register_filter("format_date", format_date_filter);
@@ -158,6 +163,14 @@ impl AppState {
                 "admin/versions/diff.html",
                 include_str!("../../templates/admin/versions/diff.html"),
             ),
+            (
+                "admin/audit/index.html",
+                include_str!("../../templates/admin/audit/index.html"),
+            ),
+            (
+                "admin/audit/view.html",
+                include_str!("../../templates/admin/audit/view.html"),
+            ),
         ])?;
 
         let media_dir = PathBuf::from(&config.media.upload_dir);
@@ -212,14 +225,19 @@ impl AppState {
         doc["site"]["url"] = toml_edit::value(&new_config.site.url);
         doc["site"]["language"] = toml_edit::value(&new_config.site.language);
 
-        doc["content"]["posts_per_page"] = toml_edit::value(new_config.content.posts_per_page as i64);
-        doc["content"]["excerpt_length"] = toml_edit::value(new_config.content.excerpt_length as i64);
+        doc["content"]["posts_per_page"] =
+            toml_edit::value(new_config.content.posts_per_page as i64);
+        doc["content"]["excerpt_length"] =
+            toml_edit::value(new_config.content.excerpt_length as i64);
         doc["content"]["auto_excerpt"] = toml_edit::value(new_config.content.auto_excerpt);
 
         doc["theme"]["name"] = toml_edit::value(&new_config.theme.name);
 
         // Handle theme.custom
-        if !doc["theme"].as_table().map_or(false, |t| t.contains_key("custom")) {
+        if !doc["theme"]
+            .as_table()
+            .map_or(false, |t| t.contains_key("custom"))
+        {
             doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
         }
         if let Some(ref v) = new_config.theme.custom.primary_color {
@@ -245,7 +263,8 @@ impl AppState {
         doc["homepage"]["hero_text_align"] = toml_edit::value(&new_config.homepage.hero_text_align);
         doc["homepage"]["show_posts"] = toml_edit::value(new_config.homepage.show_posts);
         doc["homepage"]["posts_layout"] = toml_edit::value(&new_config.homepage.posts_layout);
-        doc["homepage"]["posts_columns"] = toml_edit::value(new_config.homepage.posts_columns as i64);
+        doc["homepage"]["posts_columns"] =
+            toml_edit::value(new_config.homepage.posts_columns as i64);
         doc["homepage"]["show_pages"] = toml_edit::value(new_config.homepage.show_pages);
         doc["homepage"]["pages_layout"] = toml_edit::value(&new_config.homepage.pages_layout);
 

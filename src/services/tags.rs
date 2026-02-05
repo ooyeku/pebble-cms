@@ -138,12 +138,18 @@ pub fn get_posts_by_tag(
                 id: row.get(0)?,
                 slug: row.get(1)?,
                 title: row.get(2)?,
-                content_type: row.get::<_, String>(3)?.parse().unwrap_or(ContentType::Post),
+                content_type: row
+                    .get::<_, String>(3)?
+                    .parse()
+                    .unwrap_or(ContentType::Post),
                 body_markdown: row.get(4)?,
                 body_html: row.get(5)?,
                 excerpt: row.get(6)?,
                 featured_image: row.get(7)?,
-                status: row.get::<_, String>(8)?.parse().unwrap_or(ContentStatus::Draft),
+                status: row
+                    .get::<_, String>(8)?
+                    .parse()
+                    .unwrap_or(ContentStatus::Draft),
                 scheduled_at: row.get(9)?,
                 published_at: row.get(10)?,
                 author_id: row.get(11)?,
@@ -161,7 +167,11 @@ pub fn get_posts_by_tag(
 
     // Batch fetch all tags for all content items
     let content_ids: Vec<i64> = contents.iter().map(|c| c.id).collect();
-    let placeholders: String = content_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+    let placeholders: String = content_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
     let tag_sql = format!(
         "SELECT ct.content_id, t.id, t.name, t.slug, t.created_at
          FROM tags t
@@ -171,7 +181,10 @@ pub fn get_posts_by_tag(
     );
 
     let mut tag_stmt = conn.prepare(&tag_sql)?;
-    let params: Vec<&dyn rusqlite::ToSql> = content_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+    let params: Vec<&dyn rusqlite::ToSql> = content_ids
+        .iter()
+        .map(|id| id as &dyn rusqlite::ToSql)
+        .collect();
 
     let mut tags_by_content: HashMap<i64, Vec<Tag>> = HashMap::new();
     let tag_rows = tag_stmt.query_map(params.as_slice(), |row| {
@@ -193,14 +206,26 @@ pub fn get_posts_by_tag(
     }
 
     // Batch fetch all authors
-    let author_ids: Vec<i64> = contents.iter().filter_map(|c| c.author_id).collect::<HashSet<_>>().into_iter().collect();
+    let author_ids: Vec<i64> = contents
+        .iter()
+        .filter_map(|c| c.author_id)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
     let mut authors_by_id: HashMap<i64, UserSummary> = HashMap::new();
 
     if !author_ids.is_empty() {
-        let author_placeholders: String = author_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-        let author_sql = format!("SELECT id, username FROM users WHERE id IN ({})", author_placeholders);
+        let author_placeholders: String =
+            author_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let author_sql = format!(
+            "SELECT id, username FROM users WHERE id IN ({})",
+            author_placeholders
+        );
         let mut author_stmt = conn.prepare(&author_sql)?;
-        let author_params: Vec<&dyn rusqlite::ToSql> = author_ids.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
+        let author_params: Vec<&dyn rusqlite::ToSql> = author_ids
+            .iter()
+            .map(|id| id as &dyn rusqlite::ToSql)
+            .collect();
 
         let author_rows = author_stmt.query_map(author_params.as_slice(), |row| {
             Ok(UserSummary {
@@ -221,8 +246,14 @@ pub fn get_posts_by_tag(
         .into_iter()
         .map(|content| {
             let tags = tags_by_content.remove(&content.id).unwrap_or_default();
-            let author = content.author_id.and_then(|aid| authors_by_id.get(&aid).cloned());
-            ContentWithTags { content, tags, author }
+            let author = content
+                .author_id
+                .and_then(|aid| authors_by_id.get(&aid).cloned());
+            ContentWithTags {
+                content,
+                tags,
+                author,
+            }
         })
         .collect();
 

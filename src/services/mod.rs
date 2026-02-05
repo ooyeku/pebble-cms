@@ -1,4 +1,5 @@
 pub mod analytics;
+pub mod audit;
 pub mod auth;
 pub mod content;
 pub mod database;

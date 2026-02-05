@@ -53,7 +53,10 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/posts/:id/versions/:vid/restore",
             post(handlers::admin::post_version_restore),
         )
-        .route("/admin/posts/:id/diff", get(handlers::admin::post_version_diff))
+        .route(
+            "/admin/posts/:id/diff",
+            get(handlers::admin::post_version_diff),
+        )
         .route("/admin/pages", get(handlers::admin::pages))
         .route("/admin/pages/new", get(handlers::admin::new_page))
         .route("/admin/pages", post(handlers::admin::create_page))
@@ -76,7 +79,10 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/pages/:id/versions/:vid/restore",
             post(handlers::admin::page_version_restore),
         )
-        .route("/admin/pages/:id/diff", get(handlers::admin::page_version_diff))
+        .route(
+            "/admin/pages/:id/diff",
+            get(handlers::admin::page_version_diff),
+        )
         .route("/admin/media", get(handlers::admin::media))
         .route(
             "/admin/media",
@@ -96,6 +102,10 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/database", get(handlers::admin::database_dashboard))
         .route("/admin/database", post(handlers::admin::database_action))
         .route("/admin/analytics", get(handlers::admin::analytics))
+        // Audit log routes
+        .route("/admin/audit", get(handlers::admin::audit_logs))
+        .route("/admin/audit/export", get(handlers::admin::audit_export))
+        .route("/admin/audit/:id", get(handlers::admin::audit_log_detail))
         .route("/admin/users", get(handlers::admin::users))
         .route("/admin/users", post(handlers::admin::create_user))
         .route("/admin/users/:id", post(handlers::admin::update_user))

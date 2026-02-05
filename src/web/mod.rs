@@ -9,7 +9,8 @@ pub use state::AppState;
 
 use crate::services::analytics::{
     extract_browser_family, extract_device_type, extract_referrer_domain, generate_session_hash,
-    get_daily_salt, lookup_country, run_aggregation_job, Analytics, AnalyticsConfig, AnalyticsEvent,
+    get_daily_salt, lookup_country, run_aggregation_job, Analytics, AnalyticsConfig,
+    AnalyticsEvent,
 };
 use crate::{Config, Database};
 use anyhow::Result;
@@ -31,7 +32,8 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
     let analytics_config = AnalyticsConfig::default();
     let analytics = Arc::new(Analytics::with_config(db.clone(), analytics_config));
 
-    let state = AppState::new(config, config_path, db.clone(), false)?.with_analytics(analytics.clone());
+    let state =
+        AppState::new(config, config_path, db.clone(), false)?.with_analytics(analytics.clone());
     let state = Arc::new(state);
 
     let analytics_aggregator = analytics.clone();
@@ -60,13 +62,19 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
     Ok(())
 }
 
-pub async fn serve_production(config: &Config, config_path: PathBuf, host: &str, port: u16) -> Result<()> {
+pub async fn serve_production(
+    config: &Config,
+    config_path: PathBuf,
+    host: &str,
+    port: u16,
+) -> Result<()> {
     let db = Database::open(&config.database.path)?;
 
     let analytics_config = AnalyticsConfig::default();
     let analytics = Arc::new(Analytics::with_config(db.clone(), analytics_config));
 
-    let state = AppState::new(config.clone(), config_path, db.clone(), true)?.with_analytics(analytics.clone());
+    let state = AppState::new(config.clone(), config_path, db.clone(), true)?
+        .with_analytics(analytics.clone());
     let state = Arc::new(state);
 
     let analytics_aggregator = analytics.clone();

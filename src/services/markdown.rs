@@ -8,9 +8,8 @@ use syntect::html::highlighted_html_for_string;
 use syntect::parsing::SyntaxSet;
 
 // Statically compiled regexes - avoids runtime panic and improves performance
-static SHORTCODE_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\[(\w+)([^\]]*)\]").expect("Invalid shortcode regex pattern")
-});
+static SHORTCODE_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\[(\w+)([^\]]*)\]").expect("Invalid shortcode regex pattern"));
 static ATTR_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"(\w+)(?:="([^"]*)")?|(\w+)"#).expect("Invalid attribute regex pattern")
 });
@@ -509,12 +508,22 @@ impl MarkdownRenderer {
                     code_content.push_str(&text);
                 }
                 // Handle headings to add ID attributes
-                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, id, classes, attrs }) => {
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading {
+                    level,
+                    id,
+                    classes,
+                    attrs,
+                }) => {
                     in_heading = true;
                     heading_text.clear();
                     // If the heading already has an ID from {#custom-id} syntax, use it
                     if id.is_some() {
-                        events.push(pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading { level, id, classes, attrs }));
+                        events.push(pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading {
+                            level,
+                            id,
+                            classes,
+                            attrs,
+                        }));
                         in_heading = false; // Don't process further, it already has an ID
                     }
                 }
@@ -541,7 +550,9 @@ impl MarkdownRenderer {
                         events.push(pulldown_cmark::Event::Html(heading_html.into()));
                         in_heading = false;
                     } else {
-                        events.push(pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(level)));
+                        events.push(pulldown_cmark::Event::End(pulldown_cmark::TagEnd::Heading(
+                            level,
+                        )));
                     }
                 }
                 pulldown_cmark::Event::Text(text) if in_heading => {
@@ -752,7 +763,11 @@ mod tests {
         let renderer = MarkdownRenderer::new();
         let input = "## Quick Start\n\nSome content here.";
         let output = renderer.render(input);
-        assert!(output.contains(r#"id="quick-start""#), "Output was: {}", output);
+        assert!(
+            output.contains(r#"id="quick-start""#),
+            "Output was: {}",
+            output
+        );
     }
 
     #[test]
@@ -773,8 +788,20 @@ Command reference.
 "#;
         let output = renderer.render(input);
         // Check that heading IDs match TOC links
-        assert!(output.contains(r#"id="quick-start""#), "Missing quick-start ID. Output: {}", output);
-        assert!(output.contains(r#"id="cli-commands""#), "Missing cli-commands ID. Output: {}", output);
-        assert!(output.contains("href=\"#quick-start\""), "Missing quick-start link. Output: {}", output);
+        assert!(
+            output.contains(r#"id="quick-start""#),
+            "Missing quick-start ID. Output: {}",
+            output
+        );
+        assert!(
+            output.contains(r#"id="cli-commands""#),
+            "Missing cli-commands ID. Output: {}",
+            output
+        );
+        assert!(
+            output.contains("href=\"#quick-start\""),
+            "Missing quick-start link. Output: {}",
+            output
+        );
     }
 }

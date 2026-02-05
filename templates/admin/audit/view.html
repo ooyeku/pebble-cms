@@ -1,0 +1,456 @@
+{% extends "admin/base.html" %} {% block title %}Audit Event #{{ log.id }}{%
+endblock %} {% block content %}
+<div class="audit-detail-page">
+    <div class="page-header">
+        <a href="/admin/audit" class="back-link"
+            ><svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+            >
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to Audit Log</a
+        >
+        <h1>Audit Event #{{ log.id }}</h1>
+        <p class="subtitle">{{ log.timestamp }}</p>
+    </div>
+
+    <div class="detail-grid">
+        <div class="detail-card card">
+            <h3>Event Details</h3>
+            <div class="detail-table">
+                <div class="detail-row">
+                    <span class="detail-label">Action</span>
+                    <span class="detail-value"
+                        ><span class="action-badge action-{{ log.action }}"
+                            >{{ log.action | replace(from="_", to=" ") | title
+                            }}</span
+                        ></span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Category</span>
+                    <span class="detail-value"
+                        ><span class="category-badge"
+                            >{{ log.category | title }}</span
+                        ></span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status</span>
+                    <span class="detail-value"
+                        >{% if log.status == "success" %}<span
+                            class="status-badge success"
+                            >Success</span
+                        >{% else %}<span class="status-badge failure"
+                            >Failure</span
+                        >{% endif %}</span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Timestamp</span>
+                    <span class="detail-value mono">{{ log.timestamp }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-card card">
+            <h3>User Information</h3>
+            <div class="detail-table">
+                <div class="detail-row">
+                    <span class="detail-label">User</span>
+                    <span class="detail-value"
+                        >{% if log.username %}{{ log.username }}{% else %}<span
+                            class="text-muted"
+                            >Anonymous / System</span
+                        >{% endif %}</span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">User ID</span>
+                    <span class="detail-value mono"
+                        >{% if log.user_id %}{{ log.user_id }}{% else %}<span
+                            class="text-muted"
+                            >-</span
+                        >{% endif %}</span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Role</span>
+                    <span class="detail-value"
+                        >{% if log.user_role %}<span
+                            class="role-badge role-{{ log.user_role }}"
+                            >{{ log.user_role | title }}</span
+                        >{% else %}<span class="text-muted">-</span>{% endif
+                        %}</span
+                    >
+                </div>
+            </div>
+        </div>
+
+        {% if log.entity_type %}
+        <div class="detail-card card">
+            <h3>Entity Details</h3>
+            <div class="detail-table">
+                <div class="detail-row">
+                    <span class="detail-label">Type</span>
+                    <span class="detail-value"
+                        >{{ log.entity_type | title }}</span
+                    >
+                </div>
+                {% if log.entity_id %}
+                <div class="detail-row">
+                    <span class="detail-label">ID</span>
+                    <span class="detail-value mono">{{ log.entity_id }}</span>
+                </div>
+                {% endif %} {% if log.entity_title %}
+                <div class="detail-row">
+                    <span class="detail-label">Title</span>
+                    <span class="detail-value">{{ log.entity_title }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="detail-card card">
+            <h3>Request Context</h3>
+            <div class="detail-table">
+                <div class="detail-row">
+                    <span class="detail-label">IP Address</span>
+                    <span class="detail-value mono"
+                        >{% if log.ip_address %}{{ log.ip_address }}{% else
+                        %}<span class="text-muted">-</span>{% endif %}</span
+                    >
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">User Agent</span>
+                    <span class="detail-value user-agent"
+                        >{% if log.user_agent %}{{ log.user_agent }}{% else
+                        %}<span class="text-muted">-</span>{% endif %}</span
+                    >
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if log.status == "failure" and log.error_message %}
+    <div class="error-card card">
+        <h3>Error Details</h3>
+        <div class="error-message">{{ log.error_message }}</div>
+    </div>
+    {% endif %} {% if log.changes %}
+    <div class="changes-card card">
+        <h3>Changes</h3>
+        <div class="changes-content">
+            {% for key, value in log.changes %}
+            <div class="change-item">
+                <span class="change-field">{{ key }}</span>
+                {% if value.old is defined and value.new is defined %}
+                <div class="change-values">
+                    <span class="change-old" title="Old value"
+                        >{{ value.old }}</span
+                    >
+                    <span class="change-arrow">&rarr;</span>
+                    <span class="change-new" title="New value"
+                        >{{ value.new }}</span
+                    >
+                </div>
+                {% else %}
+                <div class="change-value">{{ value }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %} {% if log.metadata %}
+    <div class="metadata-card card">
+        <h3>Additional Metadata</h3>
+        <pre class="metadata-json">
+{{ log.metadata | json_encode(pretty=true) }}</pre
+        >
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .audit-detail-page {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .page-header {
+        margin-bottom: 0.5rem;
+    }
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+    }
+    .back-link:hover {
+        color: var(--color-primary);
+    }
+    .page-header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    .subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        font-family: var(--font-mono);
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    @media (max-width: 900px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .detail-card {
+        padding: 1.25rem;
+    }
+    .detail-card h3 {
+        margin: 0 0 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .detail-table {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .detail-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        min-width: 100px;
+    }
+    .detail-value {
+        font-size: 0.875rem;
+        color: var(--text);
+        text-align: right;
+        word-break: break-word;
+    }
+    .detail-value.mono {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+    }
+    .detail-value.user-agent {
+        font-size: 0.75rem;
+        max-width: 300px;
+        line-height: 1.4;
+    }
+
+    .text-muted {
+        color: var(--text-muted);
+    }
+
+    .action-badge {
+        display: inline-block;
+        padding: 0.25rem 0.625rem;
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+        font-size: 0.8rem;
+        text-transform: capitalize;
+        background: var(--bg-secondary);
+    }
+    .action-badge.action-create,
+    .action-badge.action-user_create,
+    .action-badge.action-tag_create,
+    .action-badge.action-upload {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+    .action-badge.action-update,
+    .action-badge.action-user_update,
+    .action-badge.action-settings_update {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+    .action-badge.action-delete,
+    .action-badge.action-user_delete,
+    .action-badge.action-tag_delete,
+    .action-badge.action-media_delete {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+    .action-badge.action-publish {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+    .action-badge.action-login {
+        background: rgba(139, 92, 246, 0.15);
+        color: #8b5cf6;
+    }
+    .action-badge.action-login_failed {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+    .action-badge.action-logout {
+        background: rgba(107, 114, 128, 0.15);
+        color: #6b7280;
+    }
+
+    .category-badge {
+        display: inline-block;
+        padding: 0.25rem 0.625rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.625rem;
+        border-radius: var(--radius-sm);
+        font-weight: 500;
+        font-size: 0.8rem;
+    }
+    .status-badge.success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+    .status-badge.failure {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .role-badge {
+        display: inline-block;
+        padding: 0.25rem 0.625rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+        font-size: 0.8rem;
+    }
+    .role-badge.role-admin {
+        background: rgba(139, 92, 246, 0.15);
+        color: #8b5cf6;
+    }
+    .role-badge.role-author {
+        background: rgba(59, 130, 246, 0.15);
+        color: #3b82f6;
+    }
+    .role-badge.role-viewer {
+        background: rgba(107, 114, 128, 0.15);
+        color: #6b7280;
+    }
+
+    .error-card {
+        padding: 1.25rem;
+        border-left: 4px solid #ef4444;
+    }
+    .error-card h3 {
+        margin: 0 0 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #ef4444;
+    }
+    .error-message {
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.05);
+        padding: 0.75rem;
+        border-radius: var(--radius-sm);
+    }
+
+    .changes-card,
+    .metadata-card {
+        padding: 1.25rem;
+    }
+    .changes-card h3,
+    .metadata-card h3 {
+        margin: 0 0 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .changes-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .change-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: var(--radius-sm);
+    }
+    .change-field {
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text);
+    }
+    .change-values {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+    }
+    .change-old {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--radius-sm);
+        text-decoration: line-through;
+    }
+    .change-arrow {
+        color: var(--text-muted);
+    }
+    .change-new {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: var(--radius-sm);
+    }
+    .change-value {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+    }
+
+    .metadata-json {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+        background: var(--bg-secondary);
+        padding: 1rem;
+        border-radius: var(--radius-sm);
+        overflow-x: auto;
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}

@@ -10,8 +10,10 @@ use std::time::{Duration, Instant};
 // Pre-computed header values to avoid runtime parsing and unwrap
 static HEADER_NOSNIFF: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("nosniff"));
 static HEADER_DENY: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("DENY"));
-static HEADER_XSS_PROTECTION: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("1; mode=block"));
-static HEADER_REFERRER_POLICY: Lazy<HeaderValue> = Lazy::new(|| HeaderValue::from_static("strict-origin-when-cross-origin"));
+static HEADER_XSS_PROTECTION: Lazy<HeaderValue> =
+    Lazy::new(|| HeaderValue::from_static("1; mode=block"));
+static HEADER_REFERRER_POLICY: Lazy<HeaderValue> =
+    Lazy::new(|| HeaderValue::from_static("strict-origin-when-cross-origin"));
 static HEADER_CSP: Lazy<HeaderValue> = Lazy::new(|| {
     HeaderValue::from_static(
         "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
