@@ -431,12 +431,22 @@ mod tests {
 
         #[test]
         fn test_available_themes() {
-            assert_eq!(ThemeConfig::AVAILABLE_THEMES.len(), 5);
+            assert_eq!(ThemeConfig::AVAILABLE_THEMES.len(), 15);
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"default"));
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"minimal"));
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"magazine"));
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"brutalist"));
             assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"neon"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"serif"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"ocean"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"midnight"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"botanical"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"monochrome"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"coral"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"terminal"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"nordic"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"sunset"));
+            assert!(ThemeConfig::AVAILABLE_THEMES.contains(&"typewriter"));
         }
 
         #[test]
@@ -446,6 +456,16 @@ mod tests {
             assert!(ThemeConfig::is_valid_theme("magazine"));
             assert!(ThemeConfig::is_valid_theme("brutalist"));
             assert!(ThemeConfig::is_valid_theme("neon"));
+            assert!(ThemeConfig::is_valid_theme("serif"));
+            assert!(ThemeConfig::is_valid_theme("ocean"));
+            assert!(ThemeConfig::is_valid_theme("midnight"));
+            assert!(ThemeConfig::is_valid_theme("botanical"));
+            assert!(ThemeConfig::is_valid_theme("monochrome"));
+            assert!(ThemeConfig::is_valid_theme("coral"));
+            assert!(ThemeConfig::is_valid_theme("terminal"));
+            assert!(ThemeConfig::is_valid_theme("nordic"));
+            assert!(ThemeConfig::is_valid_theme("sunset"));
+            assert!(ThemeConfig::is_valid_theme("typewriter"));
             assert!(!ThemeConfig::is_valid_theme("invalid"));
             assert!(!ThemeConfig::is_valid_theme(""));
         }

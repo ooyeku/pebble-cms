@@ -1,9 +1,7 @@
 :root {
-    --font-sans:
-        system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        sans-serif;
-    --font-serif: Georgia, "Times New Roman", serif;
-    --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, monospace;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: Georgia, 'Times New Roman', serif;
+    --font-mono: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, monospace;
 
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
@@ -102,14 +100,11 @@
     --shadow-alpha-lg: 0.15;
 
     --shadow-sm: 0 1px 2px 0 rgb(var(--shadow-color) / var(--shadow-alpha-sm));
-    --shadow:
-        0 1px 3px 0 rgb(var(--shadow-color) / var(--shadow-alpha-md)),
+    --shadow: 0 1px 3px 0 rgb(var(--shadow-color) / var(--shadow-alpha-md)),
         0 1px 2px -1px rgb(var(--shadow-color) / var(--shadow-alpha-md));
-    --shadow-md:
-        0 4px 6px -1px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
+    --shadow-md: 0 4px 6px -1px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
         0 2px 4px -2px rgb(var(--shadow-color) / var(--shadow-alpha-md));
-    --shadow-lg:
-        0 10px 15px -3px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
+    --shadow-lg: 0 10px 15px -3px rgb(var(--shadow-color) / var(--shadow-alpha-md)),
         0 4px 6px -4px rgb(var(--shadow-color) / var(--shadow-alpha-md));
 }
 
@@ -194,9 +189,7 @@ html.theme-light {
     --shadow-alpha-sm: 0.05;
     --shadow-alpha-md: 0.1;
     --shadow-alpha-lg: 0.15;
-}
-
-*,
+}*,
 *::before,
 *::after {
     box-sizing: border-box;
@@ -286,9 +279,7 @@ table {
 ::selection {
     background: var(--color-primary-light);
     color: var(--text);
-}
-
-a {
+}a {
     color: var(--color-primary);
     text-decoration: none;
     transition: color var(--transition-base);
@@ -340,7 +331,7 @@ h6 {
     max-width: var(--content-max-width);
 }
 
-.content > * + * {
+.content>*+* {
     margin-top: var(--space-6);
 }
 
@@ -419,31 +410,12 @@ h6 {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: var(--space-4);
+    padding: var(--space-5);
     overflow-x: auto;
     font-family: var(--font-mono);
     font-size: var(--font-size-sm);
     line-height: 1.6;
-    margin: var(--space-4) 0;
-}
-
-/* Handle nested pre elements from syntect syntax highlighting */
-.content pre pre {
-    background: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-.content pre code {
-    background: none;
-    border: none;
-    padding: 0;
-    margin: 0;
-    border-radius: 0;
-    font-size: inherit;
-    color: inherit;
+    margin: var(--space-6) 0;
 }
 
 .content code {
@@ -451,7 +423,7 @@ h6 {
     font-size: 0.875em;
 }
 
-.content :not(pre) > code {
+.content :not(pre)>code {
     background: var(--bg-secondary);
     padding: 0.2em 0.4em;
     border-radius: var(--radius-sm);
@@ -483,9 +455,7 @@ h6 {
     background: var(--bg-secondary);
     font-weight: 600;
     color: var(--text);
-}
-
-.container {
+}.container {
     max-width: var(--container-max);
     margin: 0 auto;
     padding: 0 var(--space-8);
@@ -681,14 +651,13 @@ h6 {
 }
 
 @media (max-width: 768px) {
+
     .grid-2,
     .grid-3,
     .grid-4 {
         grid-template-columns: 1fr;
     }
-}
-
-.btn {
+}.btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1204,23 +1173,81 @@ html.theme-light .theme-toggle-admin .icon-sun {
 }
 
 .editor-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-height: 400px;
+}
+
+.editor-layout > textarea {
+    flex: 1 1 50%;
+    min-width: 100px;
+    max-width: calc(100% - 208px);
+    resize: none;
+}
+
+.editor-layout .resize-handle {
+    width: 8px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+    position: relative;
+}
+
+.editor-layout .resize-handle:hover,
+.editor-layout .resize-handle.dragging {
+    background: var(--color-primary);
+}
+
+.editor-layout .resize-handle::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 30px;
+    background: var(--text-muted);
+    border-radius: 1px;
+    opacity: 0.5;
+}
+
+.editor-layout .resize-handle:hover::after,
+.editor-layout .resize-handle.dragging::after {
+    background: white;
+    opacity: 1;
 }
 
 @media (max-width: 768px) {
     .editor-layout {
-        grid-template-columns: 1fr;
+        flex-direction: column;
+    }
+    .editor-layout textarea {
+        min-height: 200px;
+    }
+    .editor-layout .resize-handle {
+        width: 100%;
+        height: 8px;
+        cursor: row-resize;
+    }
+    .editor-layout .resize-handle::after {
+        width: 30px;
+        height: 2px;
     }
 }
 
-.preview {
+.editor-layout > .preview {
+    flex: 1 1 50%;
+    min-width: 100px;
+    max-width: calc(100% - 208px);
     padding: var(--space-4);
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     min-height: 300px;
+    overflow-y: auto;
 }
 
 .htmx-indicator {
@@ -1252,562 +1279,13 @@ html.theme-light .theme-toggle-admin .icon-sun {
 .pagination .page-info {
     color: var(--text-muted);
 }
-
-/* Hero Section */
-.hero {
-    text-align: center;
-    padding: var(--space-16) var(--space-4);
-    margin-bottom: var(--space-12);
-    background: linear-gradient(
-        135deg,
-        var(--color-primary-light) 0%,
-        transparent 50%
-    );
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--border-light);
-}
-
-.hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.hero-title {
-    font-size: var(--font-size-4xl);
-    font-weight: 800;
-    letter-spacing: var(--letter-spacing-tight);
-    line-height: 1.1;
-    margin-bottom: var(--space-4);
-    background: linear-gradient(
-        135deg,
-        var(--text) 0%,
-        var(--color-primary) 100%
-    );
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-@media (min-width: 640px) {
-    .hero-title {
-        font-size: var(--font-size-5xl);
-    }
-}
-
-.hero-subtitle {
-    font-size: var(--font-size-xl);
-    color: var(--text-secondary);
-    line-height: var(--line-height-relaxed);
-    margin-bottom: var(--space-6);
-}
-
-.hero-custom {
-    margin-top: var(--space-6);
-    color: var(--text-secondary);
-}
-
-.custom-content-section {
-    padding: var(--space-8) 0;
-    margin-bottom: var(--space-8);
-}
-
-.custom-content {
-    color: var(--text-secondary);
-}
-
-.hero--centered {
-    text-align: center;
-}
-
-.hero--centered .hero-content {
-    margin: 0 auto;
-}
-
-.hero--left {
-    text-align: left;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding-left: 0;
-    padding-right: 0;
-}
-
-.hero--left .hero-content {
-    margin: 0;
-    max-width: 65ch;
-}
-
-.hero--left .hero-title {
-    background: none;
-    -webkit-text-fill-color: var(--text);
-}
-
-.hero--banner {
-    border-radius: 0;
-    margin-left: calc(-50vw + 50%);
-    margin-right: calc(-50vw + 50%);
-    width: 100vw;
-    border-left: none;
-    border-right: none;
-}
-
-.hero--with-image {
-    position: relative;
-    background: var(--hero-image) center/cover no-repeat;
-}
-
-.hero--with-image::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(0, 0, 0, 0.7) 0%,
-        rgba(0, 0, 0, 0.4) 100%
-    );
-    border-radius: inherit;
-}
-
-.hero--with-image .hero-content {
-    position: relative;
-    z-index: 1;
-}
-
-.hero--with-image .hero-title {
-    background: none;
-    -webkit-text-fill-color: #fff;
-    color: #fff;
-}
-
-.hero--with-image .hero-subtitle {
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.hero--with-image .hero-custom {
-    color: rgba(255, 255, 255, 0.85);
-}
-
-.hero--small {
-    padding-top: var(--space-10);
-    padding-bottom: var(--space-10);
-}
-
-.hero--medium {
-    padding-top: var(--space-16);
-    padding-bottom: var(--space-16);
-}
-
-.hero--large {
-    padding-top: var(--space-16);
-    padding-bottom: var(--space-16);
-    min-height: 50vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.hero--full {
-    padding-top: var(--space-16);
-    padding-bottom: var(--space-16);
-    min-height: 80vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.hero--align-left {
-    text-align: left;
-}
-
-.hero--align-left .hero-content {
-    margin-left: 0;
-    margin-right: auto;
-}
-
-.hero--align-center {
-    text-align: center;
-}
-
-.hero--align-center .hero-content {
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.hero--align-right {
-    text-align: right;
-}
-
-.hero--align-right .hero-content {
-    margin-left: auto;
-    margin-right: 0;
-}
-
-/* Section Styles */
-.section-title {
-    font-size: var(--font-size-2xl);
-    font-weight: 700;
-    margin-bottom: var(--space-6);
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-}
-
-.section-icon {
-    font-size: var(--font-size-xl);
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    margin-bottom: var(--space-6);
-}
-
-.section-header .section-title {
-    margin-bottom: 0;
-}
-
-.view-all-link {
-    color: var(--color-primary);
-    font-weight: 500;
-    font-size: var(--font-size-sm);
-}
-
-.view-all-link:hover {
-    text-decoration: underline;
-}
-
-/* Pages Section */
-.pages-section {
-    margin-bottom: var(--space-12);
-}
-
-.pages-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: var(--space-4);
-}
-
-.page-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-5);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    text-decoration: none;
-    transition: all var(--transition-base);
-}
-
-.page-card:hover {
-    border-color: var(--color-primary);
-    background: var(--bg);
-    transform: translateX(4px);
-    box-shadow: var(--shadow-md);
-}
-
-.page-card-content h3 {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: var(--space-1);
-}
-
-.page-card-content p {
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
-    margin: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
-.page-card-arrow {
-    color: var(--color-primary);
-    font-size: var(--font-size-xl);
-    transition: transform var(--transition-base);
-}
-
-.page-card:hover .page-card-arrow {
-    transform: translateX(4px);
-}
-
-.pages-grid--grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-}
-
-.pages-grid--list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-}
-
-.pages-grid--list .page-card {
-    max-width: none;
-}
-
-.pages-grid--compact {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-}
-
-.pages-grid--compact .page-card {
-    padding: var(--space-3) var(--space-4);
-    flex: 0 0 auto;
-}
-
-.pages-grid--compact .page-card-content p {
-    display: none;
-}
-
-.pages-grid--compact .page-card-arrow {
-    display: none;
-}
-
-/* Posts Section */
-.posts-section {
-    margin-bottom: var(--space-12);
-}
-
-.post-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
-    gap: var(--space-8);
-}
-
-.post-card {
-    padding: var(--space-6);
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-    transition:
-        transform var(--transition-slow),
-        box-shadow var(--transition-slow);
-}
-
-.post-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.post-list--grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 28rem), 1fr));
-}
-
-.post-list--cols-1 {
-    grid-template-columns: 1fr;
-    max-width: 48rem;
-}
-
-.post-list--cols-2 {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
-}
-
-.post-list--cols-3 {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-}
-
-@media (min-width: 1024px) {
-    .post-list--cols-2 {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    .post-list--cols-3 {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-.post-list--list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    max-width: 48rem;
-}
-
-.post-list--list .post-card {
-    display: block;
-}
-
-.post-list--compact {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    max-width: 48rem;
-}
-
-.post-list--compact .post-card {
-    padding: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-}
-
-.post-list--compact .post-card h2 {
-    font-size: var(--font-size-lg);
-    margin-bottom: 0;
-}
-
-.post-list--compact .post-excerpt {
-    display: none;
-}
-
-.post-list--compact .post-tags {
-    margin-top: var(--space-2);
-}
-
-.post-card h2 {
-    font-size: var(--font-size-2xl);
-    font-weight: 600;
-    line-height: var(--line-height-tight);
-    margin-bottom: var(--space-2);
-    letter-spacing: var(--letter-spacing-tight);
-}
-
-.post-card h2 a {
-    color: var(--text);
-}
-
-.post-card h2 a:hover {
-    color: var(--color-primary);
-}
-
-.post-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--text-muted);
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--space-4);
-}
-
-.post-meta .separator {
-    color: var(--border);
-}
-
-.post-excerpt {
-    color: var(--text-secondary);
-    line-height: var(--line-height-relaxed);
-}
-
-.post-tags {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-    margin-top: var(--space-4);
-}
-
-.post-header {
-    margin-bottom: var(--space-10);
-}
-
-.post-header h1 {
-    font-size: var(--font-size-4xl);
-    font-weight: 700;
-    line-height: var(--line-height-tight);
-    letter-spacing: var(--letter-spacing-tight);
-    margin-bottom: var(--space-4);
-}
-
-@media (min-width: 640px) {
-    .post-header h1 {
-        font-size: var(--font-size-5xl);
-    }
-}
-
-/* Features Section */
-.features-section {
-    text-align: center;
-    margin-bottom: var(--space-12);
-}
-
-.features-section .section-title {
-    justify-content: center;
-}
-
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--space-6);
-    margin-bottom: var(--space-8);
-}
-
-.feature-card {
-    padding: var(--space-6);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-lg);
-    text-align: center;
-    transition: all var(--transition-base);
-}
-
-.feature-card:hover {
-    border-color: var(--color-primary-light);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.feature-icon {
-    font-size: 2.5rem;
-    margin-bottom: var(--space-4);
-}
-
-.feature-card h3 {
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    margin-bottom: var(--space-2);
-    color: var(--text);
-}
-
-.feature-card p {
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
-    line-height: var(--line-height-relaxed);
-}
-
-.cta-container {
-    margin-top: var(--space-8);
-}
-
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: var(--space-12) var(--space-4);
-    background: var(--bg-secondary);
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-lg);
-}
-
-.empty-state-icon {
-    font-size: 3rem;
-    margin-bottom: var(--space-4);
-    opacity: 0.7;
-}
-
-.empty-state p {
-    color: var(--text-muted);
-    margin-bottom: var(--space-2);
-}
-
-.empty-state-hint {
-    font-size: var(--font-size-sm);
-}
-
-.empty-state a {
-    color: var(--color-primary);
-}
-
-.empty-state a:hover {
-    text-decoration: underline;
-}
+/* ==========================================================================
+   Theme: Default
+   A modern, clean theme with soft colors and rounded corners.
+   ========================================================================== */
 
 html.site-theme-default {
+    /* Light mode - explicit colors for default theme */
     --color-primary: #3b82f6;
     --color-primary-hover: #2563eb;
     --color-primary-light: rgba(59, 130, 246, 0.1);
@@ -1840,23 +1318,40 @@ html.site-theme-default[class*="theme-dark"] {
     --border-light: #1e293b;
 }
 
+/* ==========================================================================
+   Theme: Minimal
+   A stark, monochromatic theme focused on typography and whitespace.
+   No shadows, no rounded corners, maximum readability.
+   ========================================================================== */
+
 html.site-theme-minimal {
     --color-primary: #18181b;
     --color-primary-hover: #3f3f46;
     --color-primary-light: rgba(24, 24, 27, 0.05);
-    --color-accent: #71717a;
+    --color-accent: #52525b;
+
+    /* Remove all rounded corners */
     --radius: 0;
     --radius-sm: 0;
     --radius-lg: 0;
     --radius-xl: 0;
+    --radius-full: 0;
+
+    /* Remove all shadows */
     --shadow-sm: none;
     --shadow: none;
     --shadow-md: none;
     --shadow-lg: none;
-    --border: #e4e4e7;
-    --border-light: #f4f4f5;
+
+    /* Muted, neutral colors */
+    --border: #d4d4d8;
+    --border-light: #e4e4e7;
     --bg-secondary: #fafafa;
     --bg-tertiary: #f4f4f5;
+
+    /* Typography adjustments */
+    --font-size-base: 1.0625rem;
+    --line-height-normal: 1.6;
 }
 
 html.theme-dark.site-theme-minimal,
@@ -1864,151 +1359,365 @@ html.site-theme-minimal[class*="theme-dark"] {
     --color-primary: #fafafa;
     --color-primary-hover: #d4d4d8;
     --color-primary-light: rgba(250, 250, 250, 0.1);
+    --color-accent: #a1a1aa;
     --border: #3f3f46;
     --border-light: #27272a;
     --bg-secondary: #18181b;
     --bg-tertiary: #27272a;
 }
 
+/* Minimal: Header */
 html.site-theme-minimal .site-header {
-    border-bottom: none;
-    padding: var(--space-6) 0;
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--space-8) 0;
+    background: transparent;
 }
 
 html.site-theme-minimal .site-title {
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: var(--font-size-base);
+}
+
+html.site-theme-minimal .site-nav a {
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    transition: color var(--transition-base);
 }
 
+html.site-theme-minimal .site-nav a:hover {
+    color: var(--text);
+}
+
+/* Minimal: Post Cards */
 html.site-theme-minimal .post-card {
     border: none;
     background: transparent;
-    padding: var(--space-6) 0;
+    padding: var(--space-8) 0;
     border-bottom: 1px solid var(--border-light);
     border-radius: 0;
+}
+
+html.site-theme-minimal .post-card:last-child {
+    border-bottom: none;
 }
 
 html.site-theme-minimal .post-card:hover {
     transform: none;
     box-shadow: none;
+    background: transparent;
 }
 
 html.site-theme-minimal .post-card h2 {
     font-weight: 400;
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-2xl);
+    letter-spacing: -0.01em;
 }
 
+html.site-theme-minimal .post-card h2 a {
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--transition-base);
+}
+
+html.site-theme-minimal .post-card h2 a:hover {
+    border-bottom-color: var(--text);
+}
+
+html.site-theme-minimal .post-excerpt {
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+}
+
+html.site-theme-minimal .post-meta {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+/* Minimal: Buttons */
 html.site-theme-minimal .btn {
     border-radius: 0;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
     font-size: var(--font-size-xs);
+    font-weight: 500;
+    padding: var(--space-3) var(--space-6);
 }
 
 html.site-theme-minimal .btn-primary {
     background: var(--text);
     color: var(--bg);
+    border: 1px solid var(--text);
 }
 
 html.site-theme-minimal .btn-primary:hover {
-    background: var(--text-secondary);
+    background: transparent;
+    color: var(--text);
 }
 
+html.site-theme-minimal .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+html.site-theme-minimal .btn-secondary:hover {
+    border-color: var(--text);
+}
+
+/* Minimal: Cards */
 html.site-theme-minimal .card {
     border-radius: 0;
     border: 1px solid var(--border-light);
+    box-shadow: none;
 }
 
+/* Minimal: Tags */
 html.site-theme-minimal .tag {
     background: transparent;
     border: 1px solid var(--border);
     border-radius: 0;
     font-size: var(--font-size-xs);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: var(--space-1) var(--space-3);
 }
+
+html.site-theme-minimal .tag:hover {
+    border-color: var(--text);
+    color: var(--text);
+}
+
+/* Minimal: Hero Section */
+html.site-theme-minimal .hero {
+    padding: var(--space-16) 0;
+    text-align: left;
+}
+
+html.site-theme-minimal .hero-title {
+    font-weight: 300;
+    font-size: var(--font-size-4xl);
+    letter-spacing: -0.02em;
+    text-transform: none;
+}
+
+html.site-theme-minimal .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    max-width: 50ch;
+}
+
+/* Minimal: Section Titles */
+html.site-theme-minimal .section-title {
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-bottom: var(--space-8);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Minimal: Footer */
+html.site-theme-minimal .site-footer {
+    border-top: 1px solid var(--border-light);
+    padding: var(--space-8) 0;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+/* Minimal: Single Post */
+html.site-theme-minimal .post-header h1 {
+    font-weight: 400;
+    font-size: var(--font-size-4xl);
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-minimal .content {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+}
+
+html.site-theme-minimal .content h2,
+html.site-theme-minimal .content h3,
+html.site-theme-minimal .content h4 {
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   Theme: Magazine
+   A bold, editorial theme with serif fonts and newspaper-style design.
+   ========================================================================== */
 
 html.site-theme-magazine {
     --font-serif: Georgia, "Times New Roman", Times, serif;
-    --color-primary: #dc2626;
-    --color-primary-hover: #b91c1c;
-    --color-primary-light: rgba(220, 38, 38, 0.1);
-    --color-accent: #0d9488;
-    --bg-secondary: #fffbeb;
-    --border: #fcd34d;
-    --border-light: #fef3c7;
+    --font-display: Georgia, "Times New Roman", Times, serif;
+
+    /* Bold red primary color */
+    --color-primary: #b91c1c;
+    --color-primary-hover: #991b1b;
+    --color-primary-light: rgba(185, 28, 28, 0.08);
+
+    /* Teal accent */
+    --color-accent: #0f766e;
+    --color-accent-hover: #115e59;
+
+    /* Warm backgrounds */
+    --bg-secondary: #fef7ed;
+    --bg-tertiary: #fff7ed;
+
+    /* Borders */
+    --border: #e7e5e4;
+    --border-light: #f5f5f4;
+
+    /* Sharp corners for editorial feel */
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+
+    /* Subtle shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 html.theme-dark.site-theme-magazine,
 html.site-theme-magazine[class*="theme-dark"] {
     --color-primary: #f87171;
     --color-primary-hover: #fca5a5;
-    --color-primary-light: rgba(248, 113, 113, 0.15);
+    --color-primary-light: rgba(248, 113, 113, 0.12);
     --color-accent: #5eead4;
+    --color-accent-hover: #99f6e4;
     --bg-secondary: #1c1917;
+    --bg-tertiary: #292524;
     --border: #44403c;
     --border-light: #292524;
 }
 
+/* Magazine: Typography */
 html.site-theme-magazine body {
     font-family: var(--font-serif);
+    font-size: 1.0625rem;
+    line-height: 1.7;
 }
 
+/* Magazine: Header */
 html.site-theme-magazine .site-header {
-    border-bottom: 3px solid var(--color-primary);
+    border-bottom: 4px double var(--color-primary);
     padding: var(--space-6) 0;
+    background: var(--bg);
 }
 
 html.site-theme-magazine .site-title {
-    font-family: var(--font-serif);
-    font-size: var(--font-size-3xl);
+    font-family: var(--font-display);
+    font-size: var(--font-size-4xl);
     font-weight: 700;
     font-style: italic;
+    letter-spacing: -0.02em;
 }
 
 html.site-theme-magazine .site-nav a {
     font-family: var(--font-sans);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: var(--font-size-sm);
+    letter-spacing: 0.08em;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
 }
 
+html.site-theme-magazine .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Magazine: Hero */
+html.site-theme-magazine .hero {
+    padding: var(--space-12) 0;
+    border-bottom: 1px solid var(--border);
+}
+
+html.site-theme-magazine .hero-title {
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    font-weight: 700;
+    font-style: italic;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+html.site-theme-magazine .hero-subtitle {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-xl);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Magazine: Section Titles */
+html.site-theme-magazine .section-title {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-primary);
+    display: inline-block;
+}
+
+/* Magazine: Post Cards */
 html.site-theme-magazine .post-card {
     background: var(--bg);
     border: none;
     border-bottom: 1px solid var(--border);
     border-radius: 0;
-    padding: var(--space-8);
+    padding: var(--space-8) 0;
+    transition: background var(--transition-base);
 }
 
 html.site-theme-magazine .post-card:hover {
     transform: none;
     box-shadow: none;
     background: var(--bg-secondary);
+    margin: 0 calc(-1 * var(--space-4));
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
 }
 
 html.site-theme-magazine .post-card h2 {
-    font-family: var(--font-serif);
+    font-family: var(--font-display);
     font-size: var(--font-size-3xl);
     font-weight: 700;
-    line-height: 1.1;
+    line-height: 1.15;
     margin-bottom: var(--space-3);
+    letter-spacing: -0.01em;
 }
 
-html.site-theme-magazine .post-excerpt,
-html.site-theme-magazine .content {
+html.site-theme-magazine .post-card h2 a {
+    text-decoration: none;
+    color: var(--text);
+}
+
+html.site-theme-magazine .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-magazine .post-excerpt {
     font-family: var(--font-serif);
     font-size: var(--font-size-lg);
-    line-height: 1.8;
-}
-
-html.site-theme-magazine .post-header h1 {
-    font-family: var(--font-serif);
-    font-size: 3rem;
-    font-weight: 700;
-    line-height: 1.1;
+    line-height: 1.7;
+    color: var(--text-secondary);
 }
 
 html.site-theme-magazine .post-meta {
@@ -2017,49 +1726,148 @@ html.site-theme-magazine .post-meta {
     letter-spacing: 0.1em;
     font-size: var(--font-size-xs);
     color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Magazine: Single Post */
+html.site-theme-magazine .post-header h1 {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-4);
+}
+
+html.site-theme-magazine .content {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-lg);
+    line-height: 1.8;
+}
+
+html.site-theme-magazine .content h2 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    margin-top: var(--space-10);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--color-primary);
+}
+
+html.site-theme-magazine .content h3 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    font-style: italic;
+}
+
+html.site-theme-magazine .content blockquote {
+    font-style: italic;
+    font-size: var(--font-size-xl);
+    border-left: 4px solid var(--color-primary);
+    padding-left: var(--space-6);
+    margin: var(--space-8) 0;
+    color: var(--text-secondary);
+}
+
+html.site-theme-magazine .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-magazine .content a:hover {
+    color: var(--color-primary-hover);
+}
+
+/* Magazine: Buttons */
+html.site-theme-magazine .btn {
+    font-family: var(--font-sans);
+    border-radius: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
 }
 
 html.site-theme-magazine .btn-primary {
     background: var(--color-primary);
-    border-radius: 0;
+    border: 2px solid var(--color-primary);
 }
 
 html.site-theme-magazine .btn-primary:hover {
     background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
 }
 
+/* Magazine: Tags */
 html.site-theme-magazine .tag {
     background: var(--color-primary-light);
     color: var(--color-primary);
     border-radius: 0;
     font-family: var(--font-sans);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     font-size: var(--font-size-xs);
+    font-weight: 600;
+    border: none;
 }
 
+html.site-theme-magazine .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Magazine: Cards */
 html.site-theme-magazine .card {
     border-radius: 0;
     border: 1px solid var(--border);
+    box-shadow: none;
 }
 
+/* Magazine: Footer */
 html.site-theme-magazine .site-footer {
-    border-top: 3px solid var(--color-primary);
+    border-top: 4px double var(--color-primary);
+    padding: var(--space-8) 0;
     font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+}
+
+/* Magazine: Page Cards */
+html.site-theme-magazine .page-card {
+    border: 1px solid var(--border);
+    border-radius: 0;
+    transition:
+        border-color var(--transition-base),
+        background var(--transition-base);
+}
+
+html.site-theme-magazine .page-card:hover {
+    border-color: var(--color-primary);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-magazine .page-card h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
 }
 
 /* ==========================================================================
    Theme: Brutalist
-   Raw, industrial aesthetic with monospace fonts, harsh borders, and
-   intentionally stark, unpolished design. Anti-design as design.
+   Raw, minimalist industrial theme with monospace fonts and bold borders.
    ========================================================================== */
 
 html.site-theme-brutalist {
     --font-brutalist: "Courier New", Courier, monospace;
+
+    /* Light mode - high contrast black on white */
     --color-primary: #000000;
     --color-primary-hover: #333333;
     --color-primary-light: rgba(0, 0, 0, 0.05);
     --color-accent: #ff0000;
+    --color-accent-hover: #cc0000;
     --bg: #ffffff;
     --bg-secondary: #f0f0f0;
     --bg-tertiary: #e0e0e0;
@@ -2068,6 +1876,8 @@ html.site-theme-brutalist {
     --text-muted: #666666;
     --border: #000000;
     --border-light: #333333;
+
+    /* Remove all rounded corners and shadows */
     --radius: 0;
     --radius-sm: 0;
     --radius-lg: 0;
@@ -2080,10 +1890,12 @@ html.site-theme-brutalist {
 
 html.theme-dark.site-theme-brutalist,
 html.site-theme-brutalist[class*="theme-dark"] {
+    /* Dark mode - high contrast white on black */
     --color-primary: #ffffff;
     --color-primary-hover: #cccccc;
     --color-primary-light: rgba(255, 255, 255, 0.1);
     --color-accent: #ff3333;
+    --color-accent-hover: #ff6666;
     --bg: #000000;
     --bg-secondary: #111111;
     --bg-tertiary: #222222;
@@ -2094,11 +1906,13 @@ html.site-theme-brutalist[class*="theme-dark"] {
     --border-light: #666666;
 }
 
+/* Brutalist: Typography */
 html.site-theme-brutalist body {
     font-family: var(--font-brutalist);
     letter-spacing: -0.02em;
 }
 
+/* Brutalist: Header */
 html.site-theme-brutalist .site-header {
     border-bottom: 4px solid var(--border);
     padding: var(--space-4) 0;
@@ -2127,6 +1941,7 @@ html.site-theme-brutalist .site-nav a:hover {
     color: var(--bg);
 }
 
+/* Brutalist: Hero */
 html.site-theme-brutalist .hero {
     background: var(--bg);
     border: 4px solid var(--border);
@@ -2154,6 +1969,7 @@ html.site-theme-brutalist .hero-subtitle {
     margin: 0 auto;
 }
 
+/* Brutalist: Section Titles */
 html.site-theme-brutalist .section-title {
     font-family: var(--font-brutalist);
     text-transform: uppercase;
@@ -2164,6 +1980,7 @@ html.site-theme-brutalist .section-title {
     display: inline-block;
 }
 
+/* Brutalist: Post Cards */
 html.site-theme-brutalist .post-card {
     border: 2px solid var(--border);
     background: var(--bg);
@@ -2197,6 +2014,7 @@ html.site-theme-brutalist .post-excerpt {
     line-height: 1.6;
 }
 
+/* Brutalist: Buttons */
 html.site-theme-brutalist .btn {
     font-family: var(--font-brutalist);
     text-transform: uppercase;
@@ -2216,6 +2034,7 @@ html.site-theme-brutalist .btn-primary:hover {
     color: var(--text);
 }
 
+/* Brutalist: Tags */
 html.site-theme-brutalist .tag {
     font-family: var(--font-brutalist);
     border: 2px solid var(--border);
@@ -2230,6 +2049,7 @@ html.site-theme-brutalist .tag:hover {
     color: var(--bg);
 }
 
+/* Brutalist: Cards */
 html.site-theme-brutalist .page-card {
     border: 2px solid var(--border);
 }
@@ -2243,6 +2063,7 @@ html.site-theme-brutalist .card {
     border: 2px solid var(--border);
 }
 
+/* Brutalist: Footer */
 html.site-theme-brutalist .site-footer {
     border-top: 4px solid var(--border);
     font-family: var(--font-brutalist);
@@ -2251,6 +2072,7 @@ html.site-theme-brutalist .site-footer {
     font-size: var(--font-size-sm);
 }
 
+/* Brutalist: Content */
 html.site-theme-brutalist .content {
     font-family: var(--font-brutalist);
 }
@@ -2282,11 +2104,12 @@ html.site-theme-brutalist .post-header h1 {
 
 /* ==========================================================================
    Theme: Neon
-   Cyberpunk-inspired with glowing neon colors on dark backgrounds.
-   Futuristic, high-tech vibes with electric accents.
+   Cyberpunk-inspired with vibrant colors. Supports both dark (default) and
+   light modes with appropriate color adjustments.
    ========================================================================== */
 
 html.site-theme-neon {
+    /* Dark mode is the default for neon - cyberpunk aesthetic */
     --color-primary: #00ffff;
     --color-primary-hover: #00cccc;
     --color-primary-light: rgba(0, 255, 255, 0.15);
@@ -2303,10 +2126,14 @@ html.site-theme-neon {
     --text-muted: #707080;
     --border: #2a2a3a;
     --border-light: #1f1f2f;
+
+    /* Minimal rounded corners */
     --radius: 0;
     --radius-sm: 0;
     --radius-lg: 2px;
     --radius-xl: 4px;
+
+    /* Glow effects */
     --glow-cyan:
         0 0 10px rgba(0, 255, 255, 0.5), 0 0 20px rgba(0, 255, 255, 0.3),
         0 0 30px rgba(0, 255, 255, 0.2);
@@ -2320,6 +2147,7 @@ html.site-theme-neon {
 
 html.theme-light.site-theme-neon,
 html.site-theme-neon[class*="theme-light"] {
+    /* Light mode - softer neon on light background */
     --color-primary: #0099cc;
     --color-primary-hover: #007799;
     --color-primary-light: rgba(0, 153, 204, 0.1);
@@ -2336,6 +2164,8 @@ html.site-theme-neon[class*="theme-light"] {
     --text-muted: #6a6a8e;
     --border: #d0d0e0;
     --border-light: #e0e0f0;
+
+    /* Adjusted glow for light mode */
     --glow-cyan:
         0 0 8px rgba(0, 153, 204, 0.4), 0 0 16px rgba(0, 153, 204, 0.2);
     --glow-magenta:
@@ -2346,6 +2176,7 @@ html.site-theme-neon[class*="theme-light"] {
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
+/* Neon: Body */
 html.site-theme-neon body {
     font-family: var(--font-sans);
     background: var(--bg);
@@ -2378,6 +2209,7 @@ html.site-theme-neon[class*="theme-light"] body {
         );
 }
 
+/* Neon: Header */
 html.site-theme-neon .site-header {
     border-bottom: 1px solid var(--border);
     padding: var(--space-6) 0;
@@ -2421,6 +2253,7 @@ html.site-theme-neon .site-nav a:hover {
     text-shadow: var(--glow-cyan);
 }
 
+/* Neon: Hero */
 html.site-theme-neon .hero {
     background: linear-gradient(
         135deg,
@@ -2430,6 +2263,15 @@ html.site-theme-neon .hero {
     border: 1px solid var(--border);
     position: relative;
     overflow: hidden;
+}
+
+html.theme-light.site-theme-neon .hero,
+html.site-theme-neon[class*="theme-light"] .hero {
+    background: linear-gradient(
+        135deg,
+        rgba(0, 153, 204, 0.08) 0%,
+        rgba(204, 0, 204, 0.08) 100%
+    );
 }
 
 html.site-theme-neon .hero::before {
@@ -2480,11 +2322,17 @@ html.site-theme-neon .hero-title {
     filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.3));
 }
 
+html.theme-light.site-theme-neon .hero-title,
+html.site-theme-neon[class*="theme-light"] .hero-title {
+    filter: drop-shadow(0 0 10px rgba(0, 153, 204, 0.2));
+}
+
 html.site-theme-neon .hero-subtitle {
     color: var(--text-secondary);
     font-size: var(--font-size-lg);
 }
 
+/* Neon: Section Titles */
 html.site-theme-neon .section-title {
     color: var(--color-primary);
     text-transform: uppercase;
@@ -2494,6 +2342,12 @@ html.site-theme-neon .section-title {
     text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
 }
 
+html.theme-light.site-theme-neon .section-title,
+html.site-theme-neon[class*="theme-light"] .section-title {
+    text-shadow: none;
+}
+
+/* Neon: Post Cards */
 html.site-theme-neon .post-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -2518,6 +2372,11 @@ html.site-theme-neon .post-card:hover {
         inset 0 0 20px rgba(0, 255, 255, 0.03);
 }
 
+html.theme-light.site-theme-neon .post-card:hover,
+html.site-theme-neon[class*="theme-light"] .post-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
 html.site-theme-neon .post-card:hover::before {
     border-color: var(--color-accent);
     inset: 4px;
@@ -2533,6 +2392,11 @@ html.site-theme-neon .post-card h2 a:hover {
     text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
 }
 
+html.theme-light.site-theme-neon .post-card h2 a:hover,
+html.site-theme-neon[class*="theme-light"] .post-card h2 a:hover {
+    text-shadow: none;
+}
+
 html.site-theme-neon .post-meta {
     color: var(--text-muted);
     text-transform: uppercase;
@@ -2540,6 +2404,7 @@ html.site-theme-neon .post-meta {
     font-size: var(--font-size-xs);
 }
 
+/* Neon: Tags */
 html.site-theme-neon .tag {
     background: rgba(0, 255, 255, 0.1);
     border: 1px solid var(--color-primary);
@@ -2550,12 +2415,23 @@ html.site-theme-neon .tag {
     transition: all 0.3s ease;
 }
 
+html.theme-light.site-theme-neon .tag,
+html.site-theme-neon[class*="theme-light"] .tag {
+    background: rgba(0, 153, 204, 0.1);
+}
+
 html.site-theme-neon .tag:hover {
     background: var(--color-primary);
     color: var(--bg);
     box-shadow: var(--glow-cyan);
 }
 
+html.theme-light.site-theme-neon .tag:hover,
+html.site-theme-neon[class*="theme-light"] .tag:hover {
+    box-shadow: none;
+}
+
+/* Neon: Buttons */
 html.site-theme-neon .btn-primary {
     background: transparent;
     border: 1px solid var(--color-primary);
@@ -2588,10 +2464,16 @@ html.site-theme-neon .btn-primary:hover {
     box-shadow: var(--glow-cyan);
 }
 
+html.theme-light.site-theme-neon .btn-primary:hover,
+html.site-theme-neon[class*="theme-light"] .btn-primary:hover {
+    box-shadow: none;
+}
+
 html.site-theme-neon .btn-primary:hover::before {
     transform: translateX(0);
 }
 
+/* Neon: Page Cards */
 html.site-theme-neon .page-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
@@ -2604,15 +2486,22 @@ html.site-theme-neon .page-card:hover {
     transform: translateX(4px);
 }
 
+html.theme-light.site-theme-neon .page-card:hover,
+html.site-theme-neon[class*="theme-light"] .page-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
 html.site-theme-neon .page-card-arrow {
     color: var(--color-accent);
 }
 
+/* Neon: Cards */
 html.site-theme-neon .card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
 }
 
+/* Neon: Footer */
 html.site-theme-neon .site-footer {
     border-top: 1px solid var(--border);
     background: rgba(10, 10, 15, 0.8);
@@ -2640,6 +2529,7 @@ html.site-theme-neon .site-footer::before {
     );
 }
 
+/* Neon: Content */
 html.site-theme-neon .content a {
     color: var(--color-primary);
     text-decoration: underline;
@@ -2652,10 +2542,20 @@ html.site-theme-neon .content a:hover {
     text-decoration-color: var(--color-primary);
 }
 
+html.theme-light.site-theme-neon .content a:hover,
+html.site-theme-neon[class*="theme-light"] .content a:hover {
+    text-shadow: none;
+}
+
 html.site-theme-neon .content blockquote {
     border-left: 2px solid var(--color-accent);
     background: rgba(255, 0, 255, 0.05);
     padding: var(--space-4) var(--space-6);
+}
+
+html.theme-light.site-theme-neon .content blockquote,
+html.site-theme-neon[class*="theme-light"] .content blockquote {
+    background: rgba(204, 0, 204, 0.05);
 }
 
 html.site-theme-neon .content pre {
@@ -2680,6 +2580,7 @@ html.site-theme-neon .post-header h1 {
     background-clip: text;
 }
 
+/* Neon: View All Link */
 html.site-theme-neon .view-all-link {
     color: var(--color-accent);
     text-transform: uppercase;
@@ -2691,12 +2592,2336 @@ html.site-theme-neon .view-all-link:hover {
     text-shadow: var(--glow-magenta);
 }
 
+html.theme-light.site-theme-neon .view-all-link:hover,
+html.site-theme-neon[class*="theme-light"] .view-all-link:hover {
+    text-shadow: none;
+}
+
+/* Neon: Empty State */
 html.site-theme-neon .empty-state {
     border: 1px dashed var(--border);
     background: var(--bg-secondary);
 }
 
+/* Neon: Selection */
 html.site-theme-neon ::selection {
     background: rgba(0, 255, 255, 0.3);
     color: var(--text);
+}
+
+html.theme-light.site-theme-neon ::selection,
+html.site-theme-neon[class*="theme-light"] ::selection {
+    background: rgba(0, 153, 204, 0.3);
+}
+
+/* ==========================================================================
+   Theme: Serif
+   A warm, literary theme with elegant serif typography. Evokes a quality
+   bookshop or literary journal with cream tones and terracotta accents.
+   ========================================================================== */
+
+html.site-theme-serif {
+    --font-serif: Georgia, "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    --font-display:
+        Georgia, "Palatino Linotype", "Book Antiqua", Palatino, serif;
+
+    --color-primary: #c05a33;
+    --color-primary-hover: #a84b2a;
+    --color-primary-light: rgba(192, 90, 51, 0.08);
+    --color-accent: #6b7f3e;
+    --color-accent-hover: #5a6c34;
+    --bg: #faf8f5;
+    --bg-secondary: #f5f0ea;
+    --bg-tertiary: #ede6dc;
+    --text: #3d2c1e;
+    --text-secondary: #5c4a3a;
+    --text-muted: #8b7a6a;
+    --border: #e0d5c7;
+    --border-light: #ede6dc;
+
+    --font-size-base: 1.0625rem;
+    --line-height-normal: 1.7;
+
+    --shadow-sm: 0 1px 3px rgba(61, 44, 30, 0.06);
+    --shadow: 0 2px 6px rgba(61, 44, 30, 0.08);
+    --shadow-md: 0 4px 12px rgba(61, 44, 30, 0.1);
+    --shadow-lg: 0 8px 24px rgba(61, 44, 30, 0.12);
+}
+
+html.theme-dark.site-theme-serif,
+html.site-theme-serif[class*="theme-dark"] {
+    --color-primary: #e0845e;
+    --color-primary-hover: #eba07e;
+    --color-primary-light: rgba(224, 132, 94, 0.12);
+    --color-accent: #a0b86e;
+    --color-accent-hover: #b5ca8a;
+    --bg: #1c1714;
+    --bg-secondary: #261f1a;
+    --bg-tertiary: #332a23;
+    --text: #ede2d5;
+    --text-secondary: #c9b8a5;
+    --text-muted: #8b7a6a;
+    --border: #3d3228;
+    --border-light: #2e251e;
+}
+
+/* Serif: Typography */
+html.site-theme-serif body {
+    font-family: var(--font-serif);
+    line-height: var(--line-height-relaxed);
+}
+
+/* Serif: Header */
+html.site-theme-serif .site-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-serif .site-title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-3xl);
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.01em;
+}
+
+html.site-theme-serif .site-nav a {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-sm);
+    font-style: italic;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-serif .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Serif: Hero */
+html.site-theme-serif .hero {
+    padding: var(--space-16) 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+html.site-theme-serif .hero-title {
+    font-family: var(--font-display);
+    font-size: var(--font-size-5xl);
+    font-weight: 400;
+    font-style: italic;
+    line-height: var(--line-height-tight);
+    letter-spacing: -0.02em;
+}
+
+html.site-theme-serif .hero-subtitle {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-xl);
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Serif: Section Titles */
+html.site-theme-serif .section-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Serif: Post Cards */
+html.site-theme-serif .post-card {
+    background: var(--bg);
+    border: none;
+    border-bottom: 1px solid var(--border-light);
+    border-radius: 0;
+    padding: var(--space-8) 0;
+}
+
+html.site-theme-serif .post-card:hover {
+    transform: none;
+    box-shadow: none;
+    background: var(--bg-secondary);
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    margin: 0 calc(-1 * var(--space-4));
+}
+
+html.site-theme-serif .post-card h2 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-2xl);
+    font-weight: 400;
+    line-height: 1.3;
+}
+
+html.site-theme-serif .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-serif .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-serif .post-excerpt {
+    font-family: var(--font-serif);
+    line-height: var(--line-height-relaxed);
+    color: var(--text-secondary);
+}
+
+html.site-theme-serif .post-meta {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Serif: Buttons */
+html.site-theme-serif .btn {
+    font-family: var(--font-serif);
+    font-style: italic;
+}
+
+html.site-theme-serif .btn-primary {
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+html.site-theme-serif .btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+/* Serif: Tags */
+html.site-theme-serif .tag {
+    font-family: var(--font-serif);
+    font-style: italic;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border: none;
+    font-size: var(--font-size-sm);
+}
+
+html.site-theme-serif .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Serif: Cards */
+html.site-theme-serif .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-serif .page-card {
+    border: 1px solid var(--border-light);
+    transition: border-color var(--transition-base);
+}
+
+html.site-theme-serif .page-card:hover {
+    border-color: var(--color-primary);
+}
+
+/* Serif: Footer */
+html.site-theme-serif .site-footer {
+    border-top: 1px solid var(--border);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: var(--font-size-sm);
+}
+
+/* Serif: Content */
+html.site-theme-serif .content {
+    font-family: var(--font-serif);
+    font-size: var(--font-size-lg);
+    line-height: 1.8;
+}
+
+html.site-theme-serif .content h2,
+html.site-theme-serif .content h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-style: italic;
+}
+
+html.site-theme-serif .content blockquote {
+    border-left: 3px solid var(--color-primary);
+    font-style: italic;
+    padding-left: var(--space-6);
+    color: var(--text-secondary);
+}
+
+html.site-theme-serif .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-serif .post-header h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 2.5rem;
+    line-height: var(--line-height-tight);
+}
+
+/* ==========================================================================
+   Theme: Ocean
+   Cool, calming blue palette inspired by the sea. Professional yet tranquil.
+   ========================================================================== */
+
+html.site-theme-ocean {
+    --color-primary: #1e6fa1;
+    --color-primary-hover: #185a84;
+    --color-primary-light: rgba(30, 111, 161, 0.08);
+    --color-accent: #2dd4bf;
+    --color-accent-hover: #14b8a6;
+    --bg: #f0f8ff;
+    --bg-secondary: #e8f4fd;
+    --bg-tertiary: #d6ecfa;
+    --text: #112d42;
+    --text-secondary: #2c4f6b;
+    --text-muted: #5f8aab;
+    --border: #c4dff0;
+    --border-light: #daeaf5;
+
+    --radius: 0.625rem;
+    --radius-sm: 0.375rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+}
+
+html.theme-dark.site-theme-ocean,
+html.site-theme-ocean[class*="theme-dark"] {
+    --color-primary: #5eb8e4;
+    --color-primary-hover: #86cbed;
+    --color-primary-light: rgba(94, 184, 228, 0.12);
+    --color-accent: #5eead4;
+    --color-accent-hover: #99f6e4;
+    --bg: #0b1929;
+    --bg-secondary: #112640;
+    --bg-tertiary: #1a3450;
+    --text: #e3f0f9;
+    --text-secondary: #a8c9de;
+    --text-muted: #5f8aab;
+    --border: #1e3e5a;
+    --border-light: #152d44;
+}
+
+/* Ocean: Header */
+html.site-theme-ocean .site-header {
+    border-bottom: 2px solid var(--border);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-ocean .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-primary);
+}
+
+html.site-theme-ocean .site-nav a {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-ocean .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Ocean: Hero */
+html.site-theme-ocean .hero {
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%);
+    padding: var(--space-16) 0;
+}
+
+html.site-theme-ocean .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 800;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-ocean .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+}
+
+/* Ocean: Section Titles */
+html.site-theme-ocean .section-title {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-primary-light);
+}
+
+/* Ocean: Post Cards */
+html.site-theme-ocean .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-ocean .post-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(30, 111, 161, 0.1);
+}
+
+html.site-theme-ocean .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-ocean .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-ocean .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Ocean: Buttons */
+html.site-theme-ocean .btn-primary {
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+html.site-theme-ocean .btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+html.site-theme-ocean .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--color-primary);
+}
+
+html.site-theme-ocean .btn-secondary:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+/* Ocean: Tags */
+html.site-theme-ocean .tag {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border: none;
+}
+
+html.site-theme-ocean .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Ocean: Cards */
+html.site-theme-ocean .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-ocean .page-card {
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-ocean .page-card:hover {
+    border-color: var(--color-accent);
+    transform: translateX(4px);
+}
+
+/* Ocean: Footer */
+html.site-theme-ocean .site-footer {
+    border-top: 2px solid var(--border);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Ocean: Content */
+html.site-theme-ocean .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-ocean .content blockquote {
+    border-left: 3px solid var(--color-accent);
+    background: var(--bg-secondary);
+    padding: var(--space-4) var(--space-6);
+}
+
+html.site-theme-ocean .post-header h1 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--color-primary);
+}
+
+/* ==========================================================================
+   Theme: Midnight
+   Dark-first premium theme with gold accents. Luxurious and sophisticated.
+   ========================================================================== */
+
+html.site-theme-midnight {
+    /* Dark mode is default for midnight */
+    --color-primary: #d4a853;
+    --color-primary-hover: #c49a45;
+    --color-primary-light: rgba(212, 168, 83, 0.12);
+    --color-accent: #a78bfa;
+    --color-accent-hover: #c4b5fd;
+    --bg: #13111a;
+    --bg-secondary: #1a1726;
+    --bg-tertiary: #231f33;
+    --text: #e8e4f0;
+    --text-secondary: #b8b0c8;
+    --text-muted: #6e6580;
+    --border: #2e2940;
+    --border-light: #231f33;
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+html.theme-light.site-theme-midnight,
+html.site-theme-midnight[class*="theme-light"] {
+    --color-primary: #a07830;
+    --color-primary-hover: #8a6828;
+    --color-primary-light: rgba(160, 120, 48, 0.08);
+    --color-accent: #7c5cbf;
+    --color-accent-hover: #6a4aad;
+    --bg: #faf9fc;
+    --bg-secondary: #f0eef5;
+    --bg-tertiary: #e6e2ee;
+    --text: #1a1726;
+    --text-secondary: #3d3550;
+    --text-muted: #6e6580;
+    --border: #d8d2e4;
+    --border-light: #e6e2ee;
+
+    --shadow-sm: 0 1px 2px rgba(26, 23, 38, 0.06);
+    --shadow: 0 2px 6px rgba(26, 23, 38, 0.08);
+    --shadow-md: 0 4px 12px rgba(26, 23, 38, 0.1);
+    --shadow-lg: 0 8px 24px rgba(26, 23, 38, 0.12);
+}
+
+/* Midnight: Header */
+html.site-theme-midnight .site-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-midnight .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 600;
+    color: var(--color-primary);
+    letter-spacing: 0.05em;
+}
+
+html.site-theme-midnight .site-nav a {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 500;
+    transition: color var(--transition-base);
+}
+
+html.site-theme-midnight .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Midnight: Hero */
+html.site-theme-midnight .hero {
+    padding: var(--space-16) 0;
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+}
+
+html.site-theme-midnight .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-primary);
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-midnight .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+}
+
+/* Midnight: Section Titles */
+html.site-theme-midnight .section-title {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-primary);
+    font-weight: 600;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border);
+}
+
+/* Midnight: Post Cards */
+html.site-theme-midnight .post-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-midnight .post-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(212, 168, 83, 0.08);
+}
+
+html.site-theme-midnight .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-midnight .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-midnight .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Midnight: Buttons */
+html.site-theme-midnight .btn-primary {
+    background: var(--color-primary);
+    color: var(--bg);
+    border: 1px solid var(--color-primary);
+}
+
+html.site-theme-midnight .btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+html.site-theme-midnight .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--color-primary);
+}
+
+html.site-theme-midnight .btn-secondary:hover {
+    border-color: var(--color-primary);
+}
+
+/* Midnight: Tags */
+html.site-theme-midnight .tag {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border: 1px solid transparent;
+    transition: all var(--transition-base);
+}
+
+html.site-theme-midnight .tag:hover {
+    background: var(--color-primary);
+    color: var(--bg);
+}
+
+/* Midnight: Cards */
+html.site-theme-midnight .card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+}
+
+html.site-theme-midnight .page-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-midnight .page-card:hover {
+    border-color: var(--color-primary);
+}
+
+/* Midnight: Footer */
+html.site-theme-midnight .site-footer {
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Midnight: Content */
+html.site-theme-midnight .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-midnight .content blockquote {
+    border-left: 3px solid var(--color-primary);
+    background: var(--bg-tertiary);
+    padding: var(--space-4) var(--space-6);
+}
+
+html.site-theme-midnight .post-header h1 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-primary);
+}
+
+/* ==========================================================================
+   Theme: Botanical
+   Nature-inspired organic theme with forest greens and earthy tones.
+   Calm, grounded, with generous spacing and soft shapes.
+   ========================================================================== */
+
+html.site-theme-botanical {
+    --color-primary: #2d6a4f;
+    --color-primary-hover: #245840;
+    --color-primary-light: rgba(45, 106, 79, 0.08);
+    --color-accent: #8b6f47;
+    --color-accent-hover: #76603d;
+    --bg: #f9f7f3;
+    --bg-secondary: #f2ede5;
+    --bg-tertiary: #e8e0d4;
+    --text: #2b2921;
+    --text-secondary: #4d4a3f;
+    --text-muted: #7d7968;
+    --border: #ddd6c9;
+    --border-light: #e8e0d4;
+
+    --radius: 0.75rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.25rem;
+
+    --line-height-normal: 1.65;
+    --font-size-base: 1.0625rem;
+}
+
+html.theme-dark.site-theme-botanical,
+html.site-theme-botanical[class*="theme-dark"] {
+    --color-primary: #6bbf8e;
+    --color-primary-hover: #8ed0a8;
+    --color-primary-light: rgba(107, 191, 142, 0.12);
+    --color-accent: #c4a874;
+    --color-accent-hover: #d4bd92;
+    --bg: #171712;
+    --bg-secondary: #20201a;
+    --bg-tertiary: #2c2b22;
+    --text: #e5e2d5;
+    --text-secondary: #b5b1a0;
+    --text-muted: #7d7968;
+    --border: #36342a;
+    --border-light: #2c2b22;
+}
+
+/* Botanical: Header */
+html.site-theme-botanical .site-header {
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-botanical .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+html.site-theme-botanical .site-nav a {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-botanical .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Botanical: Hero */
+html.site-theme-botanical .hero {
+    padding: var(--space-16) 0;
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%);
+}
+
+html.site-theme-botanical .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 700;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-botanical .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+}
+
+/* Botanical: Section Titles */
+html.site-theme-botanical .section-title {
+    font-weight: 600;
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.05em;
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--color-primary-light);
+}
+
+/* Botanical: Post Cards */
+html.site-theme-botanical .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-botanical .post-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 106, 79, 0.08);
+}
+
+html.site-theme-botanical .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-botanical .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-botanical .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Botanical: Buttons */
+html.site-theme-botanical .btn-primary {
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+html.site-theme-botanical .btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+/* Botanical: Tags */
+html.site-theme-botanical .tag {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border: none;
+}
+
+html.site-theme-botanical .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Botanical: Cards */
+html.site-theme-botanical .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-botanical .page-card {
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-botanical .page-card:hover {
+    border-color: var(--color-primary);
+}
+
+/* Botanical: Footer */
+html.site-theme-botanical .site-footer {
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Botanical: Content */
+html.site-theme-botanical .content {
+    line-height: 1.8;
+}
+
+html.site-theme-botanical .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-botanical .content blockquote {
+    border-left: 3px solid var(--color-accent);
+    background: var(--bg-secondary);
+    padding: var(--space-4) var(--space-6);
+    border-radius: var(--radius-sm);
+}
+
+html.site-theme-botanical .post-header h1 {
+    font-weight: 700;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   Theme: Monochrome
+   Elegant grayscale theme — pure black, white, and grays. Softer than
+   minimal, with gentle shadows and refined typography.
+   ========================================================================== */
+
+html.site-theme-monochrome {
+    --color-primary: #1a1a1a;
+    --color-primary-hover: #333333;
+    --color-primary-light: rgba(26, 26, 26, 0.05);
+    --color-accent: #555555;
+    --color-accent-hover: #444444;
+    --bg: #ffffff;
+    --bg-secondary: #f7f7f7;
+    --bg-tertiary: #eeeeee;
+    --text: #1a1a1a;
+    --text-secondary: #444444;
+    --text-muted: #888888;
+    --border: #dddddd;
+    --border-light: #eeeeee;
+
+    --font-size-base: 1.0625rem;
+    --line-height-normal: 1.6;
+
+    --radius: 0.375rem;
+    --radius-sm: 0.25rem;
+    --radius-lg: 0.5rem;
+}
+
+html.theme-dark.site-theme-monochrome,
+html.site-theme-monochrome[class*="theme-dark"] {
+    --color-primary: #e8e8e8;
+    --color-primary-hover: #cccccc;
+    --color-primary-light: rgba(232, 232, 232, 0.08);
+    --color-accent: #aaaaaa;
+    --color-accent-hover: #bbbbbb;
+    --bg: #111111;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #252525;
+    --text: #e8e8e8;
+    --text-secondary: #bbbbbb;
+    --text-muted: #777777;
+    --border: #333333;
+    --border-light: #252525;
+}
+
+/* Monochrome: Header */
+html.site-theme-monochrome .site-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-monochrome .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+html.site-theme-monochrome .site-nav a {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-monochrome .site-nav a:hover {
+    color: var(--text);
+}
+
+/* Monochrome: Hero */
+html.site-theme-monochrome .hero {
+    padding: var(--space-16) 0;
+}
+
+html.site-theme-monochrome .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+
+html.site-theme-monochrome .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+}
+
+/* Monochrome: Section Titles */
+html.site-theme-monochrome .section-title {
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border);
+}
+
+/* Monochrome: Post Cards */
+html.site-theme-monochrome .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+}
+
+html.site-theme-monochrome .post-card:hover {
+    border-color: var(--text);
+    transform: translateY(-1px);
+}
+
+html.site-theme-monochrome .post-card h2 {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+html.site-theme-monochrome .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-monochrome .post-card h2 a:hover {
+    color: var(--text-secondary);
+}
+
+html.site-theme-monochrome .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Monochrome: Buttons */
+html.site-theme-monochrome .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    border: 1px solid var(--text);
+}
+
+html.site-theme-monochrome .btn-primary:hover {
+    background: var(--text-secondary);
+    border-color: var(--text-secondary);
+}
+
+html.site-theme-monochrome .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+html.site-theme-monochrome .btn-secondary:hover {
+    border-color: var(--text);
+}
+
+/* Monochrome: Tags */
+html.site-theme-monochrome .tag {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: none;
+}
+
+html.site-theme-monochrome .tag:hover {
+    background: var(--text);
+    color: var(--bg);
+}
+
+/* Monochrome: Cards */
+html.site-theme-monochrome .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-monochrome .page-card {
+    border: 1px solid var(--border-light);
+    transition: border-color var(--transition-base);
+}
+
+html.site-theme-monochrome .page-card:hover {
+    border-color: var(--text);
+}
+
+/* Monochrome: Footer */
+html.site-theme-monochrome .site-footer {
+    border-top: 1px solid var(--border);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Monochrome: Content */
+html.site-theme-monochrome .content {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+}
+
+html.site-theme-monochrome .content a {
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+}
+
+html.site-theme-monochrome .content blockquote {
+    border-left: 3px solid var(--border);
+    padding-left: var(--space-6);
+    color: var(--text-secondary);
+}
+
+html.site-theme-monochrome .post-header h1 {
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+/* ==========================================================================
+   Theme: Coral
+   Vibrant, warm, and friendly. Coral tones with playful pill shapes.
+   Great for creative portfolios and lifestyle blogs.
+   ========================================================================== */
+
+html.site-theme-coral {
+    --color-primary: #ef6461;
+    --color-primary-hover: #e04e4b;
+    --color-primary-light: rgba(239, 100, 97, 0.08);
+    --color-accent: #e85d75;
+    --color-accent-hover: #d44d65;
+    --bg: #fffafa;
+    --bg-secondary: #fff5f5;
+    --bg-tertiary: #ffe8e8;
+    --text: #2d1f1f;
+    --text-secondary: #5c4545;
+    --text-muted: #a08080;
+    --border: #f0d0d0;
+    --border-light: #f8e0e0;
+
+    --radius: 1rem;
+    --radius-sm: 0.5rem;
+    --radius-lg: 1.25rem;
+    --radius-xl: 1.5rem;
+    --radius-full: 9999px;
+}
+
+html.theme-dark.site-theme-coral,
+html.site-theme-coral[class*="theme-dark"] {
+    --color-primary: #f08886;
+    --color-primary-hover: #f5a3a1;
+    --color-primary-light: rgba(240, 136, 134, 0.12);
+    --color-accent: #f08090;
+    --color-accent-hover: #f5a0ac;
+    --bg: #1a1010;
+    --bg-secondary: #241616;
+    --bg-tertiary: #301e1e;
+    --text: #f5e0e0;
+    --text-secondary: #d0b0b0;
+    --text-muted: #a08080;
+    --border: #3d2828;
+    --border-light: #301e1e;
+}
+
+/* Coral: Header */
+html.site-theme-coral .site-header {
+    border-bottom: 2px solid var(--border-light);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-coral .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 800;
+    color: var(--color-primary);
+}
+
+html.site-theme-coral .site-nav a {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-coral .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Coral: Hero */
+html.site-theme-coral .hero {
+    padding: var(--space-16) 0;
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg) 100%);
+}
+
+html.site-theme-coral .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 800;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-coral .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+}
+
+/* Coral: Section Titles */
+html.site-theme-coral .section-title {
+    font-weight: 700;
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.05em;
+}
+
+/* Coral: Post Cards */
+html.site-theme-coral .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-coral .post-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(239, 100, 97, 0.1);
+}
+
+html.site-theme-coral .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-coral .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-coral .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Coral: Buttons */
+html.site-theme-coral .btn {
+    border-radius: var(--radius-full);
+    padding: var(--space-3) var(--space-6);
+    font-weight: 600;
+}
+
+html.site-theme-coral .btn-primary {
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+html.site-theme-coral .btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+html.site-theme-coral .btn-secondary {
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+}
+
+html.site-theme-coral .btn-secondary:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Coral: Tags */
+html.site-theme-coral .tag {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border: none;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+}
+
+html.site-theme-coral .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Coral: Cards */
+html.site-theme-coral .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-coral .page-card {
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-coral .page-card:hover {
+    border-color: var(--color-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(232, 93, 117, 0.1);
+}
+
+/* Coral: Footer */
+html.site-theme-coral .site-footer {
+    border-top: 2px solid var(--border-light);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Coral: Content */
+html.site-theme-coral .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-coral .content blockquote {
+    border-left: 4px solid var(--color-accent);
+    background: var(--bg-secondary);
+    padding: var(--space-4) var(--space-6);
+    border-radius: var(--radius-sm);
+}
+
+html.site-theme-coral .post-header h1 {
+    font-weight: 800;
+    color: var(--color-primary);
+    letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   Theme: Terminal
+   Retro hacker/developer aesthetic. Green phosphor on dark, monospace
+   throughout. CRT-inspired scanline background, cursor-style accents.
+   ========================================================================== */
+
+html.site-theme-terminal {
+    --font-terminal:
+        "SF Mono", SFMono-Regular, ui-monospace, "Cascadia Code", Menlo,
+        "Courier New", monospace;
+
+    /* Dark mode default */
+    --color-primary: #4af626;
+    --color-primary-hover: #3dd41f;
+    --color-primary-light: rgba(74, 246, 38, 0.1);
+    --color-accent: #22d3ee;
+    --color-accent-hover: #06b6d4;
+    --bg: #0c0c14;
+    --bg-secondary: #12121e;
+    --bg-tertiary: #1a1a28;
+    --text: #b8d4b8;
+    --text-secondary: #8aaa8a;
+    --text-muted: #506850;
+    --border: #1e2e1e;
+    --border-light: #162016;
+
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+
+    --shadow-sm: none;
+    --shadow: none;
+    --shadow-md: 0 0 12px rgba(74, 246, 38, 0.08);
+    --shadow-lg: 0 0 24px rgba(74, 246, 38, 0.12);
+}
+
+html.theme-light.site-theme-terminal,
+html.site-theme-terminal[class*="theme-light"] {
+    --color-primary: #16a34a;
+    --color-primary-hover: #15803d;
+    --color-primary-light: rgba(22, 163, 74, 0.08);
+    --color-accent: #0891b2;
+    --color-accent-hover: #0e7490;
+    --bg: #f4f8f4;
+    --bg-secondary: #eaf2ea;
+    --bg-tertiary: #dce8dc;
+    --text: #1a2e1a;
+    --text-secondary: #3a5a3a;
+    --text-muted: #6a8a6a;
+    --border: #c4d8c4;
+    --border-light: #dce8dc;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Terminal: Body */
+html.site-theme-terminal body {
+    font-family: var(--font-terminal);
+    font-size: 0.9375rem;
+    background: var(--bg);
+    background-image: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(74, 246, 38, 0.015) 2px,
+        rgba(74, 246, 38, 0.015) 4px
+    );
+}
+
+html.theme-light.site-theme-terminal body,
+html.site-theme-terminal[class*="theme-light"] body {
+    background-image: none;
+}
+
+/* Terminal: Header */
+html.site-theme-terminal .site-header {
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-4) 0;
+    background: transparent;
+}
+
+html.site-theme-terminal .site-title {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+html.site-theme-terminal .site-title::before {
+    content: "> ";
+    opacity: 0.5;
+}
+
+html.site-theme-terminal .site-nav a {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-terminal .site-nav a::before {
+    content: "./";
+    opacity: 0.4;
+}
+
+html.site-theme-terminal .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Terminal: Hero */
+html.site-theme-terminal .hero {
+    padding: var(--space-12) 0;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-terminal .hero-title {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    color: var(--color-primary);
+    line-height: 1.2;
+}
+
+html.site-theme-terminal .hero-subtitle {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-base);
+    color: var(--text-muted);
+}
+
+/* Terminal: Section Titles */
+html.site-theme-terminal .section-title {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-sm);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-bottom: 1px dashed var(--border);
+    padding-bottom: var(--space-2);
+}
+
+html.site-theme-terminal .section-title::before {
+    content: "# ";
+    opacity: 0.5;
+}
+
+/* Terminal: Post Cards */
+html.site-theme-terminal .post-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: var(--space-6);
+    transition: border-color var(--transition-base);
+}
+
+html.site-theme-terminal .post-card:hover {
+    border-color: var(--color-primary);
+    transform: none;
+    box-shadow: none;
+}
+
+html.site-theme-terminal .post-card h2 {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+}
+
+html.site-theme-terminal .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-terminal .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-terminal .post-meta {
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+html.site-theme-terminal .post-excerpt {
+    font-family: var(--font-terminal);
+    color: var(--text-secondary);
+}
+
+/* Terminal: Buttons */
+html.site-theme-terminal .btn {
+    font-family: var(--font-terminal);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--border);
+}
+
+html.site-theme-terminal .btn-primary {
+    background: var(--color-primary);
+    color: var(--bg);
+    border-color: var(--color-primary);
+}
+
+html.site-theme-terminal .btn-primary:hover {
+    background: var(--bg);
+    color: var(--color-primary);
+}
+
+/* Terminal: Tags */
+html.site-theme-terminal .tag {
+    font-family: var(--font-terminal);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+html.site-theme-terminal .tag::before {
+    content: "#";
+    opacity: 0.5;
+    margin-right: 2px;
+}
+
+html.site-theme-terminal .tag:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Terminal: Cards */
+html.site-theme-terminal .card {
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-terminal .page-card {
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+html.site-theme-terminal .page-card:hover {
+    border-color: var(--color-primary);
+    transform: none;
+}
+
+/* Terminal: Footer */
+html.site-theme-terminal .site-footer {
+    border-top: 1px solid var(--border);
+    font-family: var(--font-terminal);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* Terminal: Content */
+html.site-theme-terminal .content {
+    font-family: var(--font-terminal);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+}
+
+html.site-theme-terminal .content h1,
+html.site-theme-terminal .content h2,
+html.site-theme-terminal .content h3,
+html.site-theme-terminal .content h4 {
+    font-family: var(--font-terminal);
+}
+
+html.site-theme-terminal .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+html.site-theme-terminal .content blockquote {
+    border-left: 2px solid var(--color-primary);
+    font-style: normal;
+    background: var(--bg-tertiary);
+    padding: var(--space-4) var(--space-6);
+}
+
+html.site-theme-terminal .content pre {
+    border: 1px solid var(--border);
+}
+
+html.site-theme-terminal .content code {
+    color: var(--color-accent);
+}
+
+html.site-theme-terminal .post-header h1 {
+    font-family: var(--font-terminal);
+    font-weight: 700;
+    font-size: var(--font-size-2xl);
+    color: var(--color-primary);
+}
+
+/* ==========================================================================
+   Theme: Nordic
+   Scandinavian-inspired clean design. Muted blue-grays, generous whitespace,
+   restrained typography, thin borders. Ultra-clean sophistication.
+   ========================================================================== */
+
+html.site-theme-nordic {
+    --color-primary: #4a90d9;
+    --color-primary-hover: #3a7ec5;
+    --color-primary-light: rgba(74, 144, 217, 0.06);
+    --color-accent: #6b8f9e;
+    --color-accent-hover: #5a7d8c;
+    --bg: #fcfcfd;
+    --bg-secondary: #f5f6f8;
+    --bg-tertiary: #eceef2;
+    --text: #2c3440;
+    --text-secondary: #4a5568;
+    --text-muted: #8895a7;
+    --border: #e2e6ec;
+    --border-light: #eceef2;
+
+    --radius: 0.375rem;
+    --radius-sm: 0.25rem;
+    --radius-lg: 0.5rem;
+
+    --shadow-sm: 0 1px 2px rgba(44, 52, 64, 0.04);
+    --shadow: 0 1px 4px rgba(44, 52, 64, 0.06);
+    --shadow-md: 0 4px 8px rgba(44, 52, 64, 0.06);
+    --shadow-lg: 0 8px 16px rgba(44, 52, 64, 0.08);
+}
+
+html.theme-dark.site-theme-nordic,
+html.site-theme-nordic[class*="theme-dark"] {
+    --color-primary: #7bb3e0;
+    --color-primary-hover: #a0c9ea;
+    --color-primary-light: rgba(123, 179, 224, 0.1);
+    --color-accent: #8ab0be;
+    --color-accent-hover: #a5c5d0;
+    --bg: #141820;
+    --bg-secondary: #1a2030;
+    --bg-tertiary: #232a38;
+    --text: #e0e4ea;
+    --text-secondary: #a8b0c0;
+    --text-muted: #6a7588;
+    --border: #2a3242;
+    --border-light: #232a38;
+}
+
+/* Nordic: Header */
+html.site-theme-nordic .site-header {
+    border-bottom: 1px solid var(--border-light);
+    padding: var(--space-8) 0;
+    background: var(--bg);
+}
+
+html.site-theme-nordic .site-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+html.site-theme-nordic .site-nav a {
+    font-size: var(--font-size-sm);
+    font-weight: 400;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-nordic .site-nav a:hover {
+    color: var(--text);
+}
+
+/* Nordic: Hero */
+html.site-theme-nordic .hero {
+    padding: var(--space-16) 0;
+}
+
+html.site-theme-nordic .hero-title {
+    font-size: var(--font-size-4xl);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-nordic .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+/* Nordic: Section Titles */
+html.site-theme-nordic .section-title {
+    font-weight: 500;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--border-light);
+}
+
+/* Nordic: Post Cards */
+html.site-theme-nordic .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+}
+
+html.site-theme-nordic .post-card:hover {
+    border-color: var(--border);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+html.site-theme-nordic .post-card h2 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+html.site-theme-nordic .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-nordic .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-nordic .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+}
+
+html.site-theme-nordic .post-excerpt {
+    color: var(--text-secondary);
+}
+
+/* Nordic: Buttons */
+html.site-theme-nordic .btn {
+    font-weight: 500;
+}
+
+html.site-theme-nordic .btn-primary {
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+}
+
+html.site-theme-nordic .btn-primary:hover {
+    background: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+}
+
+html.site-theme-nordic .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+html.site-theme-nordic .btn-secondary:hover {
+    border-color: var(--text-muted);
+    color: var(--text);
+}
+
+/* Nordic: Tags */
+html.site-theme-nordic .tag {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    border: 1px solid var(--border-light);
+    font-size: var(--font-size-xs);
+}
+
+html.site-theme-nordic .tag:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+/* Nordic: Cards */
+html.site-theme-nordic .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-nordic .page-card {
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+}
+
+html.site-theme-nordic .page-card:hover {
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+}
+
+/* Nordic: Footer */
+html.site-theme-nordic .site-footer {
+    border-top: 1px solid var(--border-light);
+    padding: var(--space-8) 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+/* Nordic: Content */
+html.site-theme-nordic .content {
+    line-height: var(--line-height-relaxed);
+}
+
+html.site-theme-nordic .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-nordic .content blockquote {
+    border-left: 2px solid var(--border);
+    padding-left: var(--space-6);
+    color: var(--text-secondary);
+}
+
+html.site-theme-nordic .post-header h1 {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   Theme: Sunset
+   Warm gradient-rich theme. Orange-to-purple color story. Energetic
+   yet refined — great for creative and lifestyle content.
+   ========================================================================== */
+
+html.site-theme-sunset {
+    --color-primary: #e67e22;
+    --color-primary-hover: #d35400;
+    --color-primary-light: rgba(230, 126, 34, 0.08);
+    --color-accent: #9b59b6;
+    --color-accent-hover: #8e44ad;
+    --bg: #fffcf8;
+    --bg-secondary: #fef5ec;
+    --bg-tertiary: #fceadb;
+    --text: #2d1f10;
+    --text-secondary: #5c4525;
+    --text-muted: #a0855d;
+    --border: #f0dcc5;
+    --border-light: #f5e8d5;
+
+    --radius: 0.625rem;
+    --radius-sm: 0.375rem;
+    --radius-lg: 1rem;
+}
+
+html.theme-dark.site-theme-sunset,
+html.site-theme-sunset[class*="theme-dark"] {
+    --color-primary: #f0a050;
+    --color-primary-hover: #f5b878;
+    --color-primary-light: rgba(240, 160, 80, 0.12);
+    --color-accent: #bb82d4;
+    --color-accent-hover: #cda0e0;
+    --bg: #1a1308;
+    --bg-secondary: #241c10;
+    --bg-tertiary: #30261a;
+    --text: #f0e4d5;
+    --text-secondary: #c8b090;
+    --text-muted: #8a7050;
+    --border: #3a2e1e;
+    --border-light: #30261a;
+}
+
+/* Sunset: Header */
+html.site-theme-sunset .site-header {
+    border-bottom: 2px solid var(--border-light);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-sunset .site-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 800;
+    background: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-accent) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+html.site-theme-sunset .site-nav a {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-sunset .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Sunset: Hero */
+html.site-theme-sunset .hero {
+    padding: var(--space-16) 0;
+    background: linear-gradient(
+        135deg,
+        rgba(230, 126, 34, 0.06) 0%,
+        rgba(155, 89, 182, 0.06) 100%
+    );
+    position: relative;
+}
+
+html.site-theme-sunset .hero::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+        90deg,
+        var(--color-primary),
+        var(--color-accent)
+    );
+}
+
+html.site-theme-sunset .hero-title {
+    font-size: var(--font-size-5xl);
+    font-weight: 800;
+    background: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-accent) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: var(--line-height-tight);
+}
+
+html.site-theme-sunset .hero-subtitle {
+    font-size: var(--font-size-lg);
+    color: var(--text-secondary);
+}
+
+/* Sunset: Section Titles */
+html.site-theme-sunset .section-title {
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Sunset: Post Cards */
+html.site-theme-sunset .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-sunset .post-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(230, 126, 34, 0.1);
+}
+
+html.site-theme-sunset .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-sunset .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-sunset .post-meta {
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+}
+
+/* Sunset: Buttons */
+html.site-theme-sunset .btn-primary {
+    background: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-accent) 100%
+    );
+    border: none;
+    color: white;
+}
+
+html.site-theme-sunset .btn-primary:hover {
+    opacity: 0.9;
+}
+
+html.site-theme-sunset .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--color-primary);
+}
+
+html.site-theme-sunset .btn-secondary:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+/* Sunset: Tags */
+html.site-theme-sunset .tag {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    border: none;
+    font-weight: 600;
+}
+
+html.site-theme-sunset .tag:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+/* Sunset: Cards */
+html.site-theme-sunset .card {
+    border: 1px solid var(--border-light);
+}
+
+html.site-theme-sunset .page-card {
+    border: 1px solid var(--border-light);
+    transition: all 0.25s ease;
+}
+
+html.site-theme-sunset .page-card:hover {
+    border-color: var(--color-accent);
+    transform: translateX(4px);
+}
+
+/* Sunset: Footer */
+html.site-theme-sunset .site-footer {
+    border-top: 2px solid var(--border-light);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    position: relative;
+}
+
+html.site-theme-sunset .site-footer::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        var(--color-primary),
+        var(--color-accent)
+    );
+}
+
+/* Sunset: Content */
+html.site-theme-sunset .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+html.site-theme-sunset .content blockquote {
+    border-left: 3px solid var(--color-accent);
+    background: var(--bg-secondary);
+    padding: var(--space-4) var(--space-6);
+}
+
+html.site-theme-sunset .post-header h1 {
+    font-weight: 800;
+    background: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-accent) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+}
+
+/* ==========================================================================
+   Theme: Typewriter
+   Vintage typewritten aesthetic. Sepia tones, Courier fonts for headings,
+   serif body text. Paper-like feel with subtle imperfections.
+   ========================================================================== */
+
+html.site-theme-typewriter {
+    --font-typewriter: "Courier New", Courier, monospace;
+    --font-typewriter-body: Georgia, "Times New Roman", serif;
+
+    --color-primary: #b44e4e;
+    --color-primary-hover: #9a3f3f;
+    --color-primary-light: rgba(180, 78, 78, 0.08);
+    --color-accent: #5a7a6a;
+    --color-accent-hover: #4a6858;
+    --bg: #f5f0e8;
+    --bg-secondary: #ede6db;
+    --bg-tertiary: #e4dace;
+    --text: #2c2416;
+    --text-secondary: #4a3f30;
+    --text-muted: #8a7e6e;
+    --border: #d4c9b8;
+    --border-light: #e0d7c8;
+
+    --radius: 0;
+    --radius-sm: 0;
+    --radius-lg: 2px;
+    --radius-xl: 2px;
+
+    --font-size-base: 1.0625rem;
+    --line-height-normal: 1.7;
+
+    --shadow-sm: 1px 1px 0 rgba(44, 36, 22, 0.06);
+    --shadow: 2px 2px 0 rgba(44, 36, 22, 0.06);
+    --shadow-md: 3px 3px 0 rgba(44, 36, 22, 0.08);
+    --shadow-lg: 4px 4px 0 rgba(44, 36, 22, 0.1);
+}
+
+html.theme-dark.site-theme-typewriter,
+html.site-theme-typewriter[class*="theme-dark"] {
+    --color-primary: #d48080;
+    --color-primary-hover: #e09a9a;
+    --color-primary-light: rgba(212, 128, 128, 0.1);
+    --color-accent: #8ab09a;
+    --color-accent-hover: #a5c8b5;
+    --bg: #1e1a14;
+    --bg-secondary: #28221a;
+    --bg-tertiary: #332c22;
+    --text: #e0d5c5;
+    --text-secondary: #bfb09a;
+    --text-muted: #8a7e6e;
+    --border: #3d3528;
+    --border-light: #332c22;
+}
+
+/* Typewriter: Typography */
+html.site-theme-typewriter body {
+    font-family: var(--font-typewriter-body);
+    line-height: var(--line-height-relaxed);
+}
+
+/* Typewriter: Header */
+html.site-theme-typewriter .site-header {
+    border-bottom: 2px solid var(--border);
+    padding: var(--space-6) 0;
+    background: var(--bg);
+}
+
+html.site-theme-typewriter .site-title {
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+}
+
+html.site-theme-typewriter .site-nav a {
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    transition: color var(--transition-base);
+}
+
+html.site-theme-typewriter .site-nav a:hover {
+    color: var(--color-primary);
+}
+
+/* Typewriter: Hero */
+html.site-theme-typewriter .hero {
+    padding: var(--space-12) 0;
+    border-bottom: 2px solid var(--border);
+}
+
+html.site-theme-typewriter .hero-title {
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-4xl);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.15;
+}
+
+html.site-theme-typewriter .hero-subtitle {
+    font-family: var(--font-typewriter-body);
+    font-size: var(--font-size-lg);
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+/* Typewriter: Section Titles */
+html.site-theme-typewriter .section-title {
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    padding-bottom: var(--space-3);
+    border-bottom: 2px solid var(--border);
+}
+
+/* Typewriter: Post Cards */
+html.site-theme-typewriter .post-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: var(--space-6);
+    transition: box-shadow var(--transition-base);
+}
+
+html.site-theme-typewriter .post-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+}
+
+html.site-theme-typewriter .post-card h2 {
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+html.site-theme-typewriter .post-card h2 a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+html.site-theme-typewriter .post-card h2 a:hover {
+    color: var(--color-primary);
+}
+
+html.site-theme-typewriter .post-meta {
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+html.site-theme-typewriter .post-excerpt {
+    font-family: var(--font-typewriter-body);
+    line-height: var(--line-height-relaxed);
+    color: var(--text-secondary);
+}
+
+/* Typewriter: Buttons */
+html.site-theme-typewriter .btn {
+    font-family: var(--font-typewriter);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 2px solid var(--border);
+}
+
+html.site-theme-typewriter .btn-primary {
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+}
+
+html.site-theme-typewriter .btn-primary:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+/* Typewriter: Tags */
+html.site-theme-typewriter .tag {
+    font-family: var(--font-typewriter);
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+html.site-theme-typewriter .tag:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Typewriter: Cards */
+html.site-theme-typewriter .card {
+    border: 1px solid var(--border);
+}
+
+html.site-theme-typewriter .page-card {
+    border: 1px solid var(--border);
+    transition: box-shadow var(--transition-base);
+}
+
+html.site-theme-typewriter .page-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: none;
+}
+
+/* Typewriter: Footer */
+html.site-theme-typewriter .site-footer {
+    border-top: 2px solid var(--border);
+    font-family: var(--font-typewriter);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+/* Typewriter: Content */
+html.site-theme-typewriter .content {
+    font-family: var(--font-typewriter-body);
+    font-size: var(--font-size-lg);
+    line-height: 1.8;
+}
+
+html.site-theme-typewriter .content h2,
+html.site-theme-typewriter .content h3,
+html.site-theme-typewriter .content h4 {
+    font-family: var(--font-typewriter);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+html.site-theme-typewriter .content a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+html.site-theme-typewriter .content blockquote {
+    border-left: 3px solid var(--color-primary);
+    font-style: italic;
+    padding-left: var(--space-6);
+    color: var(--text-secondary);
+}
+
+html.site-theme-typewriter .content pre {
+    border: 1px solid var(--border);
+    font-family: var(--font-typewriter);
+}
+
+html.site-theme-typewriter .post-header h1 {
+    font-family: var(--font-typewriter);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: var(--font-size-3xl);
+    line-height: 1.2;
 }
