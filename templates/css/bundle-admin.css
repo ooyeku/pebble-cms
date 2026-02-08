@@ -1922,7 +1922,7 @@ html.site-theme-serif[class*="theme-dark"] {
     --bg-tertiary: #332a23;
     --text: #ede2d5;
     --text-secondary: #c9b8a5;
-    --text-muted: #8b7a6a;
+    --text-muted: #9e8e7e;
     --border: #3d3228;
     --border-light: #2e251e;
 }
@@ -1957,7 +1957,7 @@ html.site-theme-ocean[class*="theme-dark"] {
     --bg-tertiary: #1a3450;
     --text: #e3f0f9;
     --text-secondary: #a8c9de;
-    --text-muted: #5f8aab;
+    --text-muted: #7aa4c0;
     --border: #1e3e5a;
     --border-light: #152d44;
 }
@@ -1989,7 +1989,7 @@ html.site-theme-midnight[class*="theme-light"] {
     --bg-tertiary: #e6e2ee;
     --text: #1a1726;
     --text-secondary: #3d3550;
-    --text-muted: #6e6580;
+    --text-muted: #8a7f96;
     --border: #d8d2e4;
     --border-light: #e6e2ee;
 }
@@ -2024,7 +2024,7 @@ html.site-theme-botanical[class*="theme-dark"] {
     --bg-tertiary: #2c2b22;
     --text: #e5e2d5;
     --text-secondary: #b5b1a0;
-    --text-muted: #7d7968;
+    --text-muted: #9a9585;
     --border: #36342a;
     --border-light: #2c2b22;
 }
@@ -2094,7 +2094,7 @@ html.site-theme-coral[class*="theme-dark"] {
     --bg-tertiary: #301e1e;
     --text: #f5e0e0;
     --text-secondary: #d0b0b0;
-    --text-muted: #a08080;
+    --text-muted: #b89a9a;
     --border: #3d2828;
     --border-light: #301e1e;
 }
@@ -2242,7 +2242,7 @@ html.site-theme-typewriter[class*="theme-dark"] {
     --bg-tertiary: #332c22;
     --text: #e0d5c5;
     --text-secondary: #bfb09a;
-    --text-muted: #8a7e6e;
+    --text-muted: #a09488;
     --border: #3d3528;
     --border-light: #332c22;
 }

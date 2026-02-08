@@ -164,7 +164,7 @@ pub fn update_content(
     }
 
     let renderer = MarkdownRenderer::new();
-    let conn = db.get()?;
+    let mut conn = db.get()?;
 
     let current: Content = conn.query_row(
         "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata, created_at, updated_at FROM content WHERE id = ?",
@@ -252,7 +252,9 @@ pub fn update_content(
         None
     };
 
-    conn.execute(
+    let tx = conn.transaction()?;
+
+    tx.execute(
         r#"
         UPDATE content SET slug = ?, title = ?, body_markdown = ?, body_html = ?, excerpt = ?, featured_image = ?, status = ?, scheduled_at = ?, published_at = ?, metadata = ?
         WHERE id = ?
@@ -273,19 +275,21 @@ pub fn update_content(
     )?;
 
     if let Some(tags) = input.tags {
-        conn.execute("DELETE FROM content_tags WHERE content_id = ?", [id])?;
+        tx.execute("DELETE FROM content_tags WHERE content_id = ?", [id])?;
         for tag_name in tags {
             let tag_slug = generate_slug(&tag_name);
-            conn.execute(
+            tx.execute(
                 "INSERT OR IGNORE INTO tags (name, slug) VALUES (?, ?)",
                 (&tag_name, &tag_slug),
             )?;
-            conn.execute(
+            tx.execute(
                 "INSERT OR IGNORE INTO content_tags (content_id, tag_id) SELECT ?, id FROM tags WHERE slug = ?",
                 (id, &tag_slug),
             )?;
         }
     }
+
+    tx.commit()?;
 
     // Cleanup old versions based on retention policy
     if version_retention > 0 {

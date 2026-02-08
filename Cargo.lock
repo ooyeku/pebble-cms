@@ -1989,7 +1989,7 @@ dependencies = [
 
 [[package]]
 name = "pebble"
-version = "0.7.0-dev"
+version = "0.7.0"
 dependencies = [
  "ammonia",
  "anyhow",

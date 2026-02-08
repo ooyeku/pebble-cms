@@ -1585,7 +1585,7 @@ pub async fn audit_export(
             (header::CONTENT_TYPE, content_type),
             (
                 header::CONTENT_DISPOSITION,
-                &format!("attachment; filename={}", filename),
+                &format!("attachment; filename=\"{}\"", filename),
             ),
         ],
         data,

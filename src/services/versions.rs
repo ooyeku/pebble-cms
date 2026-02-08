@@ -274,10 +274,11 @@ pub fn restore_version(
         anyhow::bail!("Version does not belong to this content");
     }
 
-    let conn = db.get()?;
+    let mut conn = db.get()?;
+    let tx = conn.transaction()?;
 
     // Update the content with the old version's data
-    conn.execute(
+    tx.execute(
         r#"
         UPDATE content
         SET title = ?1, slug = ?2, body_markdown = ?3, excerpt = ?4,
@@ -299,13 +300,13 @@ pub fn restore_version(
     let renderer = crate::services::markdown::MarkdownRenderer::new();
     let body_html = renderer.render(&version.body_markdown);
 
-    conn.execute(
+    tx.execute(
         "UPDATE content SET body_html = ?1 WHERE id = ?2",
         rusqlite::params![body_html, content_id],
     )?;
 
     // Restore tags
-    conn.execute(
+    tx.execute(
         "DELETE FROM content_tags WHERE content_id = ?1",
         [content_id],
     )?;
@@ -313,25 +314,27 @@ pub fn restore_version(
     for tag_name in &version.tags {
         // Get or create tag
         let tag_id: i64 =
-            match conn.query_row("SELECT id FROM tags WHERE name = ?1", [tag_name], |row| {
+            match tx.query_row("SELECT id FROM tags WHERE name = ?1", [tag_name], |row| {
                 row.get(0)
             }) {
                 Ok(id) => id,
                 Err(_) => {
                     let slug = crate::services::slug::generate_slug(tag_name);
-                    conn.execute(
+                    tx.execute(
                         "INSERT INTO tags (name, slug) VALUES (?1, ?2)",
                         rusqlite::params![tag_name, slug],
                     )?;
-                    conn.last_insert_rowid()
+                    tx.last_insert_rowid()
                 }
             };
 
-        conn.execute(
+        tx.execute(
             "INSERT OR IGNORE INTO content_tags (content_id, tag_id) VALUES (?1, ?2)",
             [content_id, tag_id],
         )?;
     }
+
+    tx.commit()?;
 
     tracing::info!(
         "Restored content {} to version {} (v{})",
