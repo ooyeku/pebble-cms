@@ -12,7 +12,7 @@ pub const MIN_PASSWORD_LENGTH: usize = 8;
 const MAX_USERNAME_LENGTH: usize = 100;
 const MAX_EMAIL_LENGTH: usize = 254;
 
-fn validate_username(username: &str) -> Result<()> {
+pub fn validate_username(username: &str) -> Result<()> {
     if username.is_empty() {
         anyhow::bail!("Username cannot be empty");
     }
@@ -31,7 +31,7 @@ fn validate_username(username: &str) -> Result<()> {
     Ok(())
 }
 
-fn validate_email(email: &str) -> Result<()> {
+pub fn validate_email(email: &str) -> Result<()> {
     if email.is_empty() {
         anyhow::bail!("Email cannot be empty");
     }

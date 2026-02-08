@@ -945,9 +945,40 @@ pub async fn create_user(
         return Ok(e);
     }
 
+    let render_with_error = |state: &Arc<AppState>, user: &User, error: &str| -> AppResult<Response> {
+        let users_list = auth::list_users(&state.db)?;
+        let mut ctx = make_admin_context(state, user);
+        ctx.insert("users", &users_list);
+        ctx.insert("error", error);
+        let html = state.templates.render("admin/users/index.html", &ctx)?;
+        Ok((StatusCode::BAD_REQUEST, Html(html)).into_response())
+    };
+
+    if let Err(e) = auth::validate_username(&form.username) {
+        return render_with_error(&state, &user, &e.to_string());
+    }
+
+    if let Err(e) = auth::validate_email(&form.email) {
+        return render_with_error(&state, &user, &e.to_string());
+    }
+
+    if let Err(e) = auth::validate_password(&form.password) {
+        return render_with_error(&state, &user, &e.to_string());
+    }
+
     let role: UserRole = form.role.parse().unwrap_or(UserRole::Author);
-    let new_user_id =
-        auth::create_user(&state.db, &form.username, &form.email, &form.password, role)?;
+    let new_user_id = match auth::create_user(&state.db, &form.username, &form.email, &form.password, role) {
+        Ok(id) => id,
+        Err(e) => {
+            let msg = e.to_string();
+            let display = if msg.contains("UNIQUE constraint failed") {
+                "A user with that username or email already exists".to_string()
+            } else {
+                "Could not create user. Please check your input and try again.".to_string()
+            };
+            return render_with_error(&state, &user, &display);
+        }
+    };
 
     // Audit log
     audit_ctx.user_id = Some(user.id);
@@ -980,8 +1011,31 @@ pub async fn update_user(
         return Ok(e);
     }
 
+    let render_with_error = |state: &Arc<AppState>, user: &User, error: &str| -> AppResult<Response> {
+        let users_list = auth::list_users(&state.db)?;
+        let mut ctx = make_admin_context(state, user);
+        ctx.insert("users", &users_list);
+        ctx.insert("error", error);
+        let html = state.templates.render("admin/users/index.html", &ctx)?;
+        Ok((StatusCode::BAD_REQUEST, Html(html)).into_response())
+    };
+
+    if let Some(ref email) = form.email {
+        if let Err(e) = auth::validate_email(email) {
+            return render_with_error(&state, &user, &e.to_string());
+        }
+    }
+
     let role = form.role.and_then(|r| r.parse().ok());
-    auth::update_user(&state.db, id, form.email.as_deref(), role)?;
+    if let Err(e) = auth::update_user(&state.db, id, form.email.as_deref(), role) {
+        let msg = e.to_string();
+        let display = if msg.contains("UNIQUE constraint failed") {
+            "A user with that email already exists".to_string()
+        } else {
+            "Could not update user. Please check your input and try again.".to_string()
+        };
+        return render_with_error(&state, &user, &display);
+    }
 
     Ok(Redirect::to("/admin/users").into_response())
 }

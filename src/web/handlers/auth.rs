@@ -280,6 +280,32 @@ pub async fn setup(
         return Ok((StatusCode::FORBIDDEN, jar.add(new_csrf_cookie), Html(html)).into_response());
     }
 
+    if let Err(e) = auth::validate_username(&form.username) {
+        let mut ctx = Context::new();
+        ctx.insert("error", &e.to_string());
+        ctx.insert("csrf_token", &new_csrf);
+        let html = state.templates.render("admin/setup.html", &ctx)?;
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            jar.add(new_csrf_cookie),
+            Html(html),
+        )
+            .into_response());
+    }
+
+    if let Err(e) = auth::validate_email(&form.email) {
+        let mut ctx = Context::new();
+        ctx.insert("error", &e.to_string());
+        ctx.insert("csrf_token", &new_csrf);
+        let html = state.templates.render("admin/setup.html", &ctx)?;
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            jar.add(new_csrf_cookie),
+            Html(html),
+        )
+            .into_response());
+    }
+
     if form.password != form.password_confirm {
         let mut ctx = Context::new();
         ctx.insert("error", "Passwords do not match");
@@ -306,13 +332,33 @@ pub async fn setup(
             .into_response());
     }
 
-    let user_id = auth::create_user(
+    let user_id = match auth::create_user(
         &state.db,
         &form.username,
         &form.email,
         &form.password,
         UserRole::Admin,
-    )?;
+    ) {
+        Ok(id) => id,
+        Err(e) => {
+            let msg = e.to_string();
+            let display = if msg.contains("UNIQUE constraint failed") {
+                "A user with that username or email already exists".to_string()
+            } else {
+                "Could not create account. Please check your input and try again.".to_string()
+            };
+            let mut ctx = Context::new();
+            ctx.insert("error", &display);
+            ctx.insert("csrf_token", &new_csrf);
+            let html = state.templates.render("admin/setup.html", &ctx)?;
+            return Ok((
+                StatusCode::BAD_REQUEST,
+                jar.add(new_csrf_cookie),
+                Html(html),
+            )
+                .into_response());
+        }
+    };
     let token = auth::create_session(&state.db, user_id, 7)?;
 
     let cookie = Cookie::build(("session", token))
