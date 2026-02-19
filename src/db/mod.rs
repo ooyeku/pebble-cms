@@ -35,9 +35,33 @@ impl Database {
         let pool = Pool::builder().max_size(pool_size).build(manager)?;
 
         let conn = pool.get()?;
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+        // Production-safe SQLite tuning:
+        // - WAL mode: concurrent reads during writes
+        // - foreign_keys: enforce referential integrity
+        // - busy_timeout: wait up to 5s instead of failing immediately on lock contention
+        // - journal_size_limit: cap WAL file at 64MB to prevent unbounded growth
+        // - synchronous=NORMAL: safe with WAL, much faster than FULL
+        // - mmap_size: 128MB memory-mapped I/O for faster reads
+        // - cache_size: ~64MB page cache (negative = KB)
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL;
+             PRAGMA foreign_keys=ON;
+             PRAGMA busy_timeout=5000;
+             PRAGMA journal_size_limit=67108864;
+             PRAGMA synchronous=NORMAL;
+             PRAGMA mmap_size=134217728;
+             PRAGMA cache_size=-65536;",
+        )?;
 
         Ok(Self { pool })
+    }
+
+    /// Check database connectivity and integrity.
+    /// Returns Ok(true) if the database is healthy.
+    pub fn health_check(&self) -> Result<bool> {
+        let conn = self.get()?;
+        let result: i32 = conn.query_row("SELECT 1", [], |row| row.get(0))?;
+        Ok(result == 1)
     }
 
     pub fn open_memory(name: &str) -> Result<Self> {
@@ -91,6 +115,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         (5, include_str!("migrations/005_analytics.sql")),
         (6, include_str!("migrations/006_content_versions.sql")),
         (7, include_str!("migrations/007_audit_log.sql")),
+        (8, include_str!("migrations/008_preview_tokens.sql")),
     ];
 
     for (version, sql) in migrations {

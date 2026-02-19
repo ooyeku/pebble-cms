@@ -21,6 +21,11 @@ pub fn public_routes() -> Router<Arc<AppState>> {
         .route("/sitemap.xml", get(handlers::public::sitemap))
         .route("/media/:filename", get(handlers::public::serve_media))
         .route("/js/:filename", get(handlers::public::serve_js))
+        .route("/health", get(handlers::public::health))
+        .route(
+            "/preview/:token",
+            get(handlers::public::draft_preview),
+        )
 }
 
 pub fn admin_routes() -> Router<Arc<AppState>> {
@@ -112,6 +117,11 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route(
             "/admin/users/:id/delete",
             post(handlers::admin::delete_user),
+        )
+        // Draft preview token generation
+        .route(
+            "/admin/preview/:id",
+            post(handlers::admin::generate_preview_token),
         )
 }
 

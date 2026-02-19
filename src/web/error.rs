@@ -30,7 +30,7 @@ a:hover { text-decoration: underline; }
 <h1>500</h1>
 <h2>Something went wrong</h2>
 <p>An unexpected error occurred. Please try again or go back to the previous page.</p>
-<a href="/admin">Back to Dashboard</a>
+<a href="/">Return home</a>
 </div>
 </body>
 </html>"#;

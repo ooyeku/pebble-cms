@@ -113,9 +113,15 @@ impl ShortcodeProcessor {
         let width = attrs.get("width");
         let height = attrs.get("height");
 
-        // Build srcset for responsive images (if webp variants exist)
+        // Build srcset for responsive images (webp variants at 400w, 800w, 1200w, 1600w)
         let base_name = src.rsplit_once('.').map(|(n, _)| n).unwrap_or(src);
-        let webp_src = format!("{}.webp", base_name);
+        let srcset = format!(
+            "/media/{}-400w.webp 400w, /media/{}-800w.webp 800w, /media/{}-1200w.webp 1200w, /media/{}.webp 1600w",
+            html_escape(base_name),
+            html_escape(base_name),
+            html_escape(base_name),
+            html_escape(base_name)
+        );
 
         let mut img_attrs = vec![
             format!(r#"src="/media/{}""#, html_escape(src)),
@@ -134,15 +140,15 @@ impl ShortcodeProcessor {
             img_attrs.push(format!(r#"height="{}""#, html_escape(h)));
         }
 
-        // Use picture element for webp fallback
+        // Use picture element with responsive srcset and webp fallback
         format!(
             r#"<figure class="media-figure">
 <picture>
-<source srcset="/media/{}" type="image/webp">
+<source srcset="{}" sizes="(max-width: 400px) 400px, (max-width: 800px) 800px, (max-width: 1200px) 1200px, 1600px" type="image/webp">
 <img {}>
 </picture>
 {}</figure>"#,
-            html_escape(&webp_src),
+            srcset,
             img_attrs.join(" "),
             if !alt.is_empty() {
                 format!(r#"<figcaption>{}</figcaption>"#, html_escape(alt))

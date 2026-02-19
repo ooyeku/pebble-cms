@@ -6,6 +6,7 @@ pub mod database;
 pub mod image;
 pub mod markdown;
 pub mod media;
+pub mod preview;
 pub mod search;
 pub mod settings;
 pub mod slug;

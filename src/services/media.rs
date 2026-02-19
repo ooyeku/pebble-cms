@@ -144,6 +144,20 @@ pub fn upload_media(
                         std::fs::write(upload_dir.join(&thumb_name), thumb_data)?;
                     }
 
+                    // Generate responsive srcset variants (400w, 800w, 1200w, 1600w)
+                    if let Ok(variants) =
+                        img_service::generate_srcset_variants(&optimized.original)
+                    {
+                        for variant in variants {
+                            let variant_name =
+                                format!("{}{}.webp", base_uuid, variant.suffix);
+                            let _ = std::fs::write(
+                                upload_dir.join(&variant_name),
+                                &variant.data,
+                            );
+                        }
+                    }
+
                     (
                         filename,
                         Some(webp_name),

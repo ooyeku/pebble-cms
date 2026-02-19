@@ -48,6 +48,10 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
         .merge(routes::api_routes())
         .layer(middleware::from_fn_with_state(
             state.clone(),
+            security::write_rate_limit_middleware,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
             analytics_middleware,
         ))
         .layer(middleware::from_fn(security::apply_security_headers))
@@ -57,8 +61,12 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
 
     let listener = TcpListener::bind(addr).await?;
     let app = app.into_make_service_with_connect_info::<SocketAddr>();
-    axum::serve(listener, app).await?;
+    tracing::info!("Server listening on {}", addr);
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
+    tracing::info!("Server shut down gracefully");
     Ok(())
 }
 
@@ -98,9 +106,43 @@ pub async fn serve_production(
     let addr = format!("{}:{}", host, port);
     let listener = TcpListener::bind(&addr).await?;
     let app = app.into_make_service_with_connect_info::<SocketAddr>();
-    axum::serve(listener, app).await?;
+    tracing::info!("Production server listening on {}", addr);
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
+    tracing::info!("Production server shut down gracefully");
     Ok(())
+}
+
+/// Listens for SIGTERM/SIGINT and returns when either is received.
+/// On Unix, also listens for SIGTERM. On all platforms, listens for Ctrl+C.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("Failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            tracing::info!("Received Ctrl+C, initiating graceful shutdown...");
+        }
+        _ = terminate => {
+            tracing::info!("Received SIGTERM, initiating graceful shutdown...");
+        }
+    }
 }
 
 async fn analytics_middleware(

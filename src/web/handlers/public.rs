@@ -1,5 +1,5 @@
 use crate::models::{ContentType, User};
-use crate::services::{content, search, settings, tags};
+use crate::services::{content, preview, search, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::OptionalUser;
 use crate::web::state::AppState;
@@ -480,4 +480,73 @@ fn html_escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+/// Health check endpoint — returns DB status for reverse proxies and uptime monitors.
+pub async fn health(State(state): State<Arc<AppState>>) -> Response {
+    match state.db.health_check() {
+        Ok(true) => {
+            let body = serde_json::json!({
+                "status": "healthy",
+                "version": env!("CARGO_PKG_VERSION"),
+            });
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, "application/json")],
+                serde_json::to_string(&body).unwrap_or_default(),
+            )
+                .into_response()
+        }
+        _ => {
+            let body = serde_json::json!({
+                "status": "unhealthy",
+                "version": env!("CARGO_PKG_VERSION"),
+            });
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                [(header::CONTENT_TYPE, "application/json")],
+                serde_json::to_string(&body).unwrap_or_default(),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// Draft preview — serves unpublished content via a signed, time-limited token.
+pub async fn draft_preview(
+    State(state): State<Arc<AppState>>,
+    OptionalUser(user): OptionalUser,
+    Path(token): Path<String>,
+) -> AppResult<Response> {
+    let content_id = match preview::validate_preview_token(&state.db, &token)? {
+        Some(id) => id,
+        None => {
+            let ctx = make_context(&state, &user);
+            let html = state.templates.render("public/404.html", &ctx)?;
+            return Ok((StatusCode::NOT_FOUND, Html(html)).into_response());
+        }
+    };
+
+    let item = content::get_content_by_id(&state.db, content_id)?;
+    match item {
+        Some(p) => {
+            let mut ctx = make_context(&state, &user);
+            ctx.insert("content", &p);
+            ctx.insert("is_preview", &true);
+
+            let template = match p.content.content_type {
+                ContentType::Post => "public/post.html",
+                ContentType::Page => "public/page.html",
+                _ => "public/post.html",
+            };
+
+            let html = state.templates.render(template, &ctx)?;
+            Ok(Html(html).into_response())
+        }
+        None => {
+            let ctx = make_context(&state, &user);
+            let html = state.templates.render("public/404.html", &ctx)?;
+            Ok((StatusCode::NOT_FOUND, Html(html)).into_response())
+        }
+    }
 }

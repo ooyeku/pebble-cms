@@ -129,11 +129,13 @@ pub async fn login(
             }
 
             let token = auth::create_session(&state.db, user.id, 7)?;
+            // Session hardening: Strict SameSite prevents CSRF for session cookies,
+            // httpOnly prevents XSS access, secure flag in production.
             let session_cookie = Cookie::build(("session", token))
                 .path("/")
                 .http_only(true)
                 .secure(!cfg!(debug_assertions))
-                .same_site(SameSite::Lax)
+                .same_site(SameSite::Strict)
                 .max_age(Duration::days(7))
                 .build();
 
@@ -365,7 +367,7 @@ pub async fn setup(
         .path("/")
         .http_only(true)
         .secure(!cfg!(debug_assertions))
-        .same_site(SameSite::Lax)
+        .same_site(SameSite::Strict)
         .max_age(Duration::days(7))
         .build();
 

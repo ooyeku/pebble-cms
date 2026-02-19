@@ -1,7 +1,8 @@
 [package]
 name = "pebble"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
+rust-version = "1.75"
 description = "A lightweight personal CMS"
 license = "MIT"
 

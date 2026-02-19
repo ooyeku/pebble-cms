@@ -1,6 +1,6 @@
 use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
 use crate::services::audit::{AuditAction, AuditCategory, AuditLogBuilder};
-use crate::services::{audit, auth, content, database, media, settings, tags};
+use crate::services::{audit, auth, content, database, media, preview, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::{AuditInfo, CurrentUser, HxRequest};
 use crate::web::state::AppState;
@@ -1713,4 +1713,34 @@ pub async fn page_version_diff(
 
     let html = state.templates.render("admin/versions/diff.html", &ctx)?;
     Ok(Html(html).into_response())
+}
+
+// ============================================================================
+// Draft Preview Token Generation
+// ============================================================================
+
+/// Generate a time-limited preview token for sharing draft content.
+pub async fn generate_preview_token(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let item = content::get_content_by_id(&state.db, id)?;
+    if item.is_none() {
+        return Ok((StatusCode::NOT_FOUND, "Content not found").into_response());
+    }
+
+    let token = preview::generate_preview_token(&state.db, id)?;
+    let config = state.config();
+    let preview_url = format!("{}/preview/{}", config.site.url, token);
+
+    Ok(axum::Json(serde_json::json!({
+        "preview_url": preview_url,
+        "expires_in_seconds": 3600,
+    }))
+    .into_response())
 }

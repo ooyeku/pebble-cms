@@ -1,10 +1,15 @@
+use crate::web::state::AppState;
 use axum::body::Body;
+use axum::extract::{ConnectInfo, State};
 use axum::http::header::HeaderValue;
-use axum::http::{header, Request, Response};
+use axum::http::{header, Method, Request, Response, StatusCode};
 use axum::middleware::Next;
+use axum::response::IntoResponse;
+use axum_extra::extract::CookieJar;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::net::SocketAddr;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 // Pre-computed header values to avoid runtime parsing and unwrap
@@ -14,11 +19,8 @@ static HEADER_XSS_PROTECTION: Lazy<HeaderValue> =
     Lazy::new(|| HeaderValue::from_static("1; mode=block"));
 static HEADER_REFERRER_POLICY: Lazy<HeaderValue> =
     Lazy::new(|| HeaderValue::from_static("strict-origin-when-cross-origin"));
-static HEADER_CSP: Lazy<HeaderValue> = Lazy::new(|| {
-    HeaderValue::from_static(
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
-    )
-});
+// CSP with nonce placeholder — nonce is injected per-request
+static HEADER_CSP_TEMPLATE: &str = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
 
 pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
     let headers = response.headers_mut();
@@ -27,7 +29,13 @@ pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
     headers.insert(header::X_FRAME_OPTIONS, HEADER_DENY.clone());
     headers.insert(header::X_XSS_PROTECTION, HEADER_XSS_PROTECTION.clone());
     headers.insert(header::REFERRER_POLICY, HEADER_REFERRER_POLICY.clone());
-    headers.insert(header::CONTENT_SECURITY_POLICY, HEADER_CSP.clone());
+
+    // Only set CSP if not already set (nonce middleware may have already set it)
+    if !headers.contains_key(header::CONTENT_SECURITY_POLICY) {
+        if let Ok(val) = HeaderValue::from_str(HEADER_CSP_TEMPLATE) {
+            headers.insert(header::CONTENT_SECURITY_POLICY, val);
+        }
+    }
 
     response
 }
@@ -132,4 +140,48 @@ impl CsrfManager {
 pub async fn apply_security_headers(request: Request<Body>, next: Next) -> Response<Body> {
     let response = next.run(request).await;
     security_headers(response)
+}
+
+/// Middleware that rate-limits write operations (POST/DELETE) on admin endpoints.
+/// Keyed by session cookie so legitimate multi-user setups aren't penalized.
+pub async fn write_rate_limit_middleware(
+    State(state): State<Arc<AppState>>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
+    request: Request<Body>,
+    next: Next,
+) -> Response<Body> {
+    let method = request.method().clone();
+    let path = request.uri().path().to_string();
+
+    // Only rate-limit write operations on admin routes (not login — that has its own limiter)
+    let is_write = (method == Method::POST || method == Method::DELETE)
+        && path.starts_with("/admin")
+        && path != "/admin/login";
+
+    if !is_write {
+        return next.run(request).await;
+    }
+
+    // Key by session cookie or IP for unauthenticated requests
+    let cookies = CookieJar::from_headers(request.headers());
+    let key = cookies
+        .get("session")
+        .map(|c| format!("write:{}", c.value()))
+        .unwrap_or_else(|| {
+            let ip = connect_info
+                .map(|ci| ci.0.ip().to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            format!("write:{}", ip)
+        });
+
+    if !state.write_rate_limiter.check(&key) {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            "Too many write operations. Please slow down.",
+        )
+            .into_response();
+    }
+
+    state.write_rate_limiter.record_attempt(&key);
+    next.run(request).await
 }

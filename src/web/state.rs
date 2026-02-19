@@ -19,6 +19,9 @@ pub struct AppState {
     pub csrf: Arc<CsrfManager>,
     pub rate_limiter: Arc<RateLimiter>,
     pub upload_rate_limiter: Arc<RateLimiter>,
+    /// Rate limiter for all write endpoints (content create/update/delete, settings, tags, users).
+    /// 30 write operations per 60 seconds, 5-minute lockout.
+    pub write_rate_limiter: Arc<RateLimiter>,
     pub analytics: Option<Arc<Analytics>>,
     pub static_assets: HashMap<String, &'static str>,
 }
@@ -128,6 +131,10 @@ impl AppState {
                 include_str!("../../templates/public/404.html"),
             ),
             (
+                "public/500.html",
+                include_str!("../../templates/public/500.html"),
+            ),
+            (
                 "htmx/preview.html",
                 include_str!("../../templates/htmx/preview.html"),
             ),
@@ -197,6 +204,11 @@ impl AppState {
             rate_limiter: Arc::new(RateLimiter::default()),
             upload_rate_limiter: Arc::new(RateLimiter::new(
                 20,
+                std::time::Duration::from_secs(60),
+                std::time::Duration::from_secs(300),
+            )),
+            write_rate_limiter: Arc::new(RateLimiter::new(
+                30,
                 std::time::Duration::from_secs(60),
                 std::time::Duration::from_secs(300),
             )),
