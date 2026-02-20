@@ -34,11 +34,18 @@ async fn main() -> anyhow::Result<()> {
             output,
             include_drafts,
             include_media,
+            format,
         }) => {
-            pebble::cli::export::run(&cli.config, &output, include_drafts, include_media).await?;
+            pebble::cli::export::run(&cli.config, &output, include_drafts, include_media, &format).await?;
         }
         Some(Commands::Import { path, overwrite }) => {
             pebble::cli::import::run(&cli.config, &path, overwrite).await?;
+        }
+        Some(Commands::ImportWp { file, overwrite }) => {
+            pebble::cli::import_wordpress::run(&cli.config, &file, overwrite).await?;
+        }
+        Some(Commands::ImportGhost { file, overwrite }) => {
+            pebble::cli::import_ghost::run(&cli.config, &file, overwrite).await?;
         }
         Some(Commands::Backup { command }) => {
             pebble::cli::backup::run(&cli.config, command).await?;

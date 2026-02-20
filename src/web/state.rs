@@ -198,6 +198,18 @@ impl AppState {
                 "public/series.html",
                 include_str!("../../templates/public/series.html"),
             ),
+            (
+                "admin/tokens/index.html",
+                include_str!("../../templates/admin/tokens/index.html"),
+            ),
+            (
+                "admin/webhooks/index.html",
+                include_str!("../../templates/admin/webhooks/index.html"),
+            ),
+            (
+                "admin/webhooks/deliveries.html",
+                include_str!("../../templates/admin/webhooks/deliveries.html"),
+            ),
         ])?;
 
         let media_dir = PathBuf::from(&config.media.upload_dir);

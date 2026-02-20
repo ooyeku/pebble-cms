@@ -25,7 +25,7 @@ pub async fn run(config_path: &Path, command: BackupCommand) -> Result<()> {
     Ok(())
 }
 
-fn create_backup(config: &Config, output_dir: &Path) -> Result<()> {
+pub fn create_backup(config: &Config, output_dir: &Path) -> Result<()> {
     fs::create_dir_all(output_dir)?;
 
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
@@ -184,6 +184,43 @@ fn list_backups(dir: &Path) -> Result<()> {
         let size_mb = metadata.len() as f64 / (1024.0 * 1024.0);
         if let Some(filename) = path.file_name() {
             println!("  {} ({:.2} MB)", filename.to_string_lossy(), size_mb);
+        }
+    }
+
+    Ok(())
+}
+
+/// Enforce backup retention by removing the oldest backups beyond the keep count.
+pub fn enforce_retention(backup_dir: &Path, keep: usize) -> Result<()> {
+    if !backup_dir.exists() || keep == 0 {
+        return Ok(());
+    }
+
+    let mut backups: Vec<_> = fs::read_dir(backup_dir)?
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let path = e.path();
+            path.extension().map(|ext| ext == "zip").unwrap_or(false)
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n.starts_with("pebble-backup-"))
+                    .unwrap_or(false)
+        })
+        .collect();
+
+    // Sort by filename (which includes timestamp) ascending
+    backups.sort_by_key(|e| e.path());
+
+    if backups.len() > keep {
+        let to_remove = backups.len() - keep;
+        for entry in backups.iter().take(to_remove) {
+            let path = entry.path();
+            if let Err(e) = fs::remove_file(&path) {
+                tracing::warn!("Failed to remove old backup {}: {}", path.display(), e);
+            } else {
+                tracing::info!("Removed old backup: {}", path.display());
+            }
         }
     }
 

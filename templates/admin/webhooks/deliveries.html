@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Webhook Deliveries{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Webhook Deliveries{% if webhook %}: {{ webhook.name }}{% endif %}</h2>
+</div>
+
+<div style="margin-bottom: 1rem;">
+    <a href="/admin/webhooks" class="btn btn-secondary">Back to Webhooks</a>
+</div>
+
+<div class="card">
+    {% if deliveries | length > 0 %}
+    <table style="width: 100%;">
+        <thead>
+            <tr>
+                <th style="text-align: left;">Event</th>
+                <th style="text-align: left;">Status</th>
+                <th style="text-align: left;">Result</th>
+                <th style="text-align: left;">Attempts</th>
+                <th style="text-align: left;">Delivered</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in deliveries %}
+            <tr>
+                <td><code>{{ d.event }}</code></td>
+                <td>{{ d.response_status | default(value="-") }}</td>
+                <td>
+                    {% if d.success %}
+                    <span style="color: var(--color-primary);">Success</span>
+                    {% else %}
+                    <span style="color: #e74c3c;">Failed</span>
+                    {% endif %}
+                </td>
+                <td>{{ d.attempts }}</td>
+                <td>{{ d.delivered_at | truncate_str(len=19) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted);">No deliveries recorded yet for this webhook.</p>
+    {% endif %}
+</div>
+{% endblock %}

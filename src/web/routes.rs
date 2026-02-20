@@ -168,6 +168,35 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         )
         // Bulk operations
         .route("/admin/bulk", post(handlers::admin::bulk_action))
+        // API token management
+        .route("/admin/tokens", get(handlers::admin::tokens))
+        .route("/admin/tokens", post(handlers::admin::create_token))
+        .route(
+            "/admin/tokens/:id/revoke",
+            post(handlers::admin::revoke_token),
+        )
+        // Webhook management
+        .route("/admin/webhooks", get(handlers::admin::webhooks))
+        .route(
+            "/admin/webhooks",
+            post(handlers::admin::create_webhook_handler),
+        )
+        .route(
+            "/admin/webhooks/:id/edit",
+            get(handlers::admin::edit_webhook),
+        )
+        .route(
+            "/admin/webhooks/:id",
+            post(handlers::admin::update_webhook_handler),
+        )
+        .route(
+            "/admin/webhooks/:id/delete",
+            post(handlers::admin::delete_webhook_handler),
+        )
+        .route(
+            "/admin/webhooks/:id/deliveries",
+            get(handlers::admin::webhook_deliveries),
+        )
 }
 
 pub fn htmx_routes() -> Router<Arc<AppState>> {
@@ -190,6 +219,7 @@ pub fn htmx_routes() -> Router<Arc<AppState>> {
 
 pub fn api_routes() -> Router<Arc<AppState>> {
     Router::new()
+        // Legacy analytics API
         .route(
             "/api/analytics/export",
             get(handlers::admin::analytics_export),
@@ -198,6 +228,17 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             "/api/analytics/content/:id",
             get(handlers::admin::analytics_content_stats),
         )
+        // REST API v1
+        .route("/api/v1/posts", get(handlers::api::list_posts))
+        .route("/api/v1/posts/:slug", get(handlers::api::get_post))
+        .route("/api/v1/pages", get(handlers::api::list_pages))
+        .route("/api/v1/pages/:slug", get(handlers::api::get_page))
+        .route("/api/v1/tags", get(handlers::api::list_tags))
+        .route("/api/v1/tags/:slug", get(handlers::api::get_tag))
+        .route("/api/v1/series", get(handlers::api::list_series_api))
+        .route("/api/v1/series/:slug", get(handlers::api::get_series_api))
+        .route("/api/v1/media", get(handlers::api::list_media_api))
+        .route("/api/v1/site", get(handlers::api::site_info))
 }
 
 async fn admin_not_available() -> impl IntoResponse {

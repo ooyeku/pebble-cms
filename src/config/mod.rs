@@ -15,6 +15,10 @@ pub struct Config {
     pub audit: AuditConfig,
     #[serde(default)]
     pub homepage: HomepageConfig,
+    #[serde(default)]
+    pub api: ApiConfig,
+    #[serde(default)]
+    pub backup: BackupConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -266,6 +270,49 @@ impl HomepageConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ApiConfig {
+    #[serde(default = "default_false")]
+    pub enabled: bool,
+    #[serde(default = "default_api_page_size")]
+    pub default_page_size: usize,
+    #[serde(default = "default_api_max_page_size")]
+    pub max_page_size: usize,
+}
+
+impl Default for ApiConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            default_page_size: default_api_page_size(),
+            max_page_size: default_api_max_page_size(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct BackupConfig {
+    #[serde(default)]
+    pub auto_enabled: bool,
+    #[serde(default = "default_backup_interval")]
+    pub interval_hours: u64,
+    #[serde(default = "default_backup_retention")]
+    pub retention_count: usize,
+    #[serde(default = "default_backup_dir")]
+    pub directory: String,
+}
+
+impl Default for BackupConfig {
+    fn default() -> Self {
+        Self {
+            auto_enabled: false,
+            interval_hours: default_backup_interval(),
+            retention_count: default_backup_retention(),
+            directory: default_backup_dir(),
+        }
+    }
+}
+
 fn default_hero_layout() -> String {
     "centered".to_string()
 }
@@ -344,6 +391,30 @@ fn default_audit_retention_days() -> u32 {
 
 fn default_audit_log_auth() -> bool {
     true
+}
+
+fn default_false() -> bool {
+    false
+}
+
+fn default_api_page_size() -> usize {
+    20
+}
+
+fn default_api_max_page_size() -> usize {
+    100
+}
+
+fn default_backup_interval() -> u64 {
+    24
+}
+
+fn default_backup_retention() -> usize {
+    7
+}
+
+fn default_backup_dir() -> String {
+    "./backups".to_string()
 }
 
 impl Config {

@@ -1,0 +1,89 @@
+{% extends "admin/base.html" %}
+
+{% block title %}API Tokens{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>API Tokens</h2>
+</div>
+
+{% if new_token %}
+<div class="card" style="background: var(--color-primary-light); border: 2px solid var(--color-primary); margin-bottom: 1.5rem;">
+    <p style="margin-bottom: 0.5rem;"><strong>New token created!</strong> Copy it now — it won't be shown again.</p>
+    <code style="display: block; padding: 0.75rem; background: var(--bg); border-radius: var(--radius); font-size: 0.95rem; word-break: break-all;">{{ new_token }}</code>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <h3>Create Token</h3>
+    <form method="post" action="/admin/tokens" style="margin-top: 1rem;">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="name">Token Name</label>
+                <input type="text" id="name" name="name" required placeholder="e.g. Mobile App, CI/CD">
+            </div>
+            <div class="form-group">
+                <label for="permissions">Permissions</label>
+                <select id="permissions" name="permissions">
+                    <option value="read" selected>Read Only</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="expires_days">Expires In</label>
+                <select id="expires_days" name="expires_days">
+                    <option value="0">Never</option>
+                    <option value="30">30 days</option>
+                    <option value="90" selected>90 days</option>
+                    <option value="365">1 year</option>
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Token</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Active Tokens</h3>
+    {% if tokens | length > 0 %}
+    <table style="width: 100%; margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th style="text-align: left;">Name</th>
+                <th style="text-align: left;">Prefix</th>
+                <th style="text-align: left;">Permissions</th>
+                <th style="text-align: left;">Last Used</th>
+                <th style="text-align: left;">Expires</th>
+                <th style="text-align: left;">Created</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in tokens %}
+            <tr>
+                <td>{{ token.name }}</td>
+                <td><code>{{ token.prefix }}</code></td>
+                <td>{{ token.permissions }}</td>
+                <td>{{ token.last_used_at | default(value="Never") }}</td>
+                <td>{{ token.expires_at | default(value="Never") }}</td>
+                <td>{{ token.created_at | truncate_str(len=10) }}</td>
+                <td>
+                    <form method="post" action="/admin/tokens/{{ token.id }}/revoke" style="display: inline;">
+                        <button type="submit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" onclick="return confirm('Revoke this token?')">Revoke</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted); margin-top: 1rem;">No API tokens yet. Create one to enable the REST API.</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 1rem;">
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+        API endpoints: <code>GET /api/v1/posts</code>, <code>/api/v1/pages</code>, <code>/api/v1/tags</code>, <code>/api/v1/series</code>, <code>/api/v1/media</code>, <code>/api/v1/site</code><br>
+        Usage: <code>curl -H "Authorization: Bearer pb_..." {{ site.url }}/api/v1/posts</code>
+    </p>
+</div>
+{% endblock %}

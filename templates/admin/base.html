@@ -28,8 +28,9 @@
                 <div class="divider"></div>
                 <a href="/admin/database">Database</a>
                 <a href="/admin/analytics">Analytics</a>
-                {% if user.role == "admin" %}<a href="/admin/audit">Audit Log</a
-                >{% endif %}
+                {% if user.role == "admin" %}<a href="/admin/audit">Audit Log</a>{% endif %}
+                {% if user.role == "admin" %}<a href="/admin/tokens">API Tokens</a>{% endif %}
+                {% if user.role == "admin" %}<a href="/admin/webhooks">Webhooks</a>{% endif %}
                 <a href="/admin/settings">Settings</a>
                 {% if user.role == "admin" %}<a href="/admin/users">Users</a>{%
                 endif %}

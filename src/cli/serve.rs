@@ -27,6 +27,40 @@ pub async fn run(config_path: &Path, host: &str, port: u16) -> Result<()> {
         }
     });
 
+    // Auto-backup scheduler
+    if config.backup.auto_enabled {
+        let backup_config = config.backup.clone();
+        let backup_site_config = config.clone();
+        tokio::spawn(async move {
+            let interval_secs = backup_config.interval_hours.max(1) * 3600;
+            let mut interval = tokio::time::interval(Duration::from_secs(interval_secs));
+            // Skip the first immediate tick
+            interval.tick().await;
+            loop {
+                interval.tick().await;
+                let backup_dir = std::path::Path::new(&backup_config.directory);
+                match crate::cli::backup::create_backup(&backup_site_config, backup_dir) {
+                    Ok(()) => {
+                        tracing::info!("Auto-backup completed successfully");
+                        let _ = crate::cli::backup::enforce_retention(
+                            backup_dir,
+                            backup_config.retention_count,
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!("Auto-backup failed: {}", e);
+                    }
+                }
+            }
+        });
+        tracing::info!(
+            "Auto-backup enabled: every {} hours, keeping {} backups in {}",
+            config.backup.interval_hours,
+            config.backup.retention_count,
+            config.backup.directory
+        );
+    }
+
     let addr = format!("{}:{}", host, port);
     tracing::info!("Starting server at http://{}", addr);
 

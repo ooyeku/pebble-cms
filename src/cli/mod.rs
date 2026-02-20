@@ -4,6 +4,8 @@ pub mod config;
 pub mod deploy;
 pub mod export;
 pub mod import;
+pub mod import_ghost;
+pub mod import_wordpress;
 pub mod init;
 pub mod migrate;
 pub mod registry;
@@ -75,12 +77,31 @@ pub enum Commands {
         /// Include media files
         #[arg(long)]
         include_media: bool,
+        /// Export format: pebble, hugo, or zola
+        #[arg(long, default_value = "pebble")]
+        format: String,
     },
     /// Import content from an export directory
     Import {
         /// Path to the export directory
         #[arg(default_value = "./export")]
         path: PathBuf,
+        /// Overwrite existing content with the same slug
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// Import from a WordPress WXR export file
+    ImportWp {
+        /// Path to the WordPress WXR XML file
+        file: PathBuf,
+        /// Overwrite existing content with the same slug
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// Import from a Ghost JSON export file
+    ImportGhost {
+        /// Path to the Ghost JSON export file
+        file: PathBuf,
         /// Overwrite existing content with the same slug
         #[arg(long)]
         overwrite: bool,

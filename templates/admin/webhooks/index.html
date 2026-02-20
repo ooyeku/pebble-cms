@@ -1,0 +1,104 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Webhooks{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Webhooks</h2>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem;">
+    <h3>{% if is_edit is defined and is_edit %}Edit Webhook{% else %}Create Webhook{% endif %}</h3>
+    <form method="post" action="{% if is_edit is defined and is_edit and webhook %}/admin/webhooks/{{ webhook.id }}{% else %}/admin/webhooks{% endif %}" style="margin-top: 1rem;">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required placeholder="e.g. Deploy trigger" value="{% if is_edit is defined and webhook %}{{ webhook.name }}{% endif %}">
+            </div>
+            <div class="form-group">
+                <label for="url">Payload URL</label>
+                <input type="url" id="url" name="url" required placeholder="https://example.com/webhook" value="{% if is_edit is defined and webhook %}{{ webhook.url }}{% endif %}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="secret">Secret <small style="color: var(--text-muted);">(for HMAC signature)</small></label>
+                <input type="text" id="secret" name="secret" placeholder="Optional shared secret" value="{% if is_edit is defined and webhook and webhook.secret %}{{ webhook.secret }}{% endif %}">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Events</label>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.3rem; font-weight: normal;">
+                    <input type="checkbox" name="event_content_published" value="1" {% if is_edit is defined and webhook and "content.published" in webhook.events %}checked{% endif %}> Content Published
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.3rem; font-weight: normal;">
+                    <input type="checkbox" name="event_content_updated" value="1" {% if is_edit is defined and webhook and "content.updated" in webhook.events %}checked{% endif %}> Content Updated
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.3rem; font-weight: normal;">
+                    <input type="checkbox" name="event_content_deleted" value="1" {% if is_edit is defined and webhook and "content.deleted" in webhook.events %}checked{% endif %}> Content Deleted
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.3rem; font-weight: normal;">
+                    <input type="checkbox" name="event_media_uploaded" value="1" {% if is_edit is defined and webhook and "media.uploaded" in webhook.events %}checked{% endif %}> Media Uploaded
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.3rem; font-weight: normal;">
+                    <input type="checkbox" name="event_media_deleted" value="1" {% if is_edit is defined and webhook and "media.deleted" in webhook.events %}checked{% endif %}> Media Deleted
+                </label>
+            </div>
+        </div>
+        {% if is_edit is defined and is_edit %}
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.3rem; font-weight: normal;">
+                <input type="checkbox" name="active" value="1" {% if webhook and webhook.active %}checked{% endif %}> Active
+            </label>
+        </div>
+        {% endif %}
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary">{% if is_edit is defined and is_edit %}Save Changes{% else %}Create Webhook{% endif %}</button>
+            {% if is_edit is defined and is_edit %}<a href="/admin/webhooks" class="btn btn-secondary">Cancel</a>{% endif %}
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Active Webhooks</h3>
+    {% if webhooks is defined and webhooks | length > 0 %}
+    <table style="width: 100%; margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th style="text-align: left;">Name</th>
+                <th style="text-align: left;">URL</th>
+                <th style="text-align: left;">Events</th>
+                <th style="text-align: left;">Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for hook in webhooks %}
+            <tr>
+                <td>{{ hook.name }}</td>
+                <td><code style="font-size: 0.85rem;">{{ hook.url | truncate(length=40) }}</code></td>
+                <td style="font-size: 0.85rem;">{{ hook.events }}</td>
+                <td>
+                    {% if hook.active %}
+                    <span style="color: var(--color-primary);">Active</span>
+                    {% else %}
+                    <span style="color: var(--text-muted);">Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="white-space: nowrap;">
+                    <a href="/admin/webhooks/{{ hook.id }}/edit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Edit</a>
+                    <a href="/admin/webhooks/{{ hook.id }}/deliveries" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;">Log</a>
+                    <form method="post" action="/admin/webhooks/{{ hook.id }}/delete" style="display: inline;">
+                        <button type="submit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;" onclick="return confirm('Delete this webhook?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted); margin-top: 1rem;">No webhooks configured. Create one to receive HTTP callbacks on content events.</p>
+    {% endif %}
+</div>
+{% endblock %}

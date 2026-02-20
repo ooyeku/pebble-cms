@@ -1,6 +1,6 @@
 use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
 use crate::services::audit::{AuditAction, AuditCategory, AuditLogBuilder};
-use crate::services::{audit, auth, content, database, media, preview, series, settings, tags};
+use crate::services::{api_token, audit, auth, content, database, media, preview, series, settings, tags, webhook};
 use crate::web::error::AppResult;
 use crate::web::extractors::{AuditInfo, CurrentUser, HxRequest};
 use crate::web::state::AppState;
@@ -213,6 +213,15 @@ pub async fn create_post(
         state.config().content.excerpt_length,
     )?;
 
+    // Fire webhooks
+    if form.status == "published" {
+        webhook::fire_webhooks(
+            &state.db,
+            "content.published",
+            serde_json::json!({ "id": content_id, "title": form.title, "type": "post" }),
+        );
+    }
+
     // Audit log
     audit_ctx.user_id = Some(user.id);
     audit_ctx.username = Some(user.username.clone());
@@ -299,6 +308,13 @@ pub async fn update_post(
         config.content.version_retention,
     )?;
 
+    // Fire webhooks
+    webhook::fire_webhooks(
+        &state.db,
+        "content.updated",
+        serde_json::json!({ "id": id, "title": form.title, "type": "post" }),
+    );
+
     // Audit log
     audit_ctx.user_id = Some(user.id);
     audit_ctx.username = Some(user.username.clone());
@@ -333,6 +349,13 @@ pub async fn delete_post(
         .unwrap_or_default();
 
     content::delete_content(&state.db, id)?;
+
+    // Fire webhooks
+    webhook::fire_webhooks(
+        &state.db,
+        "content.deleted",
+        serde_json::json!({ "id": id, "title": title, "type": "post" }),
+    );
 
     // Audit log
     audit_ctx.user_id = Some(user.id);
@@ -427,6 +450,15 @@ pub async fn create_page(
         state.config().content.excerpt_length,
     )?;
 
+    // Fire webhooks
+    if form.status == "published" {
+        webhook::fire_webhooks(
+            &state.db,
+            "content.published",
+            serde_json::json!({ "id": id, "title": form.title, "type": "page" }),
+        );
+    }
+
     // Audit log
     audit_ctx.user_id = Some(user.id);
     audit_ctx.username = Some(user.username.clone());
@@ -514,6 +546,13 @@ pub async fn update_page(
         config.content.version_retention,
     )?;
 
+    // Fire webhooks
+    webhook::fire_webhooks(
+        &state.db,
+        "content.updated",
+        serde_json::json!({ "id": id, "title": form.title, "type": "page" }),
+    );
+
     // Audit log
     audit_ctx.user_id = Some(user.id);
     audit_ctx.username = Some(user.username.clone());
@@ -556,6 +595,13 @@ pub async fn delete_page(
         .unwrap_or_default();
 
     content::delete_content(&state.db, id)?;
+
+    // Fire webhooks
+    webhook::fire_webhooks(
+        &state.db,
+        "content.deleted",
+        serde_json::json!({ "id": id, "title": title, "type": "page" }),
+    );
 
     // Audit log
     audit_ctx.user_id = Some(user.id);
@@ -644,6 +690,13 @@ pub async fn upload_media(
             Some(user.id),
         )?;
         state.upload_rate_limiter.record_attempt(&rate_key);
+
+        // Fire webhooks
+        webhook::fire_webhooks(
+            &state.db,
+            "media.uploaded",
+            serde_json::json!({ "filename": name, "content_type": content_type }),
+        );
     }
 
     Ok(Redirect::to("/admin/media").into_response())
@@ -660,6 +713,13 @@ pub async fn delete_media(
     }
 
     media::delete_media(&state.db, &state.media_dir, id)?;
+
+    // Fire webhooks
+    webhook::fire_webhooks(
+        &state.db,
+        "media.deleted",
+        serde_json::json!({ "id": id }),
+    );
 
     if is_htmx {
         Ok((
@@ -889,6 +949,8 @@ pub async fn save_settings(
             sections_order: current.homepage.sections_order.clone(),
         },
         audit: current.audit.clone(),
+        api: current.api.clone(),
+        backup: current.backup.clone(),
     };
 
     // Drop the read lock before updating
@@ -2197,4 +2259,287 @@ pub async fn bulk_action(
     );
 
     Ok(Redirect::to("/admin/posts").into_response())
+}
+
+// ===== API Token Management =====
+
+pub async fn tokens(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let tokens = api_token::list_tokens(&state.db).unwrap_or_default();
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("tokens", &tokens);
+    ctx.insert("new_token", &Option::<String>::None);
+
+    let html = state.templates.render("admin/tokens/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+#[derive(Deserialize)]
+pub struct CreateTokenForm {
+    pub name: String,
+    pub permissions: Option<String>,
+    pub expires_days: Option<i64>,
+}
+
+pub async fn create_token(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
+    Form(form): Form<CreateTokenForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let permissions = form.permissions.as_deref().unwrap_or("read");
+    let expires_at = form.expires_days.and_then(|days| {
+        if days > 0 {
+            Some(
+                (chrono::Utc::now() + chrono::Duration::days(days))
+                    .format("%Y-%m-%dT%H:%M:%S")
+                    .to_string(),
+            )
+        } else {
+            None
+        }
+    });
+
+    let (raw_token, _token) = api_token::create_token(
+        &state.db,
+        &form.name,
+        permissions,
+        Some(user.id),
+        expires_at.as_deref(),
+    )?;
+
+    // Audit log
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Settings)
+            .metadata_value("detail", serde_json::json!(format!("Created API token: {}", form.name))),
+    );
+
+    let tokens = api_token::list_tokens(&state.db).unwrap_or_default();
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("tokens", &tokens);
+    ctx.insert("new_token", &Some(&raw_token));
+
+    let html = state.templates.render("admin/tokens/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+pub async fn revoke_token(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    api_token::revoke_token(&state.db, id)?;
+
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Settings)
+            .metadata_value("detail", serde_json::json!(format!("Revoked API token ID: {}", id))),
+    );
+
+    Ok(Redirect::to("/admin/tokens").into_response())
+}
+
+// ===== Webhook Management =====
+
+pub async fn webhooks(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let hooks = webhook::list_webhooks(&state.db).unwrap_or_default();
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("webhooks", &hooks);
+
+    let html = state.templates.render("admin/webhooks/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+#[derive(Deserialize)]
+pub struct WebhookForm {
+    pub name: String,
+    pub url: String,
+    pub secret: Option<String>,
+    pub events: Option<String>,
+    pub event_content_published: Option<String>,
+    pub event_content_updated: Option<String>,
+    pub event_content_deleted: Option<String>,
+    pub event_media_uploaded: Option<String>,
+    pub event_media_deleted: Option<String>,
+    pub active: Option<String>,
+}
+
+impl WebhookForm {
+    fn events_string(&self) -> String {
+        if let Some(ref events) = self.events {
+            return events.clone();
+        }
+        let mut events = Vec::new();
+        if self.event_content_published.is_some() {
+            events.push("content.published");
+        }
+        if self.event_content_updated.is_some() {
+            events.push("content.updated");
+        }
+        if self.event_content_deleted.is_some() {
+            events.push("content.deleted");
+        }
+        if self.event_media_uploaded.is_some() {
+            events.push("media.uploaded");
+        }
+        if self.event_media_deleted.is_some() {
+            events.push("media.deleted");
+        }
+        events.join(",")
+    }
+}
+
+pub async fn create_webhook_handler(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
+    Form(form): Form<WebhookForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let secret = form.secret.as_deref().filter(|s| !s.is_empty());
+    let events = form.events_string();
+
+    webhook::create_webhook(&state.db, &form.name, &form.url, secret, &events)?;
+
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Settings)
+            .metadata_value("detail", serde_json::json!(format!("Created webhook: {}", form.name))),
+    );
+
+    Ok(Redirect::to("/admin/webhooks").into_response())
+}
+
+pub async fn edit_webhook(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let hook = webhook::get_webhook(&state.db, id)?;
+    let hooks = webhook::list_webhooks(&state.db).unwrap_or_default();
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("webhook", &hook);
+    ctx.insert("webhooks", &hooks);
+    ctx.insert("is_edit", &true);
+
+    let html = state.templates.render("admin/webhooks/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+pub async fn update_webhook_handler(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
+    Path(id): Path<i64>,
+    Form(form): Form<WebhookForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let secret = form.secret.as_deref().filter(|s| !s.is_empty());
+    let events = form.events_string();
+    let active = form.active.is_some();
+
+    webhook::update_webhook(&state.db, id, &form.name, &form.url, secret, &events, active)?;
+
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Update, AuditCategory::Settings)
+            .metadata_value("detail", serde_json::json!(format!("Updated webhook: {}", form.name))),
+    );
+
+    Ok(Redirect::to("/admin/webhooks").into_response())
+}
+
+pub async fn delete_webhook_handler(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    webhook::delete_webhook(&state.db, id)?;
+
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Settings)
+            .metadata_value("detail", serde_json::json!(format!("Deleted webhook ID: {}", id))),
+    );
+
+    Ok(Redirect::to("/admin/webhooks").into_response())
+}
+
+pub async fn webhook_deliveries(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_admin(&user) {
+        return Ok(e);
+    }
+
+    let hook = webhook::get_webhook(&state.db, id)?;
+    let deliveries = webhook::list_deliveries(&state.db, id, 50).unwrap_or_default();
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("webhook", &hook);
+    ctx.insert("deliveries", &deliveries);
+
+    let html = state
+        .templates
+        .render("admin/webhooks/deliveries.html", &ctx)?;
+    Ok(Html(html).into_response())
 }

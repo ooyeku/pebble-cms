@@ -1,12 +1,12 @@
-use crate::models::User;
+use crate::models::{ApiToken, User};
 use crate::services::audit::AuditContext;
-use crate::services::auth;
+use crate::services::{api_token, auth};
 use crate::web::state::AppState;
 use axum::extract::{ConnectInfo, FromRequestParts};
 use axum::http::header;
 use axum::http::request::Parts;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::response::{IntoResponse, Json, Redirect, Response};
 use axum_extra::extract::CookieJar;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -157,6 +157,59 @@ where
                 ip_address: ip,
                 user_agent,
             }))
+        })
+    }
+}
+
+/// Rejection type for API token auth — returns JSON 401.
+pub struct ApiAuthError;
+
+impl IntoResponse for ApiAuthError {
+    fn into_response(self) -> Response {
+        let body = serde_json::json!({
+            "error": "Unauthorized",
+            "message": "Valid API token required. Use Authorization: Bearer pb_..."
+        });
+        (StatusCode::UNAUTHORIZED, Json(body)).into_response()
+    }
+}
+
+/// Extractor for API token authentication via `Authorization: Bearer pb_...` header.
+#[allow(dead_code)]
+pub struct ApiTokenAuth(pub ApiToken);
+
+impl FromRequestParts<Arc<AppState>> for ApiTokenAuth {
+    type Rejection = ApiAuthError;
+
+    fn from_request_parts<'life0, 'life1, 'async_trait>(
+        parts: &'life0 mut Parts,
+        state: &'life1 Arc<AppState>,
+    ) -> Pin<Box<dyn Future<Output = Result<Self, Self::Rejection>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        let state = state.clone();
+        let headers = parts.headers.clone();
+        Box::pin(async move {
+            // Check if API is enabled
+            if !state.config().api.enabled {
+                return Err(ApiAuthError);
+            }
+
+            let auth_header = headers
+                .get(header::AUTHORIZATION)
+                .and_then(|v| v.to_str().ok())
+                .ok_or(ApiAuthError)?;
+
+            let raw_token = auth_header.strip_prefix("Bearer ").ok_or(ApiAuthError)?;
+
+            let token = api_token::validate_token(&state.db, raw_token)
+                .map_err(|_| ApiAuthError)?
+                .ok_or(ApiAuthError)?;
+
+            Ok(ApiTokenAuth(token))
         })
     }
 }
