@@ -1,6 +1,6 @@
-use pebble::models::{ContentStatus, ContentType, UserRole};
-use pebble::services::{auth, content, database, search, settings, tags};
-use pebble::Database;
+use pebble_cms::models::{ContentStatus, ContentType, UserRole};
+use pebble_cms::services::{auth, content, database, search, settings, tags};
+use pebble_cms::Database;
 
 fn create_test_db() -> Database {
     use rand::Rng;
@@ -325,7 +325,7 @@ mod tag_integration_tests {
 
 mod content_integration_tests {
     use super::*;
-    use pebble::models::CreateContent;
+    use pebble_cms::models::CreateContent;
 
     fn create_test_post(title: &str) -> CreateContent {
         CreateContent {
@@ -476,7 +476,7 @@ mod content_integration_tests {
         let input = create_test_post("Original Title");
         let content_id = content::create_content(&db, input, None, 200).unwrap();
 
-        let update = pebble::models::UpdateContent {
+        let update = pebble_cms::models::UpdateContent {
             title: Some("Updated Title".to_string()),
             slug: None,
             body_markdown: None,
@@ -777,7 +777,7 @@ mod settings_integration_tests {
 
 mod search_integration_tests {
     use super::*;
-    use pebble::models::CreateContent;
+    use pebble_cms::models::CreateContent;
 
     #[test]
     fn test_search_empty_results() {

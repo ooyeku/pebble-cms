@@ -1,6 +1,6 @@
 use clap::Parser;
-use pebble::cli::{Cli, Commands};
-use pebble::global::PebbleHome;
+use pebble_cms::cli::{Cli, Commands};
+use pebble_cms::global::PebbleHome;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
@@ -8,7 +8,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "pebble=info,tower_http=debug".into()),
+                .unwrap_or_else(|_| "pebble_cms=info,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -19,16 +19,16 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Some(Commands::Init { path, name }) => {
-            pebble::cli::init::run(path, name).await?;
+            pebble_cms::cli::init::run(path, name).await?;
         }
         Some(Commands::Serve { host, port }) => {
-            pebble::cli::serve::run(&cli.config, &host, port).await?;
+            pebble_cms::cli::serve::run(&cli.config, &host, port).await?;
         }
         Some(Commands::Deploy { host, port }) => {
-            pebble::cli::deploy::run(&cli.config, &host, port).await?;
+            pebble_cms::cli::deploy::run(&cli.config, &host, port).await?;
         }
         Some(Commands::Build { output, base_url }) => {
-            pebble::cli::build::run(&cli.config, &output, base_url).await?;
+            pebble_cms::cli::build::run(&cli.config, &output, base_url).await?;
         }
         Some(Commands::Export {
             output,
@@ -36,37 +36,37 @@ async fn main() -> anyhow::Result<()> {
             include_media,
             format,
         }) => {
-            pebble::cli::export::run(&cli.config, &output, include_drafts, include_media, &format).await?;
+            pebble_cms::cli::export::run(&cli.config, &output, include_drafts, include_media, &format).await?;
         }
         Some(Commands::Import { path, overwrite }) => {
-            pebble::cli::import::run(&cli.config, &path, overwrite).await?;
+            pebble_cms::cli::import::run(&cli.config, &path, overwrite).await?;
         }
         Some(Commands::ImportWp { file, overwrite }) => {
-            pebble::cli::import_wordpress::run(&cli.config, &file, overwrite).await?;
+            pebble_cms::cli::import_wordpress::run(&cli.config, &file, overwrite).await?;
         }
         Some(Commands::ImportGhost { file, overwrite }) => {
-            pebble::cli::import_ghost::run(&cli.config, &file, overwrite).await?;
+            pebble_cms::cli::import_ghost::run(&cli.config, &file, overwrite).await?;
         }
         Some(Commands::Backup { command }) => {
-            pebble::cli::backup::run(&cli.config, command).await?;
+            pebble_cms::cli::backup::run(&cli.config, command).await?;
         }
         Some(Commands::Migrate { command }) => {
-            pebble::cli::migrate::run(&cli.config, command).await?;
+            pebble_cms::cli::migrate::run(&cli.config, command).await?;
         }
         Some(Commands::Doctor) => {
-            pebble::cli::doctor::run(&cli.config).await?;
+            pebble_cms::cli::doctor::run(&cli.config).await?;
         }
         Some(Commands::Rerender) => {
-            pebble::cli::rerender::run(&cli.config).await?;
+            pebble_cms::cli::rerender::run(&cli.config).await?;
         }
         Some(Commands::User { command }) => {
-            pebble::cli::user::run(&cli.config, command).await?;
+            pebble_cms::cli::user::run(&cli.config, command).await?;
         }
         Some(Commands::Config { command }) => {
-            pebble::cli::config::run(command).await?;
+            pebble_cms::cli::config::run(command).await?;
         }
         Some(Commands::Registry { command }) => {
-            pebble::cli::registry::run(command).await?;
+            pebble_cms::cli::registry::run(command).await?;
         }
         None => {
             use clap::CommandFactory;

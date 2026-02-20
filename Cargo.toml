@@ -1,10 +1,19 @@
 [package]
-name = "pebble"
+name = "pebble-cms"
 version = "1.0.0-rc1"
 edition = "2021"
 rust-version = "1.75"
-description = "A lightweight personal CMS"
+description = "A lightweight, single-binary CMS powered by SQLite — 15 themes, REST API, WCAG 2.1 AA, static export"
 license = "MIT"
+repository = "https://github.com/ooyeku/pebble-cms"
+homepage = "https://github.com/ooyeku/pebble-cms"
+readme = "README.md"
+keywords = ["cms", "blog", "sqlite", "markdown", "htmx"]
+categories = ["web-programming", "command-line-utilities"]
+
+[[bin]]
+name = "pebble"
+path = "src/main.rs"
 
 [dependencies]
 # Web framework
