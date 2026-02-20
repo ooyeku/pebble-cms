@@ -88,6 +88,19 @@ pebble build --output ./public --base-url https://example.com
 
 Produces a complete static site with HTML pages, RSS/JSON feeds, a sitemap, a search index, and all your media files. Deploy it to GitHub Pages, Netlify, Vercel, Cloudflare Pages, S3, or any web server.
 
+### Docker
+
+```bash
+docker compose up -d
+```
+
+Or build and run manually:
+
+```bash
+docker build -t pebble .
+docker run -p 8080:8080 -v pebble-data:/data pebble
+```
+
 ---
 
 ## Features
@@ -223,6 +236,9 @@ pebble registry stop-all
 | `pebble user passwd <name>` | Change a user's password |
 | `pebble user remove <name>` | Delete a user |
 | `pebble migrate` | Run database migrations |
+| `pebble migrate status` | Show applied and pending migrations |
+| `pebble migrate rollback` | Roll back the most recent migration(s) |
+| `pebble doctor` | Run system health checks |
 | `pebble rerender` | Re-render all content HTML from Markdown |
 | `pebble config list` | View global configuration |
 | `pebble registry init <name>` | Create a registry-managed site |
@@ -337,6 +353,8 @@ pebble (single binary)
 ## Documentation
 
 - **[Full Usage Guide](docs/usage.md)** -- comprehensive reference for every feature, command, and configuration option
+- **[Deployment Guide](docs/deployment.md)** -- systemd, nginx, Caddy, TLS, firewall, and monitoring
+- **[Performance Baseline](docs/performance.md)** -- benchmarking methodology, memory profile, and SQLite tuning
 - **[Roadmap](docs/roadmap.md)** -- what's planned for v1.0 and beyond
 
 ---

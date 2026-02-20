@@ -87,6 +87,58 @@ impl Database {
         run_migrations(&conn)?;
         Ok(())
     }
+
+    /// Returns the status of all 10 migrations as (version, Option<applied_at>).
+    /// Pending migrations have `None` for applied_at.
+    pub fn get_migration_status(&self) -> Result<Vec<(i32, Option<String>)>> {
+        let conn = self.get()?;
+
+        // Ensure schema_migrations table exists
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS schema_migrations (
+                version INTEGER PRIMARY KEY,
+                applied_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );",
+        )?;
+
+        let total_migrations = 10;
+        let mut result = Vec::with_capacity(total_migrations);
+
+        for version in 1..=total_migrations as i32 {
+            let applied_at: Option<String> = conn
+                .query_row(
+                    "SELECT applied_at FROM schema_migrations WHERE version = ?1",
+                    [version],
+                    |row| row.get(0),
+                )
+                .ok();
+
+            result.push((version, applied_at));
+        }
+
+        Ok(result)
+    }
+
+    /// Roll back a single migration by executing its rollback SQL
+    /// and removing it from schema_migrations.
+    pub fn rollback_migration(&self, version: i32) -> Result<()> {
+        let conn = self.get()?;
+
+        // Temporarily disable foreign keys for rollback
+        conn.execute_batch("PRAGMA foreign_keys=OFF;")?;
+
+        let rollback_sql = get_rollback_sql(version)?;
+        conn.execute_batch(rollback_sql)?;
+        conn.execute(
+            "DELETE FROM schema_migrations WHERE version = ?1",
+            [version],
+        )?;
+
+        // Re-enable foreign keys
+        conn.execute_batch("PRAGMA foreign_keys=ON;")?;
+
+        Ok(())
+    }
 }
 
 fn run_migrations(conn: &Connection) -> Result<()> {
@@ -132,4 +184,20 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn get_rollback_sql(version: i32) -> Result<&'static str> {
+    match version {
+        1 => Ok(include_str!("migrations/001_rollback.sql")),
+        2 => Ok(include_str!("migrations/002_rollback.sql")),
+        3 => Ok(include_str!("migrations/003_rollback.sql")),
+        4 => Ok(include_str!("migrations/004_rollback.sql")),
+        5 => Ok(include_str!("migrations/005_rollback.sql")),
+        6 => Ok(include_str!("migrations/006_rollback.sql")),
+        7 => Ok(include_str!("migrations/007_rollback.sql")),
+        8 => Ok(include_str!("migrations/008_rollback.sql")),
+        9 => Ok(include_str!("migrations/009_rollback.sql")),
+        10 => Ok(include_str!("migrations/010_rollback.sql")),
+        _ => anyhow::bail!("No rollback SQL for migration version {}", version),
+    }
 }

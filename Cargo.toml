@@ -1,6 +1,6 @@
 [package]
 name = "pebble"
-version = "0.9.5"
+version = "1.0.0-rc1"
 edition = "2021"
 rust-version = "1.75"
 description = "A lightweight personal CMS"

@@ -12,7 +12,7 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="title">Title</label>
-                <input type="text" id="title" name="title" value="{% if content %}{{ content.title }}{% endif %}" required>
+                <input type="text" id="title" name="title" value="{% if content %}{{ content.title }}{% endif %}" required aria-required="true">
             </div>
             <div class="form-group">
                 <label for="slug">Slug</label>

@@ -108,7 +108,7 @@
     <div class="login-card">
         <h1>Pebble CMS</h1>
         {% if error %}
-        <div class="error">{{ error }}</div>
+        <div class="error" role="alert">{{ error }}</div>
         {% endif %}
         <form method="post" action="/admin/login">
             <input type="hidden" name="csrf_token" value="{{ csrf_token | default(value='') }}">

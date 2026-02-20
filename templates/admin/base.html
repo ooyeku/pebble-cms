@@ -15,9 +15,10 @@
         {% endif %}
     </head>
     <body class="admin-body admin-layout">
-        <aside class="admin-sidebar">
+        <a href="#main-content" class="skip-link">Skip to main content</a>
+        <aside class="admin-sidebar" aria-label="Admin sidebar">
             <h1><a href="/admin">Pebble</a></h1>
-            <nav>
+            <nav aria-label="Admin navigation">
                 <a href="/admin">Dashboard</a>
                 <a href="/admin/posts">Posts</a>
                 <a href="/admin/pages">Pages</a>
@@ -52,6 +53,7 @@
                     class="theme-toggle-admin"
                     id="theme-toggle"
                     title="Toggle theme"
+                    aria-label="Toggle theme"
                 >
                     <svg
                         class="icon-sun"
@@ -63,6 +65,7 @@
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
+                        aria-hidden="true"
                     >
                         <circle cx="12" cy="12" r="5"></circle>
                         <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -89,6 +92,7 @@
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
+                        aria-hidden="true"
                     >
                         <path
                             d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
@@ -99,8 +103,8 @@
                 <div class="sidebar-version">Pebble v{{ version }}</div>
             </nav>
         </aside>
-        <main class="admin-main">
-            <div id="flash-container">{% block flash %}{% endblock %}</div>
+        <main class="admin-main" id="main-content">
+            <div id="flash-container" aria-live="polite">{% block flash %}{% endblock %}</div>
             {% block content %}{% endblock %}
         </main>
         {% block scripts %}{% endblock %}

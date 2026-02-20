@@ -23,6 +23,7 @@ Everything you need to set up, configure, and run a Pebble site. This guide cove
   - [pebble import-ghost](#pebble-import-ghost)
   - [pebble backup](#pebble-backup)
   - [pebble migrate](#pebble-migrate)
+  - [pebble doctor](#pebble-doctor)
   - [pebble rerender](#pebble-rerender)
   - [pebble user](#pebble-user)
   - [pebble config](#pebble-config)
@@ -154,7 +155,7 @@ Pebble compiles to a single binary with no runtime dependencies.
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/pebble-cms.git
+git clone https://github.com/ooyeku/pebble-cms.git
 cd pebble-cms
 
 # Build and install
@@ -205,6 +206,23 @@ Pebble has two server modes:
 | Auto-backup | If configured | If configured |
 
 **Typical workflow**: Use `pebble serve` to write and manage content. Deploy with `pebble deploy` to serve your site to the public, or use `pebble build` to generate static files.
+
+### Docker Quickstart
+
+```bash
+docker compose up -d
+```
+
+Or manually:
+
+```bash
+docker build -t pebble .
+docker run -p 8080:8080 -v pebble-data:/data pebble
+```
+
+See [docs/deployment.md](deployment.md) for full production deployment instructions (systemd, nginx, Caddy, TLS, firewall).
+
+See [docs/performance.md](performance.md) for benchmarking methodology and performance characteristics.
 
 ---
 
@@ -350,13 +368,51 @@ pebble backup restore ./backups/pebble-backup-20250115_120000.zip
 
 ### pebble migrate
 
-Run database migrations to apply schema updates after upgrading Pebble.
+Run database migrations, check migration status, or roll back migrations.
 
 ```bash
-pebble migrate
+pebble migrate                        # Apply pending migrations (default)
+pebble migrate status                 # Show applied and pending migrations
+pebble migrate rollback               # Roll back the most recent migration
+pebble migrate rollback --steps 3     # Roll back the last 3 migrations
+pebble migrate rollback --force       # Skip confirmation (required for migration 001)
 ```
 
+| Subcommand | Flags | Description |
+|------------|-------|-------------|
+| *(none)* | | Apply all pending forward migrations |
+| `status` | | Show which migrations are applied and which are pending |
+| `rollback` | `-s, --steps <N>` (default: 1), `--force` | Roll back the most recent N migrations |
+
 Migrations are also run automatically when using `pebble serve`.
+
+**Rollback safety:**
+- Rolling back migration 001 (core tables) requires the `--force` flag because it destroys all data.
+- All other rollbacks prompt for confirmation before proceeding.
+- After rolling back, run `pebble migrate` to re-apply the migrations.
+
+### pebble doctor
+
+Run a system health check to verify your Pebble installation is ready for production.
+
+```bash
+pebble doctor
+```
+
+Checks performed:
+
+| # | Check | Criteria |
+|---|-------|----------|
+| 1 | Configuration validity | Config loads and passes validation |
+| 2 | Database connectivity | Database opens and responds to queries |
+| 3 | Database integrity | SQLite integrity check passes |
+| 4 | Migration status | All 10 migrations are applied |
+| 5 | Database fragmentation | Less than 10% free pages |
+| 6 | Database permissions | Database file is writable |
+| 7 | Media directory | Upload directory exists and is writable |
+| 8 | Disk space | At least 100 MB available (Unix only) |
+| 9 | Port availability | Default port (8080) is not in use |
+| 10 | Database stats | File size, table counts, SQLite version |
 
 ### pebble rerender
 
@@ -1447,7 +1503,7 @@ Available at `/sitemap.xml`. Includes all published posts and pages with `<lastm
 GET /health
 ```
 
-Returns HTTP 200 with `{"status": "healthy", "version": "0.9.5"}` when the database is accessible, or HTTP 503 with `{"status": "unhealthy", ...}` otherwise. Use this with reverse proxies, load balancers, or uptime monitors.
+Returns HTTP 200 with `{"status": "healthy", "version": "1.0.0-rc1"}` when the database is accessible, or HTTP 503 with `{"status": "unhealthy", ...}` otherwise. Use this with reverse proxies, load balancers, or uptime monitors.
 
 ### Draft Previews
 

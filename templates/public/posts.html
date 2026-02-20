@@ -33,15 +33,15 @@
 </div>
 
 {% if total_pages is defined and total_pages > 1 %}
-<nav class="pagination">
+<nav class="pagination" aria-label="Pagination">
     {% if page > 1 %}
-    <a href="/posts?page={{ page - 1 }}">&larr; Newer</a>
+    <a href="/posts?page={{ page - 1 }}" aria-label="Go to previous page">&larr; Newer</a>
     {% else %}
     <span></span>
     {% endif %}
-    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    <span class="page-info" aria-current="page">Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
-    <a href="/posts?page={{ page + 1 }}">Older &rarr;</a>
+    <a href="/posts?page={{ page + 1 }}" aria-label="Go to next page">Older &rarr;</a>
     {% else %}
     <span></span>
     {% endif %}

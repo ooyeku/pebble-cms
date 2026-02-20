@@ -13,6 +13,8 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
         action="/search"
         method="get"
         id="search-form"
+        role="search"
+        aria-label="Search"
     >
         <div class="search-input-wrapper">
             <svg
@@ -25,6 +27,7 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                aria-hidden="true"
             >
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
@@ -52,6 +55,7 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2"
+                    aria-hidden="true"
                 >
                     <path d="M18 6L6 18M6 6l12 12"></path>
                 </svg>
@@ -67,9 +71,9 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
         <kbd>Esc</kbd> to clear
     </div>
 
-    <section class="search-results" id="search-results">
+    <section class="search-results" id="search-results" aria-label="Search results">
         {% if query %}
-        <div class="results-header">
+        <div class="results-header" role="status">
             <span class="results-count">
                 {{ results | length }} result{% if results | length != 1 %}s{%
                 endif %} for
@@ -112,6 +116,7 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1.5"
+                aria-hidden="true"
             >
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>
@@ -134,6 +139,7 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
                 fill="none"
                 stroke="currentColor"
                 stroke-width="1"
+                aria-hidden="true"
             >
                 <circle cx="11" cy="11" r="8"></circle>
                 <path d="m21 21-4.35-4.35"></path>

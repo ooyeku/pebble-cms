@@ -2,6 +2,7 @@ pub mod backup;
 pub mod build;
 pub mod config;
 pub mod deploy;
+pub mod doctor;
 pub mod export;
 pub mod import;
 pub mod import_ghost;
@@ -112,7 +113,12 @@ pub enum Commands {
         command: BackupCommand,
     },
     /// Run database migrations
-    Migrate,
+    Migrate {
+        #[command(subcommand)]
+        command: Option<MigrateCommand>,
+    },
+    /// Check system health and configuration
+    Doctor,
     /// Re-render all content HTML from markdown
     Rerender,
     /// Manage users
@@ -165,6 +171,21 @@ pub enum BackupCommand {
     List {
         #[arg(short, long, default_value = "./backups")]
         dir: PathBuf,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum MigrateCommand {
+    /// Show applied and pending migrations
+    Status,
+    /// Roll back the most recent migration(s)
+    Rollback {
+        /// Number of migrations to roll back
+        #[arg(short, long, default_value = "1")]
+        steps: u32,
+        /// Force rollback without confirmation (required for migration 001)
+        #[arg(long)]
+        force: bool,
     },
 }
 

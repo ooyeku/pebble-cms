@@ -1,0 +1,10 @@
+target/
+.git/
+docs/
+backups/
+dist/
+export/
+*.md
+.gitignore
+.dockerignore
+.claude/

@@ -50,8 +50,11 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Backup { command }) => {
             pebble::cli::backup::run(&cli.config, command).await?;
         }
-        Some(Commands::Migrate) => {
-            pebble::cli::migrate::run(&cli.config).await?;
+        Some(Commands::Migrate { command }) => {
+            pebble::cli::migrate::run(&cli.config, command).await?;
+        }
+        Some(Commands::Doctor) => {
+            pebble::cli::doctor::run(&cli.config).await?;
         }
         Some(Commands::Rerender) => {
             pebble::cli::rerender::run(&cli.config).await?;
