@@ -16,8 +16,13 @@ pub fn public_routes() -> Router<Arc<AppState>> {
         .route("/tags", get(handlers::public::tags))
         .route("/tags/:slug", get(handlers::public::tag))
         .route("/search", get(handlers::public::search))
+        .route("/series/:slug", get(handlers::public::series))
         .route("/feed.xml", get(handlers::public::rss_feed))
         .route("/feed.json", get(handlers::public::json_feed))
+        .route(
+            "/tags/:slug/feed.xml",
+            get(handlers::public::tag_rss_feed),
+        )
         .route("/sitemap.xml", get(handlers::public::sitemap))
         .route("/media/:filename", get(handlers::public::serve_media))
         .route("/js/:filename", get(handlers::public::serve_js))
@@ -123,6 +128,46 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/preview/:id",
             post(handlers::admin::generate_preview_token),
         )
+        // Series routes
+        .route("/admin/series", get(handlers::admin::series_list))
+        .route("/admin/series/new", get(handlers::admin::new_series))
+        .route(
+            "/admin/series",
+            post(handlers::admin::create_series_handler),
+        )
+        .route(
+            "/admin/series/:id/edit",
+            get(handlers::admin::edit_series),
+        )
+        .route(
+            "/admin/series/:id",
+            post(handlers::admin::update_series_handler),
+        )
+        .route(
+            "/admin/series/:id/delete",
+            post(handlers::admin::delete_series_handler),
+        )
+        // Snippet routes
+        .route("/admin/snippets", get(handlers::admin::snippets))
+        .route("/admin/snippets/new", get(handlers::admin::new_snippet))
+        .route(
+            "/admin/snippets",
+            post(handlers::admin::create_snippet),
+        )
+        .route(
+            "/admin/snippets/:id/edit",
+            get(handlers::admin::edit_snippet),
+        )
+        .route(
+            "/admin/snippets/:id",
+            post(handlers::admin::update_snippet),
+        )
+        .route(
+            "/admin/snippets/:id/delete",
+            post(handlers::admin::delete_snippet),
+        )
+        // Bulk operations
+        .route("/admin/bulk", post(handlers::admin::bulk_action))
 }
 
 pub fn htmx_routes() -> Router<Arc<AppState>> {

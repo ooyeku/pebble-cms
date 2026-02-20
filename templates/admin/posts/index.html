@@ -10,9 +10,22 @@
 
 <div class="card">
     {% if posts | length > 0 %}
+
+    <div class="bulk-bar" id="bulk-bar">
+        <span class="count" id="bulk-count">0</span> selected
+        <form method="post" action="/admin/bulk" style="display:flex;gap:0.5rem;margin-left:auto;" id="bulk-form">
+            <input type="hidden" name="ids" id="bulk-ids" value="">
+            <button type="submit" name="action" value="publish" class="btn btn-secondary btn-sm">Publish</button>
+            <button type="submit" name="action" value="draft" class="btn btn-secondary btn-sm">Unpublish</button>
+            <button type="submit" name="action" value="archive" class="btn btn-secondary btn-sm">Archive</button>
+            <button type="submit" name="action" value="delete" class="btn btn-danger btn-sm" onclick="return confirm('Delete selected posts?')">Delete</button>
+        </form>
+    </div>
+
     <table>
         <thead>
             <tr>
+                <th style="width:2rem;"><input type="checkbox" class="select-checkbox" id="select-all" onclick="toggleAll(this)"></th>
                 <th>Title</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -22,6 +35,7 @@
         <tbody>
             {% for post in posts %}
             <tr>
+                <td><input type="checkbox" class="select-checkbox row-select" value="{{ post.id }}" onchange="updateBulk()"></td>
                 <td><a href="/admin/posts/{{ post.id }}/edit">{{ post.title }}</a></td>
                 <td>
                     <span class="status status-{{ post.status }}">{{ post.status }}</span>
@@ -44,4 +58,24 @@
     <p style="color: var(--text-muted);">No posts yet. <a href="/admin/posts/new">Create your first post</a></p>
     {% endif %}
 </div>
+
+<script>
+function toggleAll(master) {
+    document.querySelectorAll('.row-select').forEach(function(cb) { cb.checked = master.checked; });
+    updateBulk();
+}
+function updateBulk() {
+    var checked = document.querySelectorAll('.row-select:checked');
+    var bar = document.getElementById('bulk-bar');
+    var count = document.getElementById('bulk-count');
+    var ids = document.getElementById('bulk-ids');
+    if (checked.length > 0) {
+        bar.classList.add('active');
+        count.textContent = checked.length;
+        ids.value = Array.from(checked).map(function(cb) { return cb.value; }).join(',');
+    } else {
+        bar.classList.remove('active');
+    }
+}
+</script>
 {% endblock %}

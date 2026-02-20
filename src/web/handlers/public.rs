@@ -1,5 +1,5 @@
 use crate::models::{ContentType, User};
-use crate::services::{content, preview, search, settings, tags};
+use crate::services::{content, preview, search, series, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::OptionalUser;
 use crate::web::state::AppState;
@@ -101,6 +101,10 @@ pub async fn post(
                 && p.content.status == crate::models::ContentStatus::Published =>
         {
             let mut ctx = make_context(&state, &user);
+            // Series navigation (prev/next within a series)
+            if let Ok(Some(nav)) = series::get_series_navigation(&state.db, p.content.id) {
+                ctx.insert("series_nav", &nav);
+            }
             ctx.insert("content", &p);
 
             let html = state.templates.render("public/post.html", &ctx)?;
@@ -411,12 +415,26 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
     ));
 
     for post in posts {
+        let image_tag = post
+            .content
+            .featured_image
+            .as_ref()
+            .filter(|img| !img.is_empty())
+            .map(|img| {
+                format!(
+                    "\n    <image:image>\n      <image:loc>{}/media/{}</image:loc>\n      <image:title>{}</image:title>\n    </image:image>",
+                    site.url,
+                    html_escape(img),
+                    html_escape(&post.content.title)
+                )
+            })
+            .unwrap_or_default();
         urls.push_str(&format!(
             r#"  <url>
     <loc>{}/posts/{}</loc>
     <lastmod>{}</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.8</priority>{}
   </url>
 "#,
             site.url,
@@ -425,7 +443,8 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
                 .updated_at
                 .split('T')
                 .next()
-                .unwrap_or(&post.content.updated_at)
+                .unwrap_or(&post.content.updated_at),
+            image_tag
         ));
     }
 
@@ -462,7 +481,8 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
 
     let sitemap = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 {}
 </urlset>"#,
         urls
@@ -471,6 +491,106 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
     Ok((
         [(header::CONTENT_TYPE, "application/xml; charset=utf-8")],
         sitemap,
+    )
+        .into_response())
+}
+
+/// Public series page — shows the series overview with all published items.
+pub async fn series(
+    State(state): State<Arc<AppState>>,
+    OptionalUser(user): OptionalUser,
+    Path(slug): Path<String>,
+) -> AppResult<Response> {
+    let s = series::get_series_by_slug(&state.db, &slug)?;
+
+    match s {
+        Some(s) if s.status == "published" => {
+            let items = series::list_series_items(&state.db, s.id)?;
+            let series_with = crate::models::SeriesWithItems {
+                series: s,
+                items,
+            };
+
+            let mut ctx = make_context(&state, &user);
+            ctx.insert("series", &series_with);
+
+            let html = state.templates.render("public/series.html", &ctx)?;
+            Ok(Html(html).into_response())
+        }
+        _ => {
+            let ctx = make_context(&state, &user);
+            let html = state.templates.render("public/404.html", &ctx)?;
+            Ok((StatusCode::NOT_FOUND, Html(html)).into_response())
+        }
+    }
+}
+
+/// RSS feed scoped to a single tag: /tags/:slug/feed.xml
+pub async fn tag_rss_feed(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+) -> AppResult<Response> {
+    let tag = tags::get_tag_by_slug(&state.db, &slug)?;
+
+    let tag = match tag {
+        Some(t) => t,
+        None => return Ok(StatusCode::NOT_FOUND.into_response()),
+    };
+
+    let posts = tags::get_posts_by_tag(&state.db, &slug)?;
+    let config = state.config();
+    let site = &config.site;
+
+    let mut items = String::new();
+    for post in posts.iter().take(20) {
+        items.push_str(&format!(
+            r#"
+    <item>
+      <title>{}</title>
+      <link>{}/posts/{}</link>
+      <description><![CDATA[{}]]></description>
+      <pubDate>{}</pubDate>
+      <guid>{}/posts/{}</guid>
+      <category>{}</category>
+    </item>"#,
+            html_escape(&post.content.title),
+            site.url,
+            post.content.slug,
+            post.content.excerpt.as_deref().unwrap_or(""),
+            post.content.published_at.as_deref().unwrap_or(""),
+            site.url,
+            post.content.slug,
+            html_escape(&tag.name),
+        ));
+    }
+
+    let rss = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>{} — {}</title>
+    <link>{}/tags/{}</link>
+    <description>Posts tagged "{}" on {}</description>
+    <language>{}</language>
+    <atom:link href="{}/tags/{}/feed.xml" rel="self" type="application/rss+xml"/>
+    {}
+  </channel>
+</rss>"#,
+        html_escape(&tag.name),
+        html_escape(&site.title),
+        site.url,
+        tag.slug,
+        html_escape(&tag.name),
+        html_escape(&site.title),
+        site.language,
+        site.url,
+        tag.slug,
+        items
+    );
+
+    Ok((
+        [(header::CONTENT_TYPE, "application/rss+xml; charset=utf-8")],
+        rss,
     )
         .into_response())
 }

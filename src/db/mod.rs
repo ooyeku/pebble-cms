@@ -116,6 +116,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         (6, include_str!("migrations/006_content_versions.sql")),
         (7, include_str!("migrations/007_audit_log.sql")),
         (8, include_str!("migrations/008_preview_tokens.sql")),
+        (9, include_str!("migrations/009_content_series.sql")),
     ];
 
     for (version, sql) in migrations {

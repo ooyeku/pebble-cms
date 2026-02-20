@@ -6,16 +6,26 @@ use axum::extract::{ConnectInfo, FromRequestParts};
 use axum::http::header;
 use axum::http::request::Parts;
 use axum::http::StatusCode;
+use axum::response::{IntoResponse, Redirect, Response};
 use axum_extra::extract::CookieJar;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 
+/// Rejection type for CurrentUser extractor — redirects to login instead of bare 401.
+pub struct AuthRedirect;
+
+impl IntoResponse for AuthRedirect {
+    fn into_response(self) -> Response {
+        Redirect::to("/admin/login").into_response()
+    }
+}
+
 pub struct CurrentUser(pub User);
 
 impl FromRequestParts<Arc<AppState>> for CurrentUser {
-    type Rejection = StatusCode;
+    type Rejection = AuthRedirect;
 
     fn from_request_parts<'life0, 'life1, 'async_trait>(
         parts: &'life0 mut Parts,
@@ -33,11 +43,11 @@ impl FromRequestParts<Arc<AppState>> for CurrentUser {
             let token = cookies
                 .get("session")
                 .map(|c| c.value().to_string())
-                .ok_or(StatusCode::UNAUTHORIZED)?;
+                .ok_or(AuthRedirect)?;
 
             let user = auth::validate_session(&state.db, &token)
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-                .ok_or(StatusCode::UNAUTHORIZED)?;
+                .map_err(|_| AuthRedirect)?
+                .ok_or(AuthRedirect)?;
 
             Ok(CurrentUser(user))
         })

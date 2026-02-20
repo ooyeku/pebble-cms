@@ -2246,3 +2246,73 @@ html.site-theme-typewriter[class*="theme-dark"] {
     --border: #3d3528;
     --border-light: #332c22;
 }
+
+/* ============================================================================
+   Editor Toolbar & Enhancements
+   ============================================================================ */
+.editor-toolbar {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: var(--radius) var(--radius) 0 0;
+    flex-wrap: wrap;
+}
+.editor-toolbar button {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    min-width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.4rem;
+    transition: all 0.1s ease;
+}
+.editor-toolbar button:hover {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+.editor-toolbar + textarea,
+.editor-toolbar + .editor-layout textarea {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* Drag-over state for the editor */
+textarea.drag-over {
+    border-color: var(--color-primary) !important;
+    background: var(--color-primary-light) !important;
+}
+
+/* Bulk action bar */
+.bulk-bar {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-primary-light);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+.bulk-bar.active {
+    display: flex;
+}
+.bulk-bar .count {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+.select-checkbox {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}

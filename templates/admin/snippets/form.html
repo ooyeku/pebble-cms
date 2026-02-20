@@ -1,0 +1,84 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_new %}New Snippet{% else %}Edit Snippet{% endif %}{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>{% if is_new %}New Snippet{% else %}Edit Snippet{% endif %}</h2>
+</div>
+
+<form method="post" action="{% if is_new %}/admin/snippets{% else %}/admin/snippets/{{ content.id }}{% endif %}">
+    <div class="card">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title" value="{% if content %}{{ content.title }}{% endif %}" required>
+            </div>
+            <div class="form-group">
+                <label for="slug">Slug <small style="color: var(--text-muted);">(used in shortcode)</small></label>
+                <input type="text" id="slug" name="slug" value="{% if content %}{{ content.slug }}{% endif %}" placeholder="auto-generated">
+            </div>
+        </div>
+
+        {% if not is_new %}
+        <div style="padding: 0.5rem 0.75rem; background: var(--bg-secondary); border-radius: var(--radius); margin-bottom: 1rem; font-size: var(--font-size-sm);">
+            Embed with: <code style="background: var(--bg-tertiary); padding: 0.15rem 0.4rem; border-radius: var(--radius-sm);">[snippet slug="{{ content.slug }}"]</code>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="body_markdown">Content (Markdown)</label>
+            <div class="editor-layout" id="editor-layout">
+                <textarea id="body_markdown" name="body_markdown" hx-post="/htmx/preview" hx-trigger="input changed delay:500ms" hx-target="#preview">{% if content %}{{ content.body_markdown }}{% endif %}</textarea>
+                <div class="resize-handle" id="resize-handle"></div>
+                <div id="preview" class="preview content">{% if content and content.body_html %}{{ content.body_html | safe }}{% else %}<p style="color: var(--text-muted);">Preview will appear here...</p>{% endif %}</div>
+            </div>
+        </div>
+
+        <script>
+        // Resizable editor panes
+        (function() {
+            var layout = document.getElementById('editor-layout');
+            var handle = document.getElementById('resize-handle');
+            var textarea = document.getElementById('body_markdown');
+            var preview = document.getElementById('preview');
+            if (!layout || !handle || !textarea || !preview) return;
+            var isDragging = false;
+            handle.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                handle.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                var layoutRect = layout.getBoundingClientRect();
+                var handleWidth = handle.offsetWidth;
+                var minWidth = 200;
+                var leftWidth = e.clientX - layoutRect.left;
+                var rightWidth = layoutRect.right - e.clientX - handleWidth;
+                if (leftWidth < minWidth) leftWidth = minWidth;
+                if (rightWidth < minWidth) rightWidth = minWidth;
+                var totalWidth = layoutRect.width - handleWidth;
+                textarea.style.flex = '0 0 ' + (leftWidth / totalWidth * 100) + '%';
+                preview.style.flex = '0 0 ' + (rightWidth / totalWidth * 100) + '%';
+            });
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    handle.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                }
+            });
+        })();
+        </script>
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary">{% if is_new %}Create Snippet{% else %}Save Changes{% endif %}</button>
+            <a href="/admin/snippets" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+{% endblock %}

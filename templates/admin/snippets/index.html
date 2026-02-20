@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Snippets{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h2>Snippets</h2>
+    <a href="/admin/snippets/new" class="btn btn-primary">New Snippet</a>
+</div>
+
+<div class="card">
+    <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: var(--font-size-sm);">
+        Snippets are reusable content blocks you can embed in posts and pages using the <code>[snippet slug="your-slug"]</code> shortcode.
+    </p>
+
+    {% if snippets | length > 0 %}
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Slug</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for snippet in snippets %}
+            <tr>
+                <td><a href="/admin/snippets/{{ snippet.id }}/edit">{{ snippet.title }}</a></td>
+                <td><code style="font-size: 0.85rem; background: var(--bg-tertiary); padding: 0.15rem 0.4rem; border-radius: var(--radius-sm);">[snippet slug="{{ snippet.slug }}"]</code></td>
+                <td>{{ snippet.created_at }}</td>
+                <td>
+                    <a href="/admin/snippets/{{ snippet.id }}/edit" class="btn btn-secondary btn-sm">Edit</a>
+                    <button
+                        class="btn btn-danger btn-sm"
+                        hx-post="/admin/snippets/{{ snippet.id }}/delete"
+                        hx-confirm="Delete this snippet?">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-muted);">No snippets yet. <a href="/admin/snippets/new">Create your first snippet</a> to reuse content blocks across posts and pages.</p>
+    {% endif %}
+</div>
+{% endblock %}

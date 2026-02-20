@@ -38,5 +38,30 @@ content.excerpt | default(value=site.description) }}{% endif %}{% endblock %}
     </header>
 
     <div class="content">{{ content.body_html | safe }}</div>
+
+    {% if series_nav %}
+    <nav class="series-nav" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-secondary); border-radius: var(--radius); border: 1px solid var(--border);">
+        <div style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: 0.75rem;">
+            Part {{ series_nav.current_position + 1 }} of {{ series_nav.total_items }} in
+            <a href="/series/{{ series_nav.series.slug }}" style="color: var(--color-primary);">{{ series_nav.series.title }}</a>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 1rem;">
+            {% if series_nav.prev %}
+            <a href="/posts/{{ series_nav.prev.slug }}" style="text-decoration: none;">
+                <small style="color: var(--text-muted);">&larr; Previous</small><br>
+                <span>{{ series_nav.prev.title }}</span>
+            </a>
+            {% else %}
+            <span></span>
+            {% endif %}
+            {% if series_nav.next %}
+            <a href="/posts/{{ series_nav.next.slug }}" style="text-decoration: none; text-align: right;">
+                <small style="color: var(--text-muted);">Next &rarr;</small><br>
+                <span>{{ series_nav.next.title }}</span>
+            </a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
 </article>
 {% endblock %}

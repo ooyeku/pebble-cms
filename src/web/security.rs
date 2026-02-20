@@ -19,26 +19,10 @@ static HEADER_XSS_PROTECTION: Lazy<HeaderValue> =
     Lazy::new(|| HeaderValue::from_static("1; mode=block"));
 static HEADER_REFERRER_POLICY: Lazy<HeaderValue> =
     Lazy::new(|| HeaderValue::from_static("strict-origin-when-cross-origin"));
-// CSP with nonce placeholder — nonce is injected per-request
-static HEADER_CSP_TEMPLATE: &str = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
-
-pub fn security_headers<B>(mut response: Response<B>) -> Response<B> {
-    let headers = response.headers_mut();
-
-    headers.insert(header::X_CONTENT_TYPE_OPTIONS, HEADER_NOSNIFF.clone());
-    headers.insert(header::X_FRAME_OPTIONS, HEADER_DENY.clone());
-    headers.insert(header::X_XSS_PROTECTION, HEADER_XSS_PROTECTION.clone());
-    headers.insert(header::REFERRER_POLICY, HEADER_REFERRER_POLICY.clone());
-
-    // Only set CSP if not already set (nonce middleware may have already set it)
-    if !headers.contains_key(header::CONTENT_SECURITY_POLICY) {
-        if let Ok(val) = HeaderValue::from_str(HEADER_CSP_TEMPLATE) {
-            headers.insert(header::CONTENT_SECURITY_POLICY, val);
-        }
-    }
-
-    response
-}
+// Public pages: strict CSP — no inline scripts
+static HEADER_CSP_PUBLIC: &str = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
+// Admin pages: relaxed script-src to allow inline scripts in admin templates
+static HEADER_CSP_ADMIN: &str = "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
 
 pub struct RateLimiter {
     attempts: RwLock<HashMap<String, Vec<Instant>>>,
@@ -138,8 +122,27 @@ impl CsrfManager {
 }
 
 pub async fn apply_security_headers(request: Request<Body>, next: Next) -> Response<Body> {
-    let response = next.run(request).await;
-    security_headers(response)
+    let is_admin = request.uri().path().starts_with("/admin");
+    let mut response = next.run(request).await;
+
+    let headers = response.headers_mut();
+    headers.insert(header::X_CONTENT_TYPE_OPTIONS, HEADER_NOSNIFF.clone());
+    headers.insert(header::X_FRAME_OPTIONS, HEADER_DENY.clone());
+    headers.insert(header::X_XSS_PROTECTION, HEADER_XSS_PROTECTION.clone());
+    headers.insert(header::REFERRER_POLICY, HEADER_REFERRER_POLICY.clone());
+
+    if !headers.contains_key(header::CONTENT_SECURITY_POLICY) {
+        let csp = if is_admin {
+            HEADER_CSP_ADMIN
+        } else {
+            HEADER_CSP_PUBLIC
+        };
+        if let Ok(val) = HeaderValue::from_str(csp) {
+            headers.insert(header::CONTENT_SECURITY_POLICY, val);
+        }
+    }
+
+    response
 }
 
 /// Middleware that rate-limits write operations (POST/DELETE) on admin endpoints.

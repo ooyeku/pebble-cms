@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ series.title }} - {{ site.title }}{% endblock %}
+
+{% block description %}{{ series.description | default(value=site.description) }}{% endblock %}
+
+{% block content %}
+<article>
+    <header class="post-header">
+        <h1>{{ series.title }}</h1>
+        {% if series.description %}
+        <p style="color: var(--text-secondary); margin-top: 0.5rem;">{{ series.description }}</p>
+        {% endif %}
+        <p style="color: var(--text-muted); font-size: var(--font-size-sm);">{{ series.items | length }} part{{ series.items | length | pluralize }} in this series</p>
+    </header>
+
+    <div class="content">
+        <ol style="padding-left: 1.5rem;">
+            {% for item in series.items %}
+            <li style="margin-bottom: 0.75rem;">
+                {% if item.status == "published" %}
+                <a href="/posts/{{ item.slug }}">{{ item.title }}</a>
+                {% else %}
+                <span style="color: var(--text-muted);">{{ item.title }} <small>({{ item.status }})</small></span>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
+</article>
+{% endblock %}

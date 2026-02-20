@@ -8,6 +8,7 @@ pub mod markdown;
 pub mod media;
 pub mod preview;
 pub mod search;
+pub mod series;
 pub mod settings;
 pub mod slug;
 pub mod tags;

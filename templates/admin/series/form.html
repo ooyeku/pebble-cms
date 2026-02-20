@@ -1,0 +1,175 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if is_new %}New Series{% else %}Edit Series{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+.series-items { list-style: none; padding: 0; margin: 0; }
+.series-items li {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.75rem 1rem; background: var(--bg-secondary);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    margin-bottom: 0.5rem; cursor: grab;
+}
+.series-items li:active { cursor: grabbing; }
+.series-items .drag-handle { color: var(--text-muted); font-size: 1.2rem; user-select: none; }
+.series-items .item-title { flex: 1; }
+.series-items .item-status { font-size: 0.8rem; }
+.series-items .remove-btn {
+    background: none; border: none; color: var(--color-danger);
+    cursor: pointer; font-size: 1.1rem; padding: 0.25rem;
+}
+.add-post-section { margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius); }
+.add-post-section select { max-width: 400px; }
+</style>
+
+<div class="header">
+    <h2>{% if is_new %}New Series{% else %}Edit Series{% endif %}</h2>
+</div>
+
+<form method="post" action="{% if is_new %}/admin/series{% else %}/admin/series/{{ series.id }}{% endif %}">
+    <div class="card">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Series Title</label>
+                <input type="text" id="title" name="title" value="{% if series %}{{ series.title }}{% endif %}" required>
+            </div>
+            <div class="form-group">
+                <label for="slug">Slug</label>
+                <input type="text" id="slug" name="slug" value="{% if series %}{{ series.slug }}{% endif %}" placeholder="auto-generated">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="2" style="min-height: 60px;">{% if series %}{{ series.description }}{% endif %}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="draft"{% if is_new or (series and series.status == "draft") %} selected{% endif %}>Draft</option>
+                <option value="published"{% if series and series.status == "published" %} selected{% endif %}>Published</option>
+                <option value="archived"{% if series and series.status == "archived" %} selected{% endif %}>Archived</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Posts in Series <small style="color: var(--text-muted);">(drag to reorder)</small></label>
+            <ul class="series-items" id="series-items">
+                {% if series and series.items %}
+                {% for item in series.items %}
+                <li data-id="{{ item.content_id }}">
+                    <span class="drag-handle">&#9776;</span>
+                    <span class="item-title">{{ item.title }}</span>
+                    <span class="status status-{{ item.status }} item-status">{{ item.status }}</span>
+                    <button type="button" class="remove-btn" onclick="removeItem(this)" title="Remove from series">&times;</button>
+                </li>
+                {% endfor %}
+                {% endif %}
+            </ul>
+
+            <div class="add-post-section">
+                <label for="add-post">Add Post</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="add-post">
+                        <option value="">Select a post...</option>
+                        {% for post in available_posts %}
+                        <option value="{{ post.id }}">{{ post.title }} ({{ post.status }})</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addPost()">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <input type="hidden" name="items" id="items-input" value="">
+
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" class="btn btn-primary">{% if is_new %}Create Series{% else %}Save Changes{% endif %}</button>
+            <a href="/admin/series" class="btn btn-secondary">Cancel</a>
+        </div>
+    </div>
+</form>
+
+<script>
+// Drag and drop reordering
+var list = document.getElementById('series-items');
+var dragItem = null;
+
+list.addEventListener('dragstart', function(e) {
+    dragItem = e.target.closest('li');
+    if (dragItem) {
+        e.dataTransfer.effectAllowed = 'move';
+        dragItem.style.opacity = '0.5';
+    }
+});
+
+list.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    var target = e.target.closest('li');
+    if (target && target !== dragItem) {
+        var rect = target.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        if (e.clientY < mid) {
+            list.insertBefore(dragItem, target);
+        } else {
+            list.insertBefore(dragItem, target.nextSibling);
+        }
+    }
+});
+
+list.addEventListener('dragend', function() {
+    if (dragItem) dragItem.style.opacity = '1';
+    dragItem = null;
+    updateHiddenInput();
+});
+
+// Make items draggable
+document.querySelectorAll('.series-items li').forEach(function(li) {
+    li.draggable = true;
+});
+
+function addPost() {
+    var sel = document.getElementById('add-post');
+    var id = sel.value;
+    var text = sel.options[sel.selectedIndex].text;
+    if (!id) return;
+
+    // Check if already added
+    var existing = list.querySelectorAll('li[data-id="' + id + '"]');
+    if (existing.length > 0) return;
+
+    var li = document.createElement('li');
+    li.draggable = true;
+    li.setAttribute('data-id', id);
+    li.innerHTML = '<span class="drag-handle">&#9776;</span>' +
+        '<span class="item-title">' + text.replace(/ \([^)]+\)$/, '') + '</span>' +
+        '<button type="button" class="remove-btn" onclick="removeItem(this)" title="Remove from series">&times;</button>';
+    list.appendChild(li);
+    sel.value = '';
+    updateHiddenInput();
+}
+
+function removeItem(btn) {
+    btn.closest('li').remove();
+    updateHiddenInput();
+}
+
+function updateHiddenInput() {
+    var ids = [];
+    list.querySelectorAll('li').forEach(function(li) {
+        ids.push(li.getAttribute('data-id'));
+    });
+    document.getElementById('items-input').value = ids.join(',');
+}
+
+// Initialize hidden input
+updateHiddenInput();
+
+// Submit handler: ensure hidden input is updated
+document.querySelector('form').addEventListener('submit', function() {
+    updateHiddenInput();
+});
+</script>
+{% endblock %}

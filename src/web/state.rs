@@ -178,6 +178,26 @@ impl AppState {
                 "admin/audit/view.html",
                 include_str!("../../templates/admin/audit/view.html"),
             ),
+            (
+                "admin/series/index.html",
+                include_str!("../../templates/admin/series/index.html"),
+            ),
+            (
+                "admin/series/form.html",
+                include_str!("../../templates/admin/series/form.html"),
+            ),
+            (
+                "admin/snippets/index.html",
+                include_str!("../../templates/admin/snippets/index.html"),
+            ),
+            (
+                "admin/snippets/form.html",
+                include_str!("../../templates/admin/snippets/form.html"),
+            ),
+            (
+                "public/series.html",
+                include_str!("../../templates/public/series.html"),
+            ),
         ])?;
 
         let media_dir = PathBuf::from(&config.media.upload_dir);

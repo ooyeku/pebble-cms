@@ -1,6 +1,6 @@
 use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
 use crate::services::audit::{AuditAction, AuditCategory, AuditLogBuilder};
-use crate::services::{audit, auth, content, database, media, preview, settings, tags};
+use crate::services::{audit, auth, content, database, media, preview, series, settings, tags};
 use crate::web::error::AppResult;
 use crate::web::extractors::{AuditInfo, CurrentUser, HxRequest};
 use crate::web::state::AppState;
@@ -49,12 +49,16 @@ pub async fn dashboard(
     let post_count = content::count_content(&state.db, Some(ContentType::Post), None)?;
     let page_count = content::count_content(&state.db, Some(ContentType::Page), None)?;
     let published_count = content::count_content(&state.db, None, Some(ContentStatus::Published))?;
+    let snippet_count = content::count_content(&state.db, Some(ContentType::Snippet), None)?;
+    let series_count = series::list_series(&state.db, 1000, 0).map(|s| s.len() as i64).unwrap_or(0);
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("recent_posts", &recent_posts);
     ctx.insert("post_count", &post_count);
     ctx.insert("page_count", &page_count);
     ctx.insert("published_count", &published_count);
+    ctx.insert("snippet_count", &snippet_count);
+    ctx.insert("series_count", &series_count);
 
     let html = state.templates.render("admin/dashboard.html", &ctx)?;
     Ok(Html(html))
@@ -1743,4 +1747,454 @@ pub async fn generate_preview_token(
         "expires_in_seconds": 3600,
     }))
     .into_response())
+}
+
+// ============================================================================
+// Content Series Handlers
+// ============================================================================
+
+pub async fn series_list(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let all_series = series::list_series(&state.db, 100, 0)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("series_list", &all_series);
+
+    let html = state.templates.render("admin/series/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+pub async fn new_series(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let available_posts = content::list_content(&state.db, Some(ContentType::Post), None, 200, 0)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("series", &Option::<crate::models::SeriesWithItems>::None);
+    ctx.insert("is_new", &true);
+    ctx.insert("available_posts", &available_posts);
+
+    let html = state.templates.render("admin/series/form.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+#[derive(Deserialize)]
+pub struct SeriesForm {
+    title: String,
+    slug: Option<String>,
+    description: Option<String>,
+    status: Option<String>,
+    #[serde(default)]
+    items: String, // comma-separated content IDs in order
+}
+
+pub async fn create_series_handler(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Form(form): Form<SeriesForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let status = form.status.as_deref().unwrap_or("draft");
+    let description = form.description.as_deref().unwrap_or("");
+    let slug = form.slug.as_deref().filter(|s| !s.is_empty());
+
+    let series_id = series::create_series(&state.db, &form.title, slug, description, status)?;
+
+    // Add items in order
+    let item_ids: Vec<i64> = form
+        .items
+        .split(',')
+        .filter_map(|s| s.trim().parse::<i64>().ok())
+        .collect();
+    for content_id in &item_ids {
+        let _ = series::add_item_to_series(&state.db, series_id, *content_id);
+    }
+
+    Ok(Redirect::to("/admin/series").into_response())
+}
+
+pub async fn edit_series(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let s = series::get_series_by_id(&state.db, id)?;
+    match s {
+        Some(s) => {
+            let items = series::list_series_items(&state.db, id)?;
+            let available_posts = content::list_content(&state.db, Some(ContentType::Post), None, 200, 0)?;
+            let series_with = crate::models::SeriesWithItems {
+                series: s,
+                items,
+            };
+
+            let mut ctx = make_admin_context(&state, &user);
+            ctx.insert("series", &series_with);
+            ctx.insert("is_new", &false);
+            ctx.insert("available_posts", &available_posts);
+
+            let html = state.templates.render("admin/series/form.html", &ctx)?;
+            Ok(Html(html).into_response())
+        }
+        None => Ok(StatusCode::NOT_FOUND.into_response()),
+    }
+}
+
+pub async fn update_series_handler(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+    Form(form): Form<SeriesForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    series::update_series(
+        &state.db,
+        id,
+        Some(&form.title),
+        form.slug.as_deref(),
+        form.description.as_deref(),
+        form.status.as_deref(),
+    )?;
+
+    // Reorder items — replace all items with the submitted order
+    let item_ids: Vec<i64> = form
+        .items
+        .split(',')
+        .filter_map(|s| s.trim().parse::<i64>().ok())
+        .collect();
+
+    // Remove items not in the new list, add new ones
+    let current_items = series::list_series_items(&state.db, id)?;
+    let current_ids: Vec<i64> = current_items.iter().map(|i| i.content_id).collect();
+
+    // Remove items no longer in the list
+    for cid in &current_ids {
+        if !item_ids.contains(cid) {
+            let _ = series::remove_item_from_series(&state.db, id, *cid);
+        }
+    }
+    // Add new items
+    for cid in &item_ids {
+        if !current_ids.contains(cid) {
+            let _ = series::add_item_to_series(&state.db, id, *cid);
+        }
+    }
+    // Reorder
+    if !item_ids.is_empty() {
+        series::reorder_series_items(&state.db, id, &item_ids)?;
+    }
+
+    Ok(Redirect::to("/admin/series").into_response())
+}
+
+pub async fn delete_series_handler(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    HxRequest(is_htmx): HxRequest,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    series::delete_series(&state.db, id)?;
+
+    if is_htmx {
+        Ok((
+            [(
+                header::HeaderName::from_static("hx-redirect"),
+                "/admin/series".to_string(),
+            )],
+            "",
+        )
+            .into_response())
+    } else {
+        Ok(Redirect::to("/admin/series").into_response())
+    }
+}
+
+// ============================================================================
+// Snippets Handlers
+// ============================================================================
+
+pub async fn snippets(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let snippets = content::list_content(&state.db, Some(ContentType::Snippet), None, 100, 0)?;
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("snippets", &snippets);
+
+    let html = state.templates.render("admin/snippets/index.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+pub async fn new_snippet(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let mut ctx = make_admin_context(&state, &user);
+    ctx.insert("content", &Option::<crate::models::ContentWithTags>::None);
+    ctx.insert("is_new", &true);
+    ctx.insert("content_type", "snippet");
+
+    let html = state.templates.render("admin/snippets/form.html", &ctx)?;
+    Ok(Html(html).into_response())
+}
+
+#[derive(Deserialize)]
+pub struct SnippetForm {
+    title: String,
+    slug: Option<String>,
+    body_markdown: String,
+}
+
+pub async fn create_snippet(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Form(form): Form<SnippetForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let input = CreateContent {
+        title: form.title.clone(),
+        slug: form.slug.filter(|s| !s.is_empty()),
+        content_type: ContentType::Snippet,
+        body_markdown: form.body_markdown,
+        excerpt: None,
+        featured_image: None,
+        status: ContentStatus::Published,
+        scheduled_at: None,
+        tags: vec![],
+        metadata: None,
+    };
+
+    content::create_content(
+        &state.db,
+        input,
+        Some(user.id),
+        state.config().content.excerpt_length,
+    )?;
+
+    Ok(Redirect::to("/admin/snippets").into_response())
+}
+
+pub async fn edit_snippet(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let snippet = content::get_content_by_id(&state.db, id)?;
+
+    match snippet {
+        Some(s) if s.content.content_type == ContentType::Snippet => {
+            let mut ctx = make_admin_context(&state, &user);
+            ctx.insert("content", &s);
+            ctx.insert("is_new", &false);
+            ctx.insert("content_type", "snippet");
+
+            let html = state.templates.render("admin/snippets/form.html", &ctx)?;
+            Ok(Html(html).into_response())
+        }
+        _ => Ok(StatusCode::NOT_FOUND.into_response()),
+    }
+}
+
+pub async fn update_snippet(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    Path(id): Path<i64>,
+    Form(form): Form<SnippetForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let input = UpdateContent {
+        title: Some(form.title),
+        slug: form.slug,
+        body_markdown: Some(form.body_markdown),
+        excerpt: None,
+        featured_image: None,
+        status: Some(ContentStatus::Published),
+        scheduled_at: None,
+        tags: None,
+        metadata: None,
+    };
+
+    let config = state.config();
+    content::update_content(
+        &state.db,
+        id,
+        input,
+        config.content.excerpt_length,
+        Some(user.id),
+        config.content.version_retention,
+    )?;
+
+    Ok(Redirect::to("/admin/snippets").into_response())
+}
+
+pub async fn delete_snippet(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    HxRequest(is_htmx): HxRequest,
+    Path(id): Path<i64>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    content::delete_content(&state.db, id)?;
+
+    if is_htmx {
+        Ok((
+            [(
+                header::HeaderName::from_static("hx-redirect"),
+                "/admin/snippets".to_string(),
+            )],
+            "",
+        )
+            .into_response())
+    } else {
+        Ok(Redirect::to("/admin/snippets").into_response())
+    }
+}
+
+// ============================================================================
+// Bulk Operations
+// ============================================================================
+
+#[derive(Deserialize)]
+pub struct BulkActionForm {
+    action: String,
+    #[serde(default)]
+    ids: String, // comma-separated content IDs
+}
+
+pub async fn bulk_action(
+    State(state): State<Arc<AppState>>,
+    CurrentUser(user): CurrentUser,
+    AuditInfo(mut audit_ctx): AuditInfo,
+    Form(form): Form<BulkActionForm>,
+) -> AppResult<Response> {
+    if let Err(e) = require_author_or_admin(&user) {
+        return Ok(e);
+    }
+
+    let ids: Vec<i64> = form
+        .ids
+        .split(',')
+        .filter_map(|s| s.trim().parse::<i64>().ok())
+        .collect();
+
+    if ids.is_empty() {
+        return Ok(Redirect::to("/admin/posts").into_response());
+    }
+
+    let action_label = form.action.clone();
+
+    match form.action.as_str() {
+        "publish" => {
+            for id in &ids {
+                let _ = content::update_content(
+                    &state.db,
+                    *id,
+                    UpdateContent {
+                        status: Some(ContentStatus::Published),
+                        ..Default::default()
+                    },
+                    state.config().content.excerpt_length,
+                    Some(user.id),
+                    state.config().content.version_retention,
+                );
+            }
+        }
+        "draft" => {
+            for id in &ids {
+                let _ = content::update_content(
+                    &state.db,
+                    *id,
+                    UpdateContent {
+                        status: Some(ContentStatus::Draft),
+                        ..Default::default()
+                    },
+                    state.config().content.excerpt_length,
+                    Some(user.id),
+                    state.config().content.version_retention,
+                );
+            }
+        }
+        "archive" => {
+            for id in &ids {
+                let _ = content::update_content(
+                    &state.db,
+                    *id,
+                    UpdateContent {
+                        status: Some(ContentStatus::Archived),
+                        ..Default::default()
+                    },
+                    state.config().content.excerpt_length,
+                    Some(user.id),
+                    state.config().content.version_retention,
+                );
+            }
+        }
+        "delete" => {
+            for id in &ids {
+                let _ = content::delete_content(&state.db, *id);
+            }
+        }
+        _ => {}
+    }
+
+    // Audit log for bulk action
+    audit_ctx.user_id = Some(user.id);
+    audit_ctx.username = Some(user.username.clone());
+    audit_ctx.user_role = Some(format!("{:?}", user.role));
+    let _ = audit::log(
+        &state.db,
+        &audit_ctx,
+        AuditLogBuilder::new(AuditAction::Update, AuditCategory::Content)
+            .metadata_value("bulk_action", serde_json::json!(action_label))
+            .metadata_value("affected_ids", serde_json::json!(ids)),
+    );
+
+    Ok(Redirect::to("/admin/posts").into_response())
 }
