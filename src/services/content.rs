@@ -6,6 +6,12 @@ use crate::services::markdown::MarkdownRenderer;
 use crate::services::slug::{generate_slug, validate_slug};
 use crate::Database;
 use anyhow::{bail, Result};
+use once_cell::sync::Lazy;
+use regex::Regex;
+
+static SNIPPET_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"\[snippet\s+slug="([^"]+)"\]"#).expect("Invalid snippet regex pattern")
+});
 
 const MAX_TITLE_LENGTH: usize = 500;
 const MAX_BODY_LENGTH: usize = 500_000;
@@ -62,7 +68,9 @@ pub fn create_content(
         bail!("A post or page with the slug '{}' already exists", slug);
     }
 
-    let body_html = renderer.render(&input.body_markdown);
+    // Process snippet shortcodes before rendering
+    let processed_markdown = process_snippet_shortcodes(db, &input.body_markdown);
+    let body_html = renderer.render(&processed_markdown);
     let excerpt = input.excerpt.or_else(|| {
         if input.body_markdown.is_empty() {
             None
@@ -197,7 +205,9 @@ pub fn update_content(
         }
     }
 
-    let body_html = renderer.render(&body_markdown);
+    // Process snippet shortcodes before rendering
+    let processed_markdown = process_snippet_shortcodes(db, &body_markdown);
+    let body_html = renderer.render(&processed_markdown);
     // Only regenerate excerpt if explicitly provided in input, otherwise keep current
     let excerpt = match input.excerpt {
         Some(new_excerpt) => Some(new_excerpt),
@@ -688,10 +698,31 @@ pub fn rerender_all_content(db: &Database) -> Result<usize> {
 
     let tx = conn.transaction()?;
     for (id, markdown) in items {
-        let html = renderer.render(&markdown);
+        let processed = process_snippet_shortcodes(db, &markdown);
+        let html = renderer.render(&processed);
         tx.execute("UPDATE content SET body_html = ? WHERE id = ?", (&html, id))?;
     }
     tx.commit()?;
 
     Ok(count)
+}
+
+/// Process `[snippet slug="..."]` shortcodes by replacing them with the snippet's rendered HTML.
+/// Snippets are resolved from the database. Unknown slugs are left as-is.
+/// To prevent infinite recursion, snippet content is not recursively processed for nested snippets.
+pub fn process_snippet_shortcodes(db: &Database, markdown: &str) -> String {
+    SNIPPET_REGEX
+        .replace_all(markdown, |caps: &regex::Captures| {
+            let slug = &caps[1];
+            match get_content_by_slug(db, slug) {
+                Ok(Some(content_with_tags))
+                    if content_with_tags.content.content_type == ContentType::Snippet =>
+                {
+                    // Return the snippet's markdown body so it gets rendered inline
+                    content_with_tags.content.body_markdown
+                }
+                _ => caps[0].to_string(), // Leave unresolved shortcodes as-is
+            }
+        })
+        .to_string()
 }
