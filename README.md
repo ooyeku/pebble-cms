@@ -10,8 +10,7 @@
 <p align="center">
   <a href="#quick-start">Quick Start</a> &bull;
   <a href="docs/usage.md">Full Documentation</a> &bull;
-  <a href="#why-pebble">Why Pebble</a> &bull;
-  <a href="docs/roadmap.md">Roadmap</a>
+  <a href="#why-pebble">Why Pebble</a>
 </p>
 
 ---
@@ -140,7 +139,7 @@ Every theme can be customized with your own colors, fonts, and spacing via `pebb
 
 ### Admin Panel
 
-- **Rich Markdown editor** with toolbar, keyboard shortcuts (Ctrl+B/I/K/S), and live preview
+- **Rich Markdown editor** with toolbar, keyboard shortcuts (Ctrl+B/I/K), and live preview
 - **Auto-save drafts** to local storage -- never lose work
 - **SEO metadata** -- custom meta titles, descriptions, and canonical URLs per page
 - **Tag management** with autocomplete
@@ -189,11 +188,14 @@ HTTP callbacks on content events. Trigger CI/CD rebuilds, Slack notifications, o
 
 ### Import & Export
 
-| From | To |
-|------|-----|
-| WordPress (WXR XML) | Pebble (native Markdown) |
-| Ghost (JSON export) | Hugo (TOML frontmatter) |
-| Pebble export directory | Zola (TOML frontmatter) |
+**Import into Pebble from:**
+- WordPress (WXR XML export)
+- Ghost (JSON export)
+
+**Export from Pebble to:**
+- Pebble (YAML frontmatter Markdown)
+- Hugo (TOML frontmatter)
+- Zola (TOML frontmatter)
 
 ### Backups
 
@@ -355,8 +357,6 @@ pebble (single binary)
 - **[Full Usage Guide](docs/usage.md)** -- comprehensive reference for every feature, command, and configuration option
 - **[Deployment Guide](docs/deployment.md)** -- systemd, nginx, Caddy, TLS, firewall, and monitoring
 - **[Performance Baseline](docs/performance.md)** -- benchmarking methodology, memory profile, and SQLite tuning
-- **[Roadmap](docs/roadmap.md)** -- what's planned for v1.0 and beyond
-
 ---
 
 ## License

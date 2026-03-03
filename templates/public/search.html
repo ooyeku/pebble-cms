@@ -95,7 +95,7 @@ else %}Search{% endif %} - {{ site.title }}{% endblock %} {% block content %}
                     <h2 class="result-title">{{ result.title }}</h2>
                     {% if result.excerpt %}
                     <p class="result-excerpt">
-                        {{ result.excerpt | strip_md }}
+                        {{ result.excerpt | striptags | truncate(length=200) }}
                     </p>
                     {% endif %}
                     <div class="result-meta">

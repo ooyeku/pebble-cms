@@ -201,10 +201,10 @@ pub async fn list_series_api(
     drop(config);
 
     let (page, per_page, offset) = paginate(params.page, params.per_page, default_size, max_size);
+    let total = series::count_series(&state.db).unwrap_or(0);
 
     match series::list_series(&state.db, per_page, offset) {
         Ok(all_series) => {
-            let total = all_series.len() as i64;
             json_envelope(serde_json::to_value(&all_series).unwrap_or_default(), total, page, per_page).into_response()
         }
         Err(e) => {
@@ -220,20 +220,8 @@ pub async fn get_series_api(
     _auth: ApiTokenAuth,
     Path(slug): Path<String>,
 ) -> Response {
-    match series::get_series_by_slug(&state.db, &slug) {
-        Ok(Some(s)) => {
-            // Get the full series with items
-            match series::list_series(&state.db, 1000, 0) {
-                Ok(all) => {
-                    let with_items = all.into_iter().find(|si| si.series.slug == slug);
-                    match with_items {
-                        Some(si) => json_single(serde_json::to_value(&si).unwrap_or_default()).into_response(),
-                        None => json_single(serde_json::to_value(&s).unwrap_or_default()).into_response(),
-                    }
-                }
-                Err(_) => json_single(serde_json::to_value(&s).unwrap_or_default()).into_response(),
-            }
-        }
+    match series::get_series_with_items(&state.db, &slug) {
+        Ok(Some(si)) => json_single(serde_json::to_value(&si).unwrap_or_default()).into_response(),
         Ok(None) => not_found("Series not found"),
         Err(e) => {
             tracing::error!("API get_series error: {}", e);
@@ -254,10 +242,10 @@ pub async fn list_media_api(
     drop(config);
 
     let (page, per_page, offset) = paginate(params.page, params.per_page, default_size, max_size);
+    let total = media::count_media(&state.db).unwrap_or(0);
 
     match media::list_media(&state.db, per_page, offset) {
         Ok(media_list) => {
-            let total = media_list.len() as i64;
             json_envelope(serde_json::to_value(&media_list).unwrap_or_default(), total, page, per_page).into_response()
         }
         Err(e) => {

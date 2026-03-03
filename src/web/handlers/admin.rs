@@ -64,18 +64,36 @@ pub async fn dashboard(
     Ok(Html(html))
 }
 
+#[derive(Deserialize)]
+pub struct AdminPagination {
+    #[serde(default = "default_admin_page")]
+    page: usize,
+}
+
+fn default_admin_page() -> usize {
+    1
+}
+
 pub async fn posts(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    Query(pagination): Query<AdminPagination>,
 ) -> AppResult<Response> {
     if let Err(e) = require_author_or_admin(&user) {
         return Ok(e);
     }
 
-    let posts = content::list_content(&state.db, Some(ContentType::Post), None, 50, 0)?;
+    let per_page = 50;
+    let page = pagination.page.max(1);
+    let offset = (page - 1) * per_page;
+    let posts = content::list_content(&state.db, Some(ContentType::Post), None, per_page, offset)?;
+    let total = content::count_content(&state.db, Some(ContentType::Post), None)?;
+    let total_pages = ((total as usize) + per_page - 1) / per_page;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("posts", &posts);
+    ctx.insert("page", &page);
+    ctx.insert("total_pages", &total_pages);
 
     let html = state.templates.render("admin/posts/index.html", &ctx)?;
     Ok(Html(html).into_response())
@@ -388,15 +406,23 @@ pub async fn delete_post(
 pub async fn pages(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
+    Query(pagination): Query<AdminPagination>,
 ) -> AppResult<Response> {
     if let Err(e) = require_author_or_admin(&user) {
         return Ok(e);
     }
 
-    let pages = content::list_content(&state.db, Some(ContentType::Page), None, 50, 0)?;
+    let per_page = 50;
+    let page = pagination.page.max(1);
+    let offset = (page - 1) * per_page;
+    let pages = content::list_content(&state.db, Some(ContentType::Page), None, per_page, offset)?;
+    let total = content::count_content(&state.db, Some(ContentType::Page), None)?;
+    let total_pages = ((total as usize) + per_page - 1) / per_page;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("pages", &pages);
+    ctx.insert("page", &page);
+    ctx.insert("total_pages", &total_pages);
 
     let html = state.templates.render("admin/pages/index.html", &ctx)?;
     Ok(Html(html).into_response())
@@ -673,6 +699,8 @@ pub async fn upload_media(
             .into_response());
     }
 
+    let max_upload = state.config().media.max_upload_bytes();
+
     while let Some(field) = multipart.next_field().await? {
         let name = field.file_name().unwrap_or("unknown").to_string();
         let content_type = field
@@ -680,6 +708,14 @@ pub async fn upload_media(
             .unwrap_or("application/octet-stream")
             .to_string();
         let data = field.bytes().await?;
+
+        if data.len() > max_upload {
+            return Ok((
+                StatusCode::BAD_REQUEST,
+                format!("File '{}' exceeds the maximum upload size", name),
+            )
+                .into_response());
+        }
 
         media::upload_media(
             &state.db,
@@ -1120,8 +1156,19 @@ pub async fn delete_user(
         return Ok((StatusCode::BAD_REQUEST, "Cannot delete yourself").into_response());
     }
 
-    // Get username before delete for audit
-    let deleted_username = auth::get_user(&state.db, id)?
+    // Prevent deleting the last admin
+    let target_user = auth::get_user(&state.db, id)?;
+    if let Some(ref target) = target_user {
+        if target.role == UserRole::Admin {
+            let all_users = auth::list_users(&state.db)?;
+            let admin_count = all_users.iter().filter(|u| u.role == UserRole::Admin).count();
+            if admin_count <= 1 {
+                return Ok((StatusCode::BAD_REQUEST, "Cannot delete the last admin account").into_response());
+            }
+        }
+    }
+
+    let deleted_username = target_user
         .map(|u| u.username)
         .unwrap_or_default();
 

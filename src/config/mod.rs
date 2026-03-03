@@ -136,6 +136,12 @@ impl CustomThemeOptions {
         if let Some(v) = self.line_height {
             vars.push(format!("--line-height-normal: {};", v));
         }
+        if let Some(v) = self.heading_scale {
+            vars.push(format!("--font-size-xl: {:.3}rem;", 1.25 * v));
+            vars.push(format!("--font-size-2xl: {:.3}rem;", 1.5 * v));
+            vars.push(format!("--font-size-3xl: {:.3}rem;", 2.0 * v));
+            vars.push(format!("--font-size-4xl: {:.3}rem;", 2.25 * v));
+        }
         if let Some(ref v) = self.border_radius {
             vars.push(format!("--radius: {};", v));
             vars.push(format!("--radius-sm: {};", v));
@@ -369,12 +375,45 @@ fn default_max_upload() -> String {
     "10MB".to_string()
 }
 
+impl MediaConfig {
+    /// Parse max_upload_size string (e.g., "10MB", "500KB", "1GB") into bytes.
+    /// Falls back to 10MB on invalid input.
+    pub fn max_upload_bytes(&self) -> usize {
+        let s = self.max_upload_size.trim().to_uppercase();
+        if let Some(gb) = s.strip_suffix("GB") {
+            gb.parse::<usize>().unwrap_or(1) * 1024 * 1024 * 1024
+        } else if let Some(mb) = s.strip_suffix("MB") {
+            mb.parse::<usize>().unwrap_or(10) * 1024 * 1024
+        } else if let Some(kb) = s.strip_suffix("KB") {
+            kb.parse::<usize>().unwrap_or(10240) * 1024
+        } else {
+            s.parse::<usize>().unwrap_or(10 * 1024 * 1024)
+        }
+    }
+}
+
 fn default_theme() -> String {
     "default".to_string()
 }
 
 fn default_session_lifetime() -> String {
     "7d".to_string()
+}
+
+impl AuthConfig {
+    /// Parse session_lifetime string (e.g., "7d", "24h", "30d") into days.
+    /// Falls back to 7 days on invalid input.
+    pub fn session_lifetime_days(&self) -> i64 {
+        let s = self.session_lifetime.trim();
+        if let Some(days) = s.strip_suffix('d') {
+            days.parse::<i64>().unwrap_or(7)
+        } else if let Some(hours) = s.strip_suffix('h') {
+            let h = hours.parse::<i64>().unwrap_or(168);
+            (h + 23) / 24 // round up to whole days
+        } else {
+            s.parse::<i64>().unwrap_or(7)
+        }
+    }
 }
 
 fn default_version_retention() -> usize {

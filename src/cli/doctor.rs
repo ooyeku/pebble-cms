@@ -161,7 +161,7 @@ pub async fn run(config_path: &Path) -> Result<()> {
             )
             .unwrap_or(0);
 
-        let latest_version = 10;
+        let latest_version = crate::db::MIGRATION_COUNT;
         if current_version >= latest_version {
             results.push(CheckResult {
                 name: "Migration status".into(),
@@ -328,23 +328,22 @@ pub async fn run(config_path: &Path) -> Result<()> {
         });
     }
 
-    // 9. Port availability
+    // 9. Port availability (uses configured host:port)
     {
-        let test_addr = "127.0.0.1:8080";
-        match std::net::TcpListener::bind(test_addr) {
+        let test_addr = format!("{}:{}", config.server.host, config.server.port);
+        match std::net::TcpListener::bind(&test_addr) {
             Ok(_listener) => {
-                // Drop immediately — port is free
                 results.push(CheckResult {
-                    name: "Default port (8080)".into(),
+                    name: format!("Port ({})", config.server.port),
                     status: CheckStatus::Ok,
-                    detail: "Port 8080 is available".into(),
+                    detail: format!("{} is available", test_addr),
                 });
             }
             Err(_) => {
                 results.push(CheckResult {
-                    name: "Default port (8080)".into(),
+                    name: format!("Port ({})", config.server.port),
                     status: CheckStatus::Warn,
-                    detail: "Port 8080 is in use. Use --port to specify an alternative".into(),
+                    detail: format!("{} is in use. Use --port to specify an alternative", test_addr),
                 });
             }
         }

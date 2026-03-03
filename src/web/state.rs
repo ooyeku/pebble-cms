@@ -223,6 +223,10 @@ impl AppState {
             "admin.js".to_string(),
             include_str!("../../templates/js/admin.js"),
         );
+        static_assets.insert(
+            "htmx.min.js".to_string(),
+            include_str!("../../templates/js/htmx.min.js"),
+        );
 
         Ok(Self {
             config: RwLock::new(config),
@@ -251,7 +255,7 @@ impl AppState {
 
     /// Get a read lock on the config
     pub fn config(&self) -> std::sync::RwLockReadGuard<'_, Config> {
-        self.config.read().unwrap()
+        self.config.read().unwrap_or_else(|e| e.into_inner())
     }
 
     /// Update the config (writes to file and updates in-memory)
@@ -315,7 +319,7 @@ impl AppState {
         std::fs::write(&self.config_path, doc.to_string())?;
 
         // Update in-memory config
-        let mut config = self.config.write().unwrap();
+        let mut config = self.config.write().unwrap_or_else(|e| e.into_inner());
         *config = new_config;
 
         Ok(())
@@ -451,15 +455,31 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
     result = result.replace('*', "");
     result = result.replace('_', " ");
 
-    // Remove list markers
+    // Remove list markers and table syntax
     result = result
         .lines()
+        .filter(|line| {
+            let trimmed = line.trim();
+            // Skip table separator rows (e.g., |---|---|)
+            if trimmed.starts_with('|') && trimmed.contains("---") {
+                return false;
+            }
+            true
+        })
         .map(|line| {
             let trimmed = line.trim_start();
             if trimmed.starts_with("- ") {
                 trimmed.chars().skip(2).collect()
-            } else if trimmed.starts_with("* ") {
+            } else if trimmed.starts_with("> ") {
                 trimmed.chars().skip(2).collect()
+            } else if trimmed.starts_with('|') && trimmed.ends_with('|') {
+                // Strip table row: extract cell contents
+                trimmed[1..trimmed.len() - 1]
+                    .split('|')
+                    .map(|cell| cell.trim())
+                    .filter(|cell| !cell.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ")
             } else if !trimmed.is_empty() {
                 if let Some(first_char) = trimmed.chars().next() {
                     if first_char.is_ascii_digit() {

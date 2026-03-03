@@ -173,48 +173,7 @@ pub async fn tag(
 
     match tag {
         Some(t) => {
-            let conn = state.db.get()?;
-            let mut stmt = conn.prepare(
-                r#"
-                SELECT c.id, c.slug, c.title, c.content_type, c.body_markdown, c.body_html, c.excerpt, c.featured_image, c.status, c.published_at, c.author_id, c.metadata, c.created_at, c.updated_at
-                FROM content c
-                JOIN content_tags ct ON c.id = ct.content_id
-                WHERE ct.tag_id = ? AND c.status = 'published'
-                ORDER BY c.published_at DESC
-                "#,
-            )?;
-
-            let posts: Vec<crate::models::ContentWithTags> = stmt
-                .query_map([t.id], |row| {
-                    Ok(crate::models::Content {
-                        id: row.get(0)?,
-                        slug: row.get(1)?,
-                        title: row.get(2)?,
-                        content_type: row
-                            .get::<_, String>(3)?
-                            .parse()
-                            .unwrap_or(ContentType::Post),
-                        body_markdown: row.get(4)?,
-                        body_html: row.get(5)?,
-                        excerpt: row.get(6)?,
-                        featured_image: row.get(7)?,
-                        status: row.get::<_, String>(8)?.parse().unwrap_or_default(),
-                        scheduled_at: None,
-                        published_at: row.get(9)?,
-                        author_id: row.get(10)?,
-                        metadata: serde_json::from_str(&row.get::<_, String>(11)?)
-                            .unwrap_or_default(),
-                        created_at: row.get(12)?,
-                        updated_at: row.get(13)?,
-                    })
-                })?
-                .filter_map(|c| c.ok())
-                .map(|c| crate::models::ContentWithTags {
-                    content: c,
-                    tags: vec![],
-                    author: None,
-                })
-                .collect();
+            let posts = tags::get_posts_by_tag(&state.db, &slug)?;
 
             let mut ctx = make_context(&state, &user);
             ctx.insert("tag", &t);
@@ -242,7 +201,11 @@ pub async fn search(
     Query(query): Query<SearchQuery>,
 ) -> AppResult<Html<String>> {
     let results = match &query.q {
-        Some(q) if !q.is_empty() => search::search_content(&state.db, q, 50)?,
+        Some(q) if !q.is_empty() => {
+            // Limit query length to prevent expensive FTS queries
+            let q = &q[..q.len().min(200)];
+            search::search_content(&state.db, q, 50)?
+        }
         _ => vec![],
     };
 
@@ -260,7 +223,13 @@ pub async fn rss_feed(State(state): State<Arc<AppState>>) -> AppResult<Response>
     let site = &config.site;
 
     let mut items = String::new();
-    for post in posts {
+    for post in &posts {
+        let pub_date = post
+            .content
+            .published_at
+            .as_deref()
+            .map(to_rfc822)
+            .unwrap_or_default();
         items.push_str(&format!(
             r#"
     <item>
@@ -268,13 +237,13 @@ pub async fn rss_feed(State(state): State<Arc<AppState>>) -> AppResult<Response>
       <link>{}/posts/{}</link>
       <description><![CDATA[{}]]></description>
       <pubDate>{}</pubDate>
-      <guid>{}/posts/{}</guid>
+      <guid isPermaLink="true">{}/posts/{}</guid>
     </item>"#,
             html_escape(&post.content.title),
             site.url,
             post.content.slug,
             post.content.excerpt.as_deref().unwrap_or(""),
-            post.content.published_at.as_deref().unwrap_or(""),
+            pub_date,
             site.url,
             post.content.slug
         ));
@@ -301,7 +270,10 @@ pub async fn rss_feed(State(state): State<Arc<AppState>>) -> AppResult<Response>
     );
 
     Ok((
-        [(header::CONTENT_TYPE, "application/rss+xml; charset=utf-8")],
+        [
+            (header::CONTENT_TYPE, "application/rss+xml; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
         rss,
     )
         .into_response())
@@ -334,7 +306,17 @@ pub async fn serve_media(
     let content = tokio::fs::read(&file_path).await?;
     let mime = mime_guess::from_path(&filename).first_or_octet_stream();
 
-    Ok(([(header::CONTENT_TYPE, mime.as_ref())], content).into_response())
+    Ok((
+        [
+            (header::CONTENT_TYPE, mime.as_ref().to_string()),
+            (
+                header::CACHE_CONTROL,
+                "public, max-age=86400, stale-while-revalidate=604800".to_string(),
+            ),
+        ],
+        content,
+    )
+        .into_response())
 }
 
 pub async fn serve_js(
@@ -389,7 +371,10 @@ pub async fn json_feed(State(state): State<Arc<AppState>>) -> AppResult<Response
     });
 
     Ok((
-        [(header::CONTENT_TYPE, "application/feed+json; charset=utf-8")],
+        [
+            (header::CONTENT_TYPE, "application/feed+json; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
         serde_json::to_string_pretty(&feed).unwrap_or_default(),
     )
         .into_response())
@@ -439,11 +424,7 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
 "#,
             site.url,
             post.content.slug,
-            post.content
-                .updated_at
-                .split('T')
-                .next()
-                .unwrap_or(&post.content.updated_at),
+            post.content.updated_at,
             image_tag
         ));
     }
@@ -459,11 +440,7 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
 "#,
             site.url,
             page.content.slug,
-            page.content
-                .updated_at
-                .split('T')
-                .next()
-                .unwrap_or(&page.content.updated_at)
+            page.content.updated_at
         ));
     }
 
@@ -489,7 +466,10 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
     );
 
     Ok((
-        [(header::CONTENT_TYPE, "application/xml; charset=utf-8")],
+        [
+            (header::CONTENT_TYPE, "application/xml; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
         sitemap,
     )
         .into_response())
@@ -543,6 +523,12 @@ pub async fn tag_rss_feed(
 
     let mut items = String::new();
     for post in posts.iter().take(20) {
+        let pub_date = post
+            .content
+            .published_at
+            .as_deref()
+            .map(to_rfc822)
+            .unwrap_or_default();
         items.push_str(&format!(
             r#"
     <item>
@@ -550,14 +536,14 @@ pub async fn tag_rss_feed(
       <link>{}/posts/{}</link>
       <description><![CDATA[{}]]></description>
       <pubDate>{}</pubDate>
-      <guid>{}/posts/{}</guid>
+      <guid isPermaLink="true">{}/posts/{}</guid>
       <category>{}</category>
     </item>"#,
             html_escape(&post.content.title),
             site.url,
             post.content.slug,
             post.content.excerpt.as_deref().unwrap_or(""),
-            post.content.published_at.as_deref().unwrap_or(""),
+            pub_date,
             site.url,
             post.content.slug,
             html_escape(&tag.name),
@@ -589,7 +575,10 @@ pub async fn tag_rss_feed(
     );
 
     Ok((
-        [(header::CONTENT_TYPE, "application/rss+xml; charset=utf-8")],
+        [
+            (header::CONTENT_TYPE, "application/rss+xml; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=3600"),
+        ],
         rss,
     )
         .into_response())
@@ -600,6 +589,38 @@ fn html_escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+/// Convert an ISO 8601 / SQLite datetime string to RFC 822 format for RSS.
+fn to_rfc822(date_str: &str) -> String {
+    // Try RFC 3339 first, then common SQLite formats
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(date_str) {
+        return dt.format("%a, %d %b %Y %H:%M:%S %z").to_string();
+    }
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(date_str, "%Y-%m-%dT%H:%M:%S%.f") {
+        return dt.format("%a, %d %b %Y %H:%M:%S +0000").to_string();
+    }
+    if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S") {
+        return dt.format("%a, %d %b %Y %H:%M:%S +0000").to_string();
+    }
+    date_str.to_string()
+}
+
+/// Robots.txt — points crawlers to the sitemap.
+pub async fn robots_txt(State(state): State<Arc<AppState>>) -> Response {
+    let config = state.config();
+    let body = format!(
+        "User-agent: *\nAllow: /\n\nSitemap: {}/sitemap.xml\n",
+        config.site.url
+    );
+    (
+        [
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CACHE_CONTROL, "public, max-age=86400"),
+        ],
+        body,
+    )
+        .into_response()
 }
 
 /// Health check endpoint — returns DB status for reverse proxies and uptime monitors.

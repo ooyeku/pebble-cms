@@ -26,6 +26,7 @@ pub fn public_routes() -> Router<Arc<AppState>> {
         .route("/sitemap.xml", get(handlers::public::sitemap))
         .route("/media/:filename", get(handlers::public::serve_media))
         .route("/js/:filename", get(handlers::public::serve_js))
+        .route("/robots.txt", get(handlers::public::robots_txt))
         .route("/health", get(handlers::public::health))
         .route(
             "/preview/:token",

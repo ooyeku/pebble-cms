@@ -88,7 +88,7 @@ fn init_site(
     fs::create_dir_all(&db_dir)?;
 
     let db_path = db_dir.join("pebble.db");
-    let db = crate::Database::open(db_path.to_str().unwrap())?;
+    let db = crate::Database::open(db_path.to_str().ok_or_else(|| anyhow::anyhow!("Database path contains invalid UTF-8"))?)?;
     crate::Database::migrate(&db)?;
 
     let media_dir = site_path.join("data").join("media");
@@ -251,7 +251,7 @@ async fn serve_site(
     let child = Command::new(&exe)
         .args([
             "--config",
-            config_path.to_str().unwrap(),
+            config_path.to_str().ok_or_else(|| anyhow::anyhow!("Config path contains invalid UTF-8"))?,
             mode,
             "-H",
             host,

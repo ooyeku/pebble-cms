@@ -1503,7 +1503,7 @@ Available at `/sitemap.xml`. Includes all published posts and pages with `<lastm
 GET /health
 ```
 
-Returns HTTP 200 with `{"status": "healthy", "version": "1.0.0-rc1"}` when the database is accessible, or HTTP 503 with `{"status": "unhealthy", ...}` otherwise. Use this with reverse proxies, load balancers, or uptime monitors.
+Returns HTTP 200 with `{"status": "healthy", "version": "..."}` when the database is accessible, or HTTP 503 with `{"status": "unhealthy", ...}` otherwise. Use this with reverse proxies, load balancers, or uptime monitors.
 
 ### Draft Previews
 

@@ -612,7 +612,16 @@ impl MarkdownRenderer {
     pub fn generate_excerpt(&self, markdown: &str, max_len: usize) -> String {
         let text: String = markdown
             .lines()
-            .filter(|line| !line.starts_with('#') && !line.starts_with("```") && !line.is_empty())
+            .filter(|line| {
+                let trimmed = line.trim();
+                !trimmed.is_empty()
+                    && !trimmed.starts_with('#')
+                    && !trimmed.starts_with("```")
+                    && !trimmed.starts_with('|')
+                    && !trimmed.starts_with("---")
+                    && !trimmed.starts_with("![")
+                    && !trimmed.starts_with("> ")
+            })
             .collect::<Vec<_>>()
             .join(" ");
 

@@ -18,8 +18,10 @@ endblock %} {% block content %}
             <span>{{ post.author.username }}</span>
             {% endif %}
         </div>
-        {% if post.excerpt %}
-        <p class="post-excerpt">{{ post.excerpt | strip_md }}</p>
+        {% if post.body_html %}
+        <p class="post-excerpt">{{ post.body_html | striptags | truncate(length=200) }}</p>
+        {% elif post.excerpt %}
+        <p class="post-excerpt">{{ post.excerpt | striptags | truncate(length=200) }}</p>
         {% endif %}
     </article>
     {% else %}

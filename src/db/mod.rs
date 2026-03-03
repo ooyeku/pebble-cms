@@ -6,6 +6,8 @@ use std::path::Path;
 
 pub type DbPool = Pool<SqliteConnectionManager>;
 
+pub const MIGRATION_COUNT: i32 = 10;
+
 pub struct Database {
     pool: DbPool,
 }

@@ -204,6 +204,12 @@ pub fn upload_media(
     })
 }
 
+pub fn count_media(db: &Database) -> Result<i64> {
+    let conn = db.get()?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM media", [], |row| row.get(0))?;
+    Ok(count)
+}
+
 pub fn list_media(db: &Database, limit: usize, offset: usize) -> Result<Vec<Media>> {
     let conn = db.get()?;
     let mut stmt = conn.prepare(

@@ -26,9 +26,16 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
+use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::TraceLayer;
 
-pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &str) -> Result<()> {
+pub async fn serve(
+    config: Config,
+    config_path: PathBuf,
+    db: Database,
+    addr: &str,
+    shutdown_rx: Option<tokio::sync::watch::Receiver<bool>>,
+) -> Result<()> {
     let analytics_config = AnalyticsConfig::default();
     let analytics = Arc::new(Analytics::with_config(db.clone(), analytics_config));
 
@@ -37,8 +44,17 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
     let state = Arc::new(state);
 
     let analytics_aggregator = analytics.clone();
-    tokio::spawn(async move {
-        run_aggregation_job(analytics_aggregator).await;
+    let mut agg_rx = shutdown_rx.clone().unwrap_or_else(|| {
+        let (_, rx) = tokio::sync::watch::channel(false);
+        rx
+    });
+    let agg_handle = tokio::spawn(async move {
+        tokio::select! {
+            _ = run_aggregation_job(analytics_aggregator) => {}
+            _ = async { while agg_rx.changed().await.is_ok() { if *agg_rx.borrow() { break; } } } => {
+                tracing::info!("Analytics aggregation stopping...");
+            }
+        }
     });
 
     let app = Router::new()
@@ -56,6 +72,7 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
         ))
         .layer(middleware::from_fn(security::apply_security_headers))
         .layer(CompressionLayer::new())
+        .layer(TimeoutLayer::with_status_code(axum::http::StatusCode::GATEWAY_TIMEOUT, std::time::Duration::from_secs(30)))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -66,6 +83,8 @@ pub async fn serve(config: Config, config_path: PathBuf, db: Database, addr: &st
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
+    // Signal background tasks to stop
+    agg_handle.abort();
     tracing::info!("Server shut down gracefully");
     Ok(())
 }
@@ -86,7 +105,7 @@ pub async fn serve_production(
     let state = Arc::new(state);
 
     let analytics_aggregator = analytics.clone();
-    tokio::spawn(async move {
+    let agg_handle = tokio::spawn(async move {
         run_aggregation_job(analytics_aggregator).await;
     });
 
@@ -100,6 +119,7 @@ pub async fn serve_production(
         ))
         .layer(middleware::from_fn(security::apply_security_headers))
         .layer(CompressionLayer::new())
+        .layer(TimeoutLayer::with_status_code(axum::http::StatusCode::GATEWAY_TIMEOUT, std::time::Duration::from_secs(30)))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -111,6 +131,7 @@ pub async fn serve_production(
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
+    agg_handle.abort();
     tracing::info!("Production server shut down gracefully");
     Ok(())
 }

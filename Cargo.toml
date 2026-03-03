@@ -1,6 +1,6 @@
 [package]
 name = "pebble-cms"
-version = "1.0.0-rc1"
+version = "1.0.0"
 edition = "2021"
 rust-version = "1.75"
 description = "A lightweight, single-binary CMS powered by SQLite — 15 themes, REST API, WCAG 2.1 AA, static export"
@@ -20,7 +20,7 @@ path = "src/main.rs"
 axum = { version = "0.7", features = ["multipart", "macros"] }
 axum-extra = { version = "0.9", features = ["typed-header", "cookie"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "cors"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "compression-gzip", "cors", "timeout"] }
 tokio = { version = "1", features = ["full"] }
 
 # Database

@@ -128,7 +128,8 @@ pub async fn login(
                 let _ = auth::delete_session(&state.db, old_session.value());
             }
 
-            let token = auth::create_session(&state.db, user.id, 7)?;
+            let session_days = state.config().auth.session_lifetime_days();
+            let token = auth::create_session(&state.db, user.id, session_days)?;
             // Session hardening: Strict SameSite prevents CSRF for session cookies,
             // httpOnly prevents XSS access, secure flag in production.
             let session_cookie = Cookie::build(("session", token))
@@ -136,7 +137,7 @@ pub async fn login(
                 .http_only(true)
                 .secure(!cfg!(debug_assertions))
                 .same_site(SameSite::Strict)
-                .max_age(Duration::days(7))
+                .max_age(Duration::days(session_days))
                 .build();
 
             // Log successful login
@@ -361,14 +362,15 @@ pub async fn setup(
                 .into_response());
         }
     };
-    let token = auth::create_session(&state.db, user_id, 7)?;
+    let session_days = state.config().auth.session_lifetime_days();
+    let token = auth::create_session(&state.db, user_id, session_days)?;
 
     let cookie = Cookie::build(("session", token))
         .path("/")
         .http_only(true)
         .secure(!cfg!(debug_assertions))
         .same_site(SameSite::Strict)
-        .max_age(Duration::days(7))
+        .max_age(Duration::days(session_days))
         .build();
 
     Ok((jar.add(cookie), Redirect::to("/admin")).into_response())

@@ -423,22 +423,26 @@ html.theme-light .theme-toggle .icon-sun {
 .theme-toggle-admin {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2);
     color: var(--text-muted);
-    font-size: var(--font-size-sm);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--space-2);
-    margin-top: var(--space-2);
-    width: 100%;
-    transition: all var(--transition-base);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.theme-toggle-admin span {
+    display: none;
 }
 
 .theme-toggle-admin:hover {
     background: var(--bg-tertiary);
     color: var(--text);
+    border-color: var(--border-dark);
 }
 
 .theme-toggle-admin .icon-sun,
@@ -636,4 +640,18 @@ html.theme-light .theme-toggle-admin .icon-sun {
 
 .skip-link:focus {
     top: 0;
+}
+
+.bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+}
+
+table td .btn + .btn,
+table td .btn + a.btn,
+table td a.btn + .btn {
+    margin-left: var(--space-2);
 }

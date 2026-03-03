@@ -2015,7 +2015,7 @@ dependencies = [
 
 [[package]]
 name = "pebble-cms"
-version = "1.0.0-rc1"
+version = "1.0.0-rc2"
 dependencies = [
  "ammonia",
  "anyhow",

@@ -21,7 +21,7 @@ cargo install --path .
 Download the latest release and place it in your PATH:
 
 ```bash
-curl -L https://github.com/your-org/pebble/releases/latest/download/pebble-linux-amd64 -o /usr/local/bin/pebble
+curl -L https://github.com/ooyeku/pebble-cms/releases/latest/download/pebble-linux-amd64 -o /usr/local/bin/pebble
 chmod +x /usr/local/bin/pebble
 ```
 

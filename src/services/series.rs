@@ -82,6 +82,24 @@ pub fn get_series_by_slug(db: &Database, slug: &str) -> Result<Option<Series>> {
     Ok(series)
 }
 
+pub fn count_series(db: &Database) -> Result<i64> {
+    let conn = db.get()?;
+    let count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM content_series", [], |row| row.get(0))?;
+    Ok(count)
+}
+
+pub fn get_series_with_items(db: &Database, slug: &str) -> Result<Option<SeriesWithItems>> {
+    let series = get_series_by_slug(db, slug)?;
+    match series {
+        Some(s) => {
+            let items = list_series_items(db, s.id)?;
+            Ok(Some(SeriesWithItems { series: s, items }))
+        }
+        None => Ok(None),
+    }
+}
+
 pub fn list_series(db: &Database, limit: usize, offset: usize) -> Result<Vec<SeriesWithItems>> {
     let conn = db.get()?;
     let mut stmt = conn.prepare(
