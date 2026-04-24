@@ -47,8 +47,16 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
     // Build tag lookup: ghost tag id -> tag name
     let mut tag_map: HashMap<String, String> = HashMap::new();
     for tag in &ghost_tags {
-        let id = tag.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-        let name = tag.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        let id = tag
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let name = tag
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
         if !id.is_empty() && !name.is_empty() {
             tag_map.insert(id, name);
         }
@@ -57,8 +65,16 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
     // Build post -> tags mapping
     let mut post_tags_map: HashMap<String, Vec<String>> = HashMap::new();
     for pt in &posts_tags {
-        let post_id = pt.get("post_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-        let tag_id = pt.get("tag_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        let post_id = pt
+            .get("post_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let tag_id = pt
+            .get("tag_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
         if let Some(tag_name) = tag_map.get(&tag_id) {
             post_tags_map
                 .entry(post_id)
@@ -74,11 +90,26 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
     let mut skipped = 0;
 
     for post in &posts {
-        let title = post.get("title").and_then(|v| v.as_str()).unwrap_or("Untitled").to_string();
-        let slug = post.get("slug").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-        let ghost_status = post.get("status").and_then(|v| v.as_str()).unwrap_or("draft");
+        let title = post
+            .get("title")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Untitled")
+            .to_string();
+        let slug = post
+            .get("slug")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let ghost_status = post
+            .get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("draft");
         let post_type = post.get("type").and_then(|v| v.as_str()).unwrap_or("post");
-        let ghost_id = post.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        let ghost_id = post
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
 
         let content_type = match post_type {
             "post" => ContentType::Post,
@@ -96,7 +127,10 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
         };
 
         // Get the content: prefer html, fall back to mobiledoc
-        let html = post.get("html").and_then(|v| v.as_str()).unwrap_or_default();
+        let html = post
+            .get("html")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
         let body_html = if html.is_empty() {
             // Try mobiledoc
             extract_mobiledoc_text(post.get("mobiledoc").and_then(|v| v.as_str()).unwrap_or(""))
@@ -132,8 +166,14 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
             body_markdown: markdown,
             status,
             scheduled_at: None,
-            excerpt: post.get("custom_excerpt").and_then(|v| v.as_str()).map(|s| s.to_string()),
-            featured_image: post.get("feature_image").and_then(|v| v.as_str()).map(|s| s.to_string()),
+            excerpt: post
+                .get("custom_excerpt")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            featured_image: post
+                .get("feature_image")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
             tags,
             metadata: None,
         };
@@ -207,18 +247,28 @@ fn extract_mobiledoc_text(mobiledoc_str: &str) -> String {
                     let payload = arr.get(1);
                     match card_type {
                         "html" => {
-                            if let Some(html) = payload.and_then(|p| p.get("html")).and_then(|h| h.as_str()) {
+                            if let Some(html) =
+                                payload.and_then(|p| p.get("html")).and_then(|h| h.as_str())
+                            {
                                 parts.push(html.to_string());
                             }
                         }
                         "markdown" => {
-                            if let Some(md) = payload.and_then(|p| p.get("markdown")).and_then(|m| m.as_str()) {
+                            if let Some(md) = payload
+                                .and_then(|p| p.get("markdown"))
+                                .and_then(|m| m.as_str())
+                            {
                                 parts.push(md.to_string());
                             }
                         }
                         "image" => {
-                            if let Some(src) = payload.and_then(|p| p.get("src")).and_then(|s| s.as_str()) {
-                                let alt = payload.and_then(|p| p.get("alt")).and_then(|a| a.as_str()).unwrap_or("");
+                            if let Some(src) =
+                                payload.and_then(|p| p.get("src")).and_then(|s| s.as_str())
+                            {
+                                let alt = payload
+                                    .and_then(|p| p.get("alt"))
+                                    .and_then(|a| a.as_str())
+                                    .unwrap_or("");
                                 parts.push(format!("<img src=\"{}\" alt=\"{}\" />", src, alt));
                             }
                         }

@@ -84,7 +84,14 @@ pub async fn run(config_path: &Path, host: &str, port: u16) -> Result<()> {
     let addr = format!("{}:{}", host, port);
     tracing::info!("Starting server at http://{}", addr);
 
-    web::serve(config, config_path.to_path_buf(), db, &addr, Some(shutdown_rx)).await?;
+    web::serve(
+        config,
+        config_path.to_path_buf(),
+        db,
+        &addr,
+        Some(shutdown_rx),
+    )
+    .await?;
 
     // Signal all background tasks to stop
     let _ = shutdown_tx.send(true);

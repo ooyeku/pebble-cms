@@ -6,13 +6,18 @@ pub fn search_content(db: &Database, query: &str, limit: usize) -> Result<Vec<Co
     let conn = db.get()?;
 
     let fts_query = build_fts_query(query);
+    if fts_query.is_empty() {
+        return Ok(vec![]);
+    }
 
     let mut stmt = conn.prepare(
         r#"
         SELECT c.id, c.slug, c.title, c.content_type, c.excerpt, c.status, c.published_at, c.created_at
         FROM content c
         JOIN content_fts fts ON c.id = fts.rowid
-        WHERE content_fts MATCH ? AND c.status = 'published'
+        WHERE content_fts MATCH ?
+          AND c.status = 'published'
+          AND c.content_type IN ('post', 'page')
         ORDER BY rank
         LIMIT ?
         "#,
@@ -79,7 +84,10 @@ pub fn build_fts_query(query: &str) -> String {
 pub fn rebuild_fts_index(db: &Database) -> Result<usize> {
     let conn = db.get()?;
 
-    conn.execute("DELETE FROM content_fts", [])?;
+    conn.execute(
+        "INSERT INTO content_fts(content_fts) VALUES('delete-all')",
+        [],
+    )?;
 
     let count = conn.execute(
         r#"

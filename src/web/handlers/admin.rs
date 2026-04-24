@@ -1,6 +1,10 @@
-use crate::models::{ContentStatus, ContentType, CreateContent, UpdateContent, User, UserRole};
+use crate::models::{
+    ContentStatus, ContentType, ContentWithTags, CreateContent, UpdateContent, User, UserRole,
+};
 use crate::services::audit::{AuditAction, AuditCategory, AuditLogBuilder};
-use crate::services::{api_token, audit, auth, content, database, media, preview, series, settings, tags, webhook};
+use crate::services::{
+    api_token, audit, auth, content, database, media, preview, series, settings, tags, webhook,
+};
 use crate::web::error::AppResult;
 use crate::web::extractors::{AuditInfo, CurrentUser, HxRequest};
 use crate::web::state::AppState;
@@ -41,16 +45,90 @@ fn require_author_or_admin(user: &User) -> Result<(), Response> {
     }
 }
 
+fn require_content_owner_or_admin(user: &User, content: &ContentWithTags) -> Result<(), Response> {
+    match user.role {
+        UserRole::Admin => Ok(()),
+        UserRole::Author if content.content.author_id == Some(user.id) => Ok(()),
+        UserRole::Author => Err((
+            StatusCode::FORBIDDEN,
+            "You can only manage your own content",
+        )
+            .into_response()),
+        UserRole::Viewer => {
+            Err((StatusCode::FORBIDDEN, "Author or admin access required").into_response())
+        }
+    }
+}
+
+fn require_allowed_role_change(
+    current_user: &User,
+    target_user: &User,
+    new_role: UserRole,
+    admin_count: usize,
+) -> Result<(), Response> {
+    if current_user.id == target_user.id && new_role != UserRole::Admin {
+        return Err((StatusCode::BAD_REQUEST, "Cannot remove your own admin role").into_response());
+    }
+
+    if target_user.role == UserRole::Admin && new_role != UserRole::Admin && admin_count <= 1 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Cannot demote the last admin account",
+        )
+            .into_response());
+    }
+
+    Ok(())
+}
+
+const MAX_ADMIN_PAGE: usize = 10_000;
+
+fn content_author_filter(user: &User) -> Option<i64> {
+    if user.role == UserRole::Author {
+        Some(user.id)
+    } else {
+        None
+    }
+}
+
+fn admin_page_offset(page: usize, per_page: usize) -> (usize, usize) {
+    let page = page.max(1).min(MAX_ADMIN_PAGE);
+    let offset = page.saturating_sub(1).saturating_mul(per_page);
+    (page, offset)
+}
+
 pub async fn dashboard(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
 ) -> AppResult<Html<String>> {
-    let recent_posts = content::list_content(&state.db, Some(ContentType::Post), None, 5, 0)?;
-    let post_count = content::count_content(&state.db, Some(ContentType::Post), None)?;
-    let page_count = content::count_content(&state.db, Some(ContentType::Page), None)?;
-    let published_count = content::count_content(&state.db, None, Some(ContentStatus::Published))?;
-    let snippet_count = content::count_content(&state.db, Some(ContentType::Snippet), None)?;
-    let series_count = series::list_series(&state.db, 1000, 0).map(|s| s.len() as i64).unwrap_or(0);
+    let author_id = content_author_filter(&user);
+    let recent_posts = content::list_content_for_author(
+        &state.db,
+        Some(ContentType::Post),
+        None,
+        author_id,
+        5,
+        0,
+    )?;
+    let post_count =
+        content::count_content_for_author(&state.db, Some(ContentType::Post), None, author_id)?;
+    let page_count =
+        content::count_content_for_author(&state.db, Some(ContentType::Page), None, author_id)?;
+    let published_count = content::count_content_for_author(
+        &state.db,
+        None,
+        Some(ContentStatus::Published),
+        author_id,
+    )?;
+    let snippet_count =
+        content::count_content_for_author(&state.db, Some(ContentType::Snippet), None, author_id)?;
+    let series_count = if user.role == UserRole::Admin {
+        series::list_series(&state.db, 1000, 0)
+            .map(|s| s.len() as i64)
+            .unwrap_or(0)
+    } else {
+        0
+    };
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("recent_posts", &recent_posts);
@@ -84,10 +162,18 @@ pub async fn posts(
     }
 
     let per_page = 50;
-    let page = pagination.page.max(1);
-    let offset = (page - 1) * per_page;
-    let posts = content::list_content(&state.db, Some(ContentType::Post), None, per_page, offset)?;
-    let total = content::count_content(&state.db, Some(ContentType::Post), None)?;
+    let (page, offset) = admin_page_offset(pagination.page, per_page);
+    let author_id = content_author_filter(&user);
+    let posts = content::list_content_for_author(
+        &state.db,
+        Some(ContentType::Post),
+        None,
+        author_id,
+        per_page,
+        offset,
+    )?;
+    let total =
+        content::count_content_for_author(&state.db, Some(ContentType::Post), None, author_id)?;
     let total_pages = ((total as usize) + per_page - 1) / per_page;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -144,51 +230,29 @@ pub struct ContentForm {
     use_custom_code: Option<String>,
 }
 
+fn metadata_string_value(value: Option<&String>) -> serde_json::Value {
+    match value.map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        Some(value) => serde_json::json!(value),
+        None => serde_json::Value::Null,
+    }
+}
+
 fn build_seo_metadata(form: &ContentForm) -> serde_json::Value {
     let mut metadata = serde_json::json!({});
-    if let Some(ref mt) = form.meta_title {
-        if !mt.is_empty() {
-            metadata["meta_title"] = serde_json::json!(mt);
-        }
-    }
-    if let Some(ref md) = form.meta_description {
-        if !md.is_empty() {
-            metadata["meta_description"] = serde_json::json!(md);
-        }
-    }
-    if let Some(ref cu) = form.canonical_url {
-        if !cu.is_empty() {
-            metadata["canonical_url"] = serde_json::json!(cu);
-        }
-    }
+    metadata["meta_title"] = metadata_string_value(form.meta_title.as_ref());
+    metadata["meta_description"] = metadata_string_value(form.meta_description.as_ref());
+    metadata["canonical_url"] = metadata_string_value(form.canonical_url.as_ref());
     metadata
 }
 
 fn build_page_metadata(form: &ContentForm) -> serde_json::Value {
     let mut metadata = build_seo_metadata(form);
 
-    // Custom code fields - only save non-empty values
-    if let Some(ref html) = form.custom_html {
-        if !html.trim().is_empty() {
-            metadata["custom_html"] = serde_json::json!(html);
-        }
-    }
-    if let Some(ref css) = form.custom_css {
-        if !css.trim().is_empty() {
-            metadata["custom_css"] = serde_json::json!(css);
-        }
-    }
-    if let Some(ref js) = form.custom_js {
-        if !js.trim().is_empty() {
-            metadata["custom_js"] = serde_json::json!(js);
-        }
-    }
+    metadata["custom_html"] = metadata_string_value(form.custom_html.as_ref());
+    metadata["custom_css"] = metadata_string_value(form.custom_css.as_ref());
+    metadata["custom_js"] = metadata_string_value(form.custom_js.as_ref());
     // use_custom_code: "only" = only custom code, empty/none = markdown only
-    if let Some(ref mode) = form.use_custom_code {
-        if !mode.is_empty() {
-            metadata["use_custom_code"] = serde_json::json!(mode);
-        }
-    }
+    metadata["use_custom_code"] = metadata_string_value(form.use_custom_code.as_ref());
 
     metadata
 }
@@ -270,6 +334,10 @@ pub async fn edit_post(
 
     match post {
         Some(p) if p.content.content_type == ContentType::Post => {
+            if let Err(e) = require_content_owner_or_admin(&user, &p) {
+                return Ok(e);
+            }
+
             let all_tags = tags::list_tags(&state.db)?;
 
             let mut ctx = make_admin_context(&state, &user);
@@ -295,6 +363,16 @@ pub async fn update_post(
 ) -> AppResult<Response> {
     if let Err(e) = require_author_or_admin(&user) {
         return Ok(e);
+    }
+
+    let post = content::get_content_by_id(&state.db, id)?;
+    match post {
+        Some(ref p) if p.content.content_type == ContentType::Post => {
+            if let Err(e) = require_content_owner_or_admin(&user, p) {
+                return Ok(e);
+            }
+        }
+        _ => return Ok(StatusCode::NOT_FOUND.into_response()),
     }
 
     let tags: Vec<String> = form
@@ -361,10 +439,16 @@ pub async fn delete_post(
         return Ok(e);
     }
 
-    // Get title before delete for audit
-    let title = content::get_content_by_id(&state.db, id)?
-        .map(|c| c.content.title)
-        .unwrap_or_default();
+    let post = content::get_content_by_id(&state.db, id)?;
+    let title = match post {
+        Some(p) if p.content.content_type == ContentType::Post => {
+            if let Err(e) = require_content_owner_or_admin(&user, &p) {
+                return Ok(e);
+            }
+            p.content.title
+        }
+        _ => return Ok(StatusCode::NOT_FOUND.into_response()),
+    };
 
     content::delete_content(&state.db, id)?;
 
@@ -413,10 +497,18 @@ pub async fn pages(
     }
 
     let per_page = 50;
-    let page = pagination.page.max(1);
-    let offset = (page - 1) * per_page;
-    let pages = content::list_content(&state.db, Some(ContentType::Page), None, per_page, offset)?;
-    let total = content::count_content(&state.db, Some(ContentType::Page), None)?;
+    let (page, offset) = admin_page_offset(pagination.page, per_page);
+    let author_id = content_author_filter(&user);
+    let pages = content::list_content_for_author(
+        &state.db,
+        Some(ContentType::Page),
+        None,
+        author_id,
+        per_page,
+        offset,
+    )?;
+    let total =
+        content::count_content_for_author(&state.db, Some(ContentType::Page), None, author_id)?;
     let total_pages = ((total as usize) + per_page - 1) / per_page;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -526,6 +618,10 @@ pub async fn edit_page(
 
     match page {
         Some(p) if p.content.content_type == ContentType::Page => {
+            if let Err(e) = require_content_owner_or_admin(&user, &p) {
+                return Ok(e);
+            }
+
             let mut ctx = make_admin_context(&state, &user);
             ctx.insert("content", &p);
             ctx.insert("is_new", &false);
@@ -548,6 +644,16 @@ pub async fn update_page(
 ) -> AppResult<Response> {
     if let Err(e) = require_author_or_admin(&user) {
         return Ok(e);
+    }
+
+    let page = content::get_content_by_id(&state.db, id)?;
+    match page {
+        Some(ref p) if p.content.content_type == ContentType::Page => {
+            if let Err(e) = require_content_owner_or_admin(&user, p) {
+                return Ok(e);
+            }
+        }
+        _ => return Ok(StatusCode::NOT_FOUND.into_response()),
     }
 
     let input = UpdateContent {
@@ -615,10 +721,16 @@ pub async fn delete_page(
         return Ok(e);
     }
 
-    // Get title before delete for audit
-    let title = content::get_content_by_id(&state.db, id)?
-        .map(|c| c.content.title)
-        .unwrap_or_default();
+    let page = content::get_content_by_id(&state.db, id)?;
+    let title = match page {
+        Some(p) if p.content.content_type == ContentType::Page => {
+            if let Err(e) = require_content_owner_or_admin(&user, &p) {
+                return Ok(e);
+            }
+            p.content.title
+        }
+        _ => return Ok(StatusCode::NOT_FOUND.into_response()),
+    };
 
     content::delete_content(&state.db, id)?;
 
@@ -691,23 +803,35 @@ pub async fn upload_media(
     }
 
     let rate_key = format!("upload:{}", user.id);
-    if !state.upload_rate_limiter.check(&rate_key) {
-        return Ok((
-            axum::http::StatusCode::TOO_MANY_REQUESTS,
-            "Too many uploads. Please wait before uploading more files.",
-        )
-            .into_response());
-    }
-
     let max_upload = state.config().media.max_upload_bytes();
 
-    while let Some(field) = multipart.next_field().await? {
+    while let Some(mut field) = multipart.next_field().await? {
+        if !state.upload_rate_limiter.check(&rate_key) {
+            return Ok((
+                axum::http::StatusCode::TOO_MANY_REQUESTS,
+                "Too many uploads. Please wait before uploading more files.",
+            )
+                .into_response());
+        }
+        state.upload_rate_limiter.record_attempt(&rate_key);
+
         let name = field.file_name().unwrap_or("unknown").to_string();
         let content_type = field
             .content_type()
             .unwrap_or("application/octet-stream")
             .to_string();
-        let data = field.bytes().await?;
+        let mut data = Vec::new();
+
+        while let Some(chunk) = field.chunk().await? {
+            if data.len().saturating_add(chunk.len()) > max_upload {
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    format!("File '{}' exceeds the maximum upload size", name),
+                )
+                    .into_response());
+            }
+            data.extend_from_slice(&chunk);
+        }
 
         if data.len() > max_upload {
             return Ok((
@@ -725,7 +849,6 @@ pub async fn upload_media(
             &data,
             Some(user.id),
         )?;
-        state.upload_rate_limiter.record_attempt(&rate_key);
 
         // Fire webhooks
         webhook::fire_webhooks(
@@ -751,11 +874,7 @@ pub async fn delete_media(
     media::delete_media(&state.db, &state.media_dir, id)?;
 
     // Fire webhooks
-    webhook::fire_webhooks(
-        &state.db,
-        "media.deleted",
-        serde_json::json!({ "id": id }),
-    );
+    webhook::fire_webhooks(&state.db, "media.deleted", serde_json::json!({ "id": id }));
 
     if is_htmx {
         Ok((
@@ -1047,14 +1166,15 @@ pub async fn create_user(
         return Ok(e);
     }
 
-    let render_with_error = |state: &Arc<AppState>, user: &User, error: &str| -> AppResult<Response> {
-        let users_list = auth::list_users(&state.db)?;
-        let mut ctx = make_admin_context(state, user);
-        ctx.insert("users", &users_list);
-        ctx.insert("error", error);
-        let html = state.templates.render("admin/users/index.html", &ctx)?;
-        Ok((StatusCode::BAD_REQUEST, Html(html)).into_response())
-    };
+    let render_with_error =
+        |state: &Arc<AppState>, user: &User, error: &str| -> AppResult<Response> {
+            let users_list = auth::list_users(&state.db)?;
+            let mut ctx = make_admin_context(state, user);
+            ctx.insert("users", &users_list);
+            ctx.insert("error", error);
+            let html = state.templates.render("admin/users/index.html", &ctx)?;
+            Ok((StatusCode::BAD_REQUEST, Html(html)).into_response())
+        };
 
     if let Err(e) = auth::validate_username(&form.username) {
         return render_with_error(&state, &user, &e.to_string());
@@ -1069,18 +1189,19 @@ pub async fn create_user(
     }
 
     let role: UserRole = form.role.parse().unwrap_or(UserRole::Author);
-    let new_user_id = match auth::create_user(&state.db, &form.username, &form.email, &form.password, role) {
-        Ok(id) => id,
-        Err(e) => {
-            let msg = e.to_string();
-            let display = if msg.contains("UNIQUE constraint failed") {
-                "A user with that username or email already exists".to_string()
-            } else {
-                "Could not create user. Please check your input and try again.".to_string()
-            };
-            return render_with_error(&state, &user, &display);
-        }
-    };
+    let new_user_id =
+        match auth::create_user(&state.db, &form.username, &form.email, &form.password, role) {
+            Ok(id) => id,
+            Err(e) => {
+                let msg = e.to_string();
+                let display = if msg.contains("UNIQUE constraint failed") {
+                    "A user with that username or email already exists".to_string()
+                } else {
+                    "Could not create user. Please check your input and try again.".to_string()
+                };
+                return render_with_error(&state, &user, &display);
+            }
+        };
 
     // Audit log
     audit_ctx.user_id = Some(user.id);
@@ -1113,14 +1234,15 @@ pub async fn update_user(
         return Ok(e);
     }
 
-    let render_with_error = |state: &Arc<AppState>, user: &User, error: &str| -> AppResult<Response> {
-        let users_list = auth::list_users(&state.db)?;
-        let mut ctx = make_admin_context(state, user);
-        ctx.insert("users", &users_list);
-        ctx.insert("error", error);
-        let html = state.templates.render("admin/users/index.html", &ctx)?;
-        Ok((StatusCode::BAD_REQUEST, Html(html)).into_response())
-    };
+    let render_with_error =
+        |state: &Arc<AppState>, user: &User, error: &str| -> AppResult<Response> {
+            let users_list = auth::list_users(&state.db)?;
+            let mut ctx = make_admin_context(state, user);
+            ctx.insert("users", &users_list);
+            ctx.insert("error", error);
+            let html = state.templates.render("admin/users/index.html", &ctx)?;
+            Ok((StatusCode::BAD_REQUEST, Html(html)).into_response())
+        };
 
     if let Some(ref email) = form.email {
         if let Err(e) = auth::validate_email(email) {
@@ -1128,7 +1250,22 @@ pub async fn update_user(
         }
     }
 
+    let target_user = match auth::get_user(&state.db, id)? {
+        Some(target) => target,
+        None => return render_with_error(&state, &user, "User not found"),
+    };
+
     let role = form.role.and_then(|r| r.parse().ok());
+    let new_role = role.unwrap_or(target_user.role);
+    let admin_count = auth::list_users(&state.db)?
+        .into_iter()
+        .filter(|u| u.role == UserRole::Admin)
+        .count();
+
+    if let Err(e) = require_allowed_role_change(&user, &target_user, new_role, admin_count) {
+        return Ok(e);
+    }
+
     if let Err(e) = auth::update_user(&state.db, id, form.email.as_deref(), role) {
         let msg = e.to_string();
         let display = if msg.contains("UNIQUE constraint failed") {
@@ -1161,16 +1298,21 @@ pub async fn delete_user(
     if let Some(ref target) = target_user {
         if target.role == UserRole::Admin {
             let all_users = auth::list_users(&state.db)?;
-            let admin_count = all_users.iter().filter(|u| u.role == UserRole::Admin).count();
+            let admin_count = all_users
+                .iter()
+                .filter(|u| u.role == UserRole::Admin)
+                .count();
             if admin_count <= 1 {
-                return Ok((StatusCode::BAD_REQUEST, "Cannot delete the last admin account").into_response());
+                return Ok((
+                    StatusCode::BAD_REQUEST,
+                    "Cannot delete the last admin account",
+                )
+                    .into_response());
             }
         }
     }
 
-    let deleted_username = target_user
-        .map(|u| u.username)
-        .unwrap_or_default();
+    let deleted_username = target_user.map(|u| u.username).unwrap_or_default();
 
     auth::delete_user(&state.db, id)?;
 
@@ -1410,6 +1552,15 @@ pub async fn analytics_content_stats(
         return Ok(e);
     }
 
+    let content = match content::get_content_by_id(&state.db, content_id)? {
+        Some(content) => content,
+        None => return Ok((StatusCode::NOT_FOUND, "Content not found").into_response()),
+    };
+
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
     if let Some(ref analytics) = state.analytics {
         let stats = analytics.get_content_stats(content_id)?;
         Ok(axum::Json(stats).into_response())
@@ -1458,6 +1609,10 @@ pub async fn post_versions(
         return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
     }
 
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
     let versions =
         crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
     let total = crate::services::versions::count_versions(&state.db, id)?;
@@ -1489,6 +1644,10 @@ pub async fn post_version_view(
 
     if content.content.content_type != ContentType::Post {
         return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
+    }
+
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
     }
 
     let version = crate::services::versions::get_version(&state.db, vid)?;
@@ -1528,6 +1687,10 @@ pub async fn post_version_restore(
         return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
     }
 
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
     crate::services::versions::restore_version(&state.db, id, vid, Some(user.id))?;
 
     Ok(Redirect::to(&format!("/admin/posts/{}/edit", id)).into_response())
@@ -1551,6 +1714,21 @@ pub async fn post_version_diff(
         return Ok((StatusCode::NOT_FOUND, "Not a post").into_response());
     }
 
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
+    let old_version = match crate::services::versions::get_version(&state.db, query.old) {
+        Ok(version) => version,
+        Err(_) => return Ok((StatusCode::NOT_FOUND, "Version not found").into_response()),
+    };
+    let new_version = match crate::services::versions::get_version(&state.db, query.new) {
+        Ok(version) => version,
+        Err(_) => return Ok((StatusCode::NOT_FOUND, "Version not found").into_response()),
+    };
+    if old_version.content_id != id || new_version.content_id != id {
+        return Ok((StatusCode::NOT_FOUND, "Version not found").into_response());
+    }
     let diff = crate::services::versions::diff_versions(&state.db, query.old, query.new)?;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -1606,9 +1784,8 @@ pub async fn audit_logs(
         return Ok(e);
     }
 
-    let page = params.page.unwrap_or(1).max(1);
     let per_page = 50usize;
-    let offset = (page - 1) * per_page;
+    let (page, offset) = admin_page_offset(params.page.unwrap_or(1), per_page);
 
     let filter = audit::AuditFilter::from(params);
     let logs = audit::list_logs(&state.db, &filter, per_page, offset)?;
@@ -1724,6 +1901,10 @@ pub async fn page_versions(
         return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
     }
 
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
     let versions =
         crate::services::versions::list_versions(&state.db, id, query.limit, query.offset)?;
     let total = crate::services::versions::count_versions(&state.db, id)?;
@@ -1755,6 +1936,10 @@ pub async fn page_version_view(
 
     if content.content.content_type != ContentType::Page {
         return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
+    }
+
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
     }
 
     let version = crate::services::versions::get_version(&state.db, vid)?;
@@ -1794,6 +1979,10 @@ pub async fn page_version_restore(
         return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
     }
 
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
     crate::services::versions::restore_version(&state.db, id, vid, Some(user.id))?;
 
     Ok(Redirect::to(&format!("/admin/pages/{}/edit", id)).into_response())
@@ -1817,6 +2006,21 @@ pub async fn page_version_diff(
         return Ok((StatusCode::NOT_FOUND, "Not a page").into_response());
     }
 
+    if let Err(e) = require_content_owner_or_admin(&user, &content) {
+        return Ok(e);
+    }
+
+    let old_version = match crate::services::versions::get_version(&state.db, query.old) {
+        Ok(version) => version,
+        Err(_) => return Ok((StatusCode::NOT_FOUND, "Version not found").into_response()),
+    };
+    let new_version = match crate::services::versions::get_version(&state.db, query.new) {
+        Ok(version) => version,
+        Err(_) => return Ok((StatusCode::NOT_FOUND, "Version not found").into_response()),
+    };
+    if old_version.content_id != id || new_version.content_id != id {
+        return Ok((StatusCode::NOT_FOUND, "Version not found").into_response());
+    }
     let diff = crate::services::versions::diff_versions(&state.db, query.old, query.new)?;
 
     let mut ctx = make_admin_context(&state, &user);
@@ -1843,8 +2047,13 @@ pub async fn generate_preview_token(
     }
 
     let item = content::get_content_by_id(&state.db, id)?;
-    if item.is_none() {
-        return Ok((StatusCode::NOT_FOUND, "Content not found").into_response());
+    let item = match item {
+        Some(item) => item,
+        None => return Ok((StatusCode::NOT_FOUND, "Content not found").into_response()),
+    };
+
+    if let Err(e) = require_content_owner_or_admin(&user, &item) {
+        return Ok(e);
     }
 
     let token = preview::generate_preview_token(&state.db, id)?;
@@ -1866,7 +2075,7 @@ pub async fn series_list(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
 ) -> AppResult<Response> {
-    if let Err(e) = require_author_or_admin(&user) {
+    if let Err(e) = require_admin(&user) {
         return Ok(e);
     }
 
@@ -1883,7 +2092,7 @@ pub async fn new_series(
     State(state): State<Arc<AppState>>,
     CurrentUser(user): CurrentUser,
 ) -> AppResult<Response> {
-    if let Err(e) = require_author_or_admin(&user) {
+    if let Err(e) = require_admin(&user) {
         return Ok(e);
     }
 
@@ -1913,7 +2122,7 @@ pub async fn create_series_handler(
     CurrentUser(user): CurrentUser,
     Form(form): Form<SeriesForm>,
 ) -> AppResult<Response> {
-    if let Err(e) = require_author_or_admin(&user) {
+    if let Err(e) = require_admin(&user) {
         return Ok(e);
     }
 
@@ -1941,7 +2150,7 @@ pub async fn edit_series(
     CurrentUser(user): CurrentUser,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
-    if let Err(e) = require_author_or_admin(&user) {
+    if let Err(e) = require_admin(&user) {
         return Ok(e);
     }
 
@@ -1949,11 +2158,9 @@ pub async fn edit_series(
     match s {
         Some(s) => {
             let items = series::list_series_items(&state.db, id)?;
-            let available_posts = content::list_content(&state.db, Some(ContentType::Post), None, 200, 0)?;
-            let series_with = crate::models::SeriesWithItems {
-                series: s,
-                items,
-            };
+            let available_posts =
+                content::list_content(&state.db, Some(ContentType::Post), None, 200, 0)?;
+            let series_with = crate::models::SeriesWithItems { series: s, items };
 
             let mut ctx = make_admin_context(&state, &user);
             ctx.insert("series", &series_with);
@@ -1973,7 +2180,7 @@ pub async fn update_series_handler(
     Path(id): Path<i64>,
     Form(form): Form<SeriesForm>,
 ) -> AppResult<Response> {
-    if let Err(e) = require_author_or_admin(&user) {
+    if let Err(e) = require_admin(&user) {
         return Ok(e);
     }
 
@@ -2023,7 +2230,7 @@ pub async fn delete_series_handler(
     HxRequest(is_htmx): HxRequest,
     Path(id): Path<i64>,
 ) -> AppResult<Response> {
-    if let Err(e) = require_author_or_admin(&user) {
+    if let Err(e) = require_admin(&user) {
         return Ok(e);
     }
 
@@ -2055,7 +2262,14 @@ pub async fn snippets(
         return Ok(e);
     }
 
-    let snippets = content::list_content(&state.db, Some(ContentType::Snippet), None, 100, 0)?;
+    let snippets = content::list_content_for_author(
+        &state.db,
+        Some(ContentType::Snippet),
+        None,
+        content_author_filter(&user),
+        100,
+        0,
+    )?;
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("snippets", &snippets);
@@ -2133,6 +2347,10 @@ pub async fn edit_snippet(
 
     match snippet {
         Some(s) if s.content.content_type == ContentType::Snippet => {
+            if let Err(e) = require_content_owner_or_admin(&user, &s) {
+                return Ok(e);
+            }
+
             let mut ctx = make_admin_context(&state, &user);
             ctx.insert("content", &s);
             ctx.insert("is_new", &false);
@@ -2153,6 +2371,16 @@ pub async fn update_snippet(
 ) -> AppResult<Response> {
     if let Err(e) = require_author_or_admin(&user) {
         return Ok(e);
+    }
+
+    let snippet = content::get_content_by_id(&state.db, id)?;
+    match snippet {
+        Some(ref s) if s.content.content_type == ContentType::Snippet => {
+            if let Err(e) = require_content_owner_or_admin(&user, s) {
+                return Ok(e);
+            }
+        }
+        _ => return Ok(StatusCode::NOT_FOUND.into_response()),
     }
 
     let input = UpdateContent {
@@ -2188,6 +2416,16 @@ pub async fn delete_snippet(
 ) -> AppResult<Response> {
     if let Err(e) = require_author_or_admin(&user) {
         return Ok(e);
+    }
+
+    let snippet = content::get_content_by_id(&state.db, id)?;
+    match snippet {
+        Some(ref s) if s.content.content_type == ContentType::Snippet => {
+            if let Err(e) = require_content_owner_or_admin(&user, s) {
+                return Ok(e);
+            }
+        }
+        _ => return Ok(StatusCode::NOT_FOUND.into_response()),
     }
 
     content::delete_content(&state.db, id)?;
@@ -2235,6 +2473,16 @@ pub async fn bulk_action(
 
     if ids.is_empty() {
         return Ok(Redirect::to("/admin/posts").into_response());
+    }
+
+    if user.role != UserRole::Admin {
+        for id in &ids {
+            if let Some(item) = content::get_content_by_id(&state.db, *id)? {
+                if let Err(e) = require_content_owner_or_admin(&user, &item) {
+                    return Ok(e);
+                }
+            }
+        }
     }
 
     let action_label = form.action.clone();
@@ -2372,8 +2620,10 @@ pub async fn create_token(
     let _ = audit::log(
         &state.db,
         &audit_ctx,
-        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Settings)
-            .metadata_value("detail", serde_json::json!(format!("Created API token: {}", form.name))),
+        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Settings).metadata_value(
+            "detail",
+            serde_json::json!(format!("Created API token: {}", form.name)),
+        ),
     );
 
     let tokens = api_token::list_tokens(&state.db).unwrap_or_default();
@@ -2403,8 +2653,10 @@ pub async fn revoke_token(
     let _ = audit::log(
         &state.db,
         &audit_ctx,
-        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Settings)
-            .metadata_value("detail", serde_json::json!(format!("Revoked API token ID: {}", id))),
+        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Settings).metadata_value(
+            "detail",
+            serde_json::json!(format!("Revoked API token ID: {}", id)),
+        ),
     );
 
     Ok(Redirect::to("/admin/tokens").into_response())
@@ -2488,8 +2740,10 @@ pub async fn create_webhook_handler(
     let _ = audit::log(
         &state.db,
         &audit_ctx,
-        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Settings)
-            .metadata_value("detail", serde_json::json!(format!("Created webhook: {}", form.name))),
+        AuditLogBuilder::new(AuditAction::Create, AuditCategory::Settings).metadata_value(
+            "detail",
+            serde_json::json!(format!("Created webhook: {}", form.name)),
+        ),
     );
 
     Ok(Redirect::to("/admin/webhooks").into_response())
@@ -2530,7 +2784,9 @@ pub async fn update_webhook_handler(
     let events = form.events_string();
     let active = form.active.is_some();
 
-    webhook::update_webhook(&state.db, id, &form.name, &form.url, secret, &events, active)?;
+    webhook::update_webhook(
+        &state.db, id, &form.name, &form.url, secret, &events, active,
+    )?;
 
     audit_ctx.user_id = Some(user.id);
     audit_ctx.username = Some(user.username.clone());
@@ -2538,8 +2794,10 @@ pub async fn update_webhook_handler(
     let _ = audit::log(
         &state.db,
         &audit_ctx,
-        AuditLogBuilder::new(AuditAction::Update, AuditCategory::Settings)
-            .metadata_value("detail", serde_json::json!(format!("Updated webhook: {}", form.name))),
+        AuditLogBuilder::new(AuditAction::Update, AuditCategory::Settings).metadata_value(
+            "detail",
+            serde_json::json!(format!("Updated webhook: {}", form.name)),
+        ),
     );
 
     Ok(Redirect::to("/admin/webhooks").into_response())
@@ -2563,8 +2821,10 @@ pub async fn delete_webhook_handler(
     let _ = audit::log(
         &state.db,
         &audit_ctx,
-        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Settings)
-            .metadata_value("detail", serde_json::json!(format!("Deleted webhook ID: {}", id))),
+        AuditLogBuilder::new(AuditAction::Delete, AuditCategory::Settings).metadata_value(
+            "detail",
+            serde_json::json!(format!("Deleted webhook ID: {}", id)),
+        ),
     );
 
     Ok(Redirect::to("/admin/webhooks").into_response())
@@ -2589,4 +2849,111 @@ pub async fn webhook_deliveries(
         .templates
         .render("admin/webhooks/deliveries.html", &ctx)?;
     Ok(Html(html).into_response())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        admin_page_offset, content_author_filter, require_allowed_role_change,
+        require_content_owner_or_admin, ContentWithTags, StatusCode, User, UserRole,
+    };
+    use crate::models::{Content, ContentStatus, ContentType};
+
+    fn test_user(id: i64, role: UserRole) -> User {
+        User {
+            id,
+            username: format!("user{}", id),
+            email: format!("user{}@example.com", id),
+            password_hash: "hash".to_string(),
+            role,
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-01T00:00:00Z".to_string(),
+        }
+    }
+
+    fn test_content(author_id: Option<i64>) -> ContentWithTags {
+        ContentWithTags {
+            content: Content {
+                id: 1,
+                slug: "test-post".to_string(),
+                title: "Test Post".to_string(),
+                content_type: ContentType::Post,
+                body_markdown: String::new(),
+                body_html: String::new(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Draft,
+                scheduled_at: None,
+                published_at: None,
+                author_id,
+                metadata: serde_json::json!({}),
+                created_at: "2024-01-01T00:00:00Z".to_string(),
+                updated_at: "2024-01-01T00:00:00Z".to_string(),
+            },
+            tags: vec![],
+            author: None,
+        }
+    }
+
+    #[test]
+    fn authors_can_only_manage_their_own_content() {
+        let author = test_user(1, UserRole::Author);
+        let own_content = test_content(Some(author.id));
+        let other_content = test_content(Some(99));
+
+        assert!(require_content_owner_or_admin(&author, &own_content).is_ok());
+        assert_eq!(
+            require_content_owner_or_admin(&author, &other_content)
+                .unwrap_err()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+
+    #[test]
+    fn admins_can_manage_any_content() {
+        let admin = test_user(1, UserRole::Admin);
+        let other_content = test_content(Some(99));
+
+        assert!(require_content_owner_or_admin(&admin, &other_content).is_ok());
+    }
+
+    #[test]
+    fn last_admin_cannot_be_demoted() {
+        let admin = test_user(1, UserRole::Admin);
+
+        assert_eq!(
+            require_allowed_role_change(&admin, &admin, UserRole::Author, 1)
+                .unwrap_err()
+                .status(),
+            StatusCode::BAD_REQUEST
+        );
+    }
+
+    #[test]
+    fn admin_can_demote_another_admin_when_one_remains() {
+        let current_admin = test_user(1, UserRole::Admin);
+        let target_admin = test_user(2, UserRole::Admin);
+
+        assert!(
+            require_allowed_role_change(&current_admin, &target_admin, UserRole::Author, 2).is_ok()
+        );
+    }
+
+    #[test]
+    fn author_filter_applies_only_to_authors() {
+        let author = test_user(7, UserRole::Author);
+        let admin = test_user(1, UserRole::Admin);
+
+        assert_eq!(content_author_filter(&author), Some(7));
+        assert_eq!(content_author_filter(&admin), None);
+    }
+
+    #[test]
+    fn admin_page_offset_clamps_huge_pages() {
+        let (page, offset) = admin_page_offset(usize::MAX, 25);
+
+        assert_eq!(page, 10_000);
+        assert_eq!(offset, (10_000 - 1) * 25);
+    }
 }

@@ -355,6 +355,10 @@ pub fn diff_versions(
     let old_version = get_version(db, old_version_id)?;
     let new_version = get_version(db, new_version_id)?;
 
+    if old_version.content_id != new_version.content_id {
+        anyhow::bail!("Versions do not belong to the same content");
+    }
+
     let title_changed = old_version.title != new_version.title;
     let slug_changed = old_version.slug != new_version.slug;
     let excerpt_changed = old_version.excerpt != new_version.excerpt;

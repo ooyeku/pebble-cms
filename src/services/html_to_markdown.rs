@@ -52,7 +52,12 @@ fn convert_headings(html: &str) -> String {
                 if let Some(end) = result[tag_end..].find(&close) {
                     let content = result[tag_end..tag_end + end].trim();
                     let replacement = format!("\n\n{} {}\n\n", prefix, content);
-                    result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + close.len()..]);
+                    result = format!(
+                        "{}{}{}",
+                        &result[..start],
+                        replacement,
+                        &result[tag_end + end + close.len()..]
+                    );
                 } else {
                     break;
                 }
@@ -73,7 +78,12 @@ fn convert_paragraphs(html: &str) -> String {
             if let Some(end) = result[tag_end..].find("</p>") {
                 let content = result[tag_end..tag_end + end].trim();
                 let replacement = format!("\n\n{}\n\n", content);
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + 4..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + 4..]
+                );
             } else {
                 break;
             }
@@ -91,9 +101,18 @@ fn convert_blockquotes(html: &str) -> String {
             let tag_end = start + gt + 1;
             if let Some(end) = result[tag_end..].find("</blockquote>") {
                 let content = result[tag_end..tag_end + end].trim();
-                let quoted = content.lines().map(|l| format!("> {}", l.trim())).collect::<Vec<_>>().join("\n");
+                let quoted = content
+                    .lines()
+                    .map(|l| format!("> {}", l.trim()))
+                    .collect::<Vec<_>>()
+                    .join("\n");
                 let replacement = format!("\n\n{}\n\n", quoted);
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + 13..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + 13..]
+                );
             } else {
                 break;
             }
@@ -114,7 +133,12 @@ fn convert_lists(html: &str) -> String {
             if let Some(end) = result[tag_end..].find("</li>") {
                 let content = result[tag_end..tag_end + end].trim();
                 let replacement = format!("\n- {}", content);
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + 5..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + 5..]
+                );
             } else {
                 break;
             }
@@ -133,7 +157,12 @@ fn convert_lists(html: &str) -> String {
                 if let Some(end) = result[tag_end..].find(&close) {
                     let content = &result[tag_end..tag_end + end];
                     let replacement = format!("\n{}\n", content);
-                    result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + close.len()..]);
+                    result = format!(
+                        "{}{}{}",
+                        &result[..start],
+                        replacement,
+                        &result[tag_end + end + close.len()..]
+                    );
                 } else {
                     break;
                 }
@@ -164,7 +193,12 @@ fn convert_code_blocks(html: &str) -> String {
                     content = content[..content.len() - 7].to_string();
                 }
                 let replacement = format!("\n\n```\n{}\n```\n\n", content.trim());
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + 6..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + 6..]
+                );
             } else {
                 break;
             }
@@ -197,7 +231,12 @@ fn convert_links(html: &str) -> String {
                 } else {
                     text.to_string()
                 };
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + 4..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + 4..]
+                );
             } else {
                 break;
             }
@@ -213,14 +252,21 @@ fn convert_images(html: &str) -> String {
     while let Some(start) = result.find("<img ") {
         // Find the end of the tag (could be /> or >)
         let search = &result[start..];
-        let end = search.find("/>").map(|p| p + 2)
+        let end = search
+            .find("/>")
+            .map(|p| p + 2)
             .or_else(|| search.find('>').map(|p| p + 1));
         if let Some(end_offset) = end {
             let tag_content = &result[start..start + end_offset];
             let src = extract_attr(tag_content, "src").unwrap_or_default();
             let alt = extract_attr(tag_content, "alt").unwrap_or_default();
             let replacement = format!("![{}]({})", alt, src);
-            result = format!("{}{}{}", &result[..start], replacement, &result[start + end_offset..]);
+            result = format!(
+                "{}{}{}",
+                &result[..start],
+                replacement,
+                &result[start + end_offset..]
+            );
         } else {
             break;
         }
@@ -238,7 +284,12 @@ fn convert_bold(html: &str) -> String {
             if let Some(end) = result[tag_end..].find(&close) {
                 let content = &result[tag_end..tag_end + end];
                 let replacement = format!("**{}**", content);
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + close.len()..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + close.len()..]
+                );
             } else {
                 break;
             }
@@ -257,7 +308,12 @@ fn convert_italic(html: &str) -> String {
             if let Some(end) = result[tag_end..].find(&close) {
                 let content = &result[tag_end..tag_end + end];
                 let replacement = format!("*{}*", content);
-                result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + close.len()..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..start],
+                    replacement,
+                    &result[tag_end + end + close.len()..]
+                );
             } else {
                 break;
             }
@@ -273,7 +329,12 @@ fn convert_inline_code(html: &str) -> String {
         if let Some(end) = result[tag_end..].find("</code>") {
             let content = &result[tag_end..tag_end + end];
             let replacement = format!("`{}`", content);
-            result = format!("{}{}{}", &result[..start], replacement, &result[tag_end + end + 7..]);
+            result = format!(
+                "{}{}{}",
+                &result[..start],
+                replacement,
+                &result[tag_end + end + 7..]
+            );
         } else {
             break;
         }

@@ -44,7 +44,14 @@ pub fn create_token(
     conn.execute(
         "INSERT INTO api_tokens (name, token_hash, prefix, permissions, created_by, expires_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        rusqlite::params![name, token_hash, prefix, permissions, created_by, expires_at],
+        rusqlite::params![
+            name,
+            token_hash,
+            prefix,
+            permissions,
+            created_by,
+            expires_at
+        ],
     )?;
 
     let id = conn.last_insert_rowid();

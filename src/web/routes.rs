@@ -19,19 +19,13 @@ pub fn public_routes() -> Router<Arc<AppState>> {
         .route("/series/:slug", get(handlers::public::series))
         .route("/feed.xml", get(handlers::public::rss_feed))
         .route("/feed.json", get(handlers::public::json_feed))
-        .route(
-            "/tags/:slug/feed.xml",
-            get(handlers::public::tag_rss_feed),
-        )
+        .route("/tags/:slug/feed.xml", get(handlers::public::tag_rss_feed))
         .route("/sitemap.xml", get(handlers::public::sitemap))
         .route("/media/:filename", get(handlers::public::serve_media))
         .route("/js/:filename", get(handlers::public::serve_js))
         .route("/robots.txt", get(handlers::public::robots_txt))
         .route("/health", get(handlers::public::health))
-        .route(
-            "/preview/:token",
-            get(handlers::public::draft_preview),
-        )
+        .route("/preview/:token", get(handlers::public::draft_preview))
 }
 
 pub fn admin_routes() -> Router<Arc<AppState>> {
@@ -136,10 +130,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
             "/admin/series",
             post(handlers::admin::create_series_handler),
         )
-        .route(
-            "/admin/series/:id/edit",
-            get(handlers::admin::edit_series),
-        )
+        .route("/admin/series/:id/edit", get(handlers::admin::edit_series))
         .route(
             "/admin/series/:id",
             post(handlers::admin::update_series_handler),
@@ -151,18 +142,12 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         // Snippet routes
         .route("/admin/snippets", get(handlers::admin::snippets))
         .route("/admin/snippets/new", get(handlers::admin::new_snippet))
-        .route(
-            "/admin/snippets",
-            post(handlers::admin::create_snippet),
-        )
+        .route("/admin/snippets", post(handlers::admin::create_snippet))
         .route(
             "/admin/snippets/:id/edit",
             get(handlers::admin::edit_snippet),
         )
-        .route(
-            "/admin/snippets/:id",
-            post(handlers::admin::update_snippet),
-        )
+        .route("/admin/snippets/:id", post(handlers::admin::update_snippet))
         .route(
             "/admin/snippets/:id/delete",
             post(handlers::admin::delete_snippet),

@@ -133,7 +133,11 @@ fn export_hugo(
     let posts = content::list_content(db, Some(ContentType::Post), status.clone(), 10000, 0)?;
     let pages = content::list_content(db, Some(ContentType::Page), status, 10000, 0)?;
 
-    tracing::info!("Exporting {} posts and {} pages (Hugo format)", posts.len(), pages.len());
+    tracing::info!(
+        "Exporting {} posts and {} pages (Hugo format)",
+        posts.len(),
+        pages.len()
+    );
 
     for post in posts {
         let full_content = content::get_content_by_id(db, post.id)?;
@@ -141,7 +145,10 @@ fn export_hugo(
             let filename = format!("{}.md", c.content.slug);
             let filepath = posts_dir.join(&filename);
 
-            let date = c.content.published_at.as_deref()
+            let date = c
+                .content
+                .published_at
+                .as_deref()
                 .or(Some(&c.content.created_at))
                 .unwrap_or("");
 
@@ -157,12 +164,19 @@ fn export_hugo(
             );
 
             if !tag_names.is_empty() {
-                let tags_str = tag_names.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ");
+                let tags_str = tag_names
+                    .iter()
+                    .map(|t| format!("\"{}\"", t))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 frontmatter.push_str(&format!("tags = [{}]\n", tags_str));
             }
 
             if let Some(ref excerpt) = c.content.excerpt {
-                frontmatter.push_str(&format!("description = \"{}\"\n", excerpt.replace('"', "\\\"")));
+                frontmatter.push_str(&format!(
+                    "description = \"{}\"\n",
+                    excerpt.replace('"', "\\\"")
+                ));
             }
 
             if let Some(ref img) = c.content.featured_image {
@@ -183,7 +197,10 @@ fn export_hugo(
             let filename = format!("{}.md", c.content.slug);
             let filepath = pages_dir.join(&filename);
 
-            let date = c.content.published_at.as_deref()
+            let date = c
+                .content
+                .published_at
+                .as_deref()
                 .or(Some(&c.content.created_at))
                 .unwrap_or("");
 
@@ -232,7 +249,11 @@ fn export_zola(
     let posts = content::list_content(db, Some(ContentType::Post), status.clone(), 10000, 0)?;
     let pages = content::list_content(db, Some(ContentType::Page), status, 10000, 0)?;
 
-    tracing::info!("Exporting {} posts and {} pages (Zola format)", posts.len(), pages.len());
+    tracing::info!(
+        "Exporting {} posts and {} pages (Zola format)",
+        posts.len(),
+        pages.len()
+    );
 
     for post in posts {
         let full_content = content::get_content_by_id(db, post.id)?;
@@ -240,7 +261,10 @@ fn export_zola(
             let filename = format!("{}.md", c.content.slug);
             let filepath = posts_dir.join(&filename);
 
-            let date = c.content.published_at.as_deref()
+            let date = c
+                .content
+                .published_at
+                .as_deref()
                 .or(Some(&c.content.created_at))
                 .unwrap_or("");
 
@@ -256,11 +280,18 @@ fn export_zola(
             );
 
             if let Some(ref excerpt) = c.content.excerpt {
-                frontmatter.push_str(&format!("description = \"{}\"\n", excerpt.replace('"', "\\\"")));
+                frontmatter.push_str(&format!(
+                    "description = \"{}\"\n",
+                    excerpt.replace('"', "\\\"")
+                ));
             }
 
             if !tag_names.is_empty() {
-                let tags_str = tag_names.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ");
+                let tags_str = tag_names
+                    .iter()
+                    .map(|t| format!("\"{}\"", t))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 frontmatter.push_str(&format!("\n[taxonomies]\ntags = [{}]\n", tags_str));
             }
 
@@ -282,7 +313,10 @@ fn export_zola(
             let filename = format!("{}.md", c.content.slug);
             let filepath = pages_dir.join(&filename);
 
-            let date = c.content.published_at.as_deref()
+            let date = c
+                .content
+                .published_at
+                .as_deref()
                 .or(Some(&c.content.created_at))
                 .unwrap_or("");
 

@@ -110,13 +110,21 @@ show_hero %}
 {% endif %} {% if total_pages is defined and total_pages > 1 %}
 <nav class="pagination" aria-label="Pagination">
     {% if page > 1 %}
+    {% if static_mode is defined and static_mode %}
+    <a href="{% if page - 1 == 1 %}/posts{% else %}/posts/page/{{ page - 1 }}{% endif %}" aria-label="Go to previous page">&larr; Newer</a>
+    {% else %}
     <a href="/posts?page={{ page - 1 }}" aria-label="Go to previous page">&larr; Newer</a>
+    {% endif %}
     {% else %}
     <span></span>
     {% endif %}
     <span class="page-info" aria-current="page">Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
+    {% if static_mode is defined and static_mode %}
+    <a href="/posts/page/{{ page + 1 }}" aria-label="Go to next page">Older &rarr;</a>
+    {% else %}
     <a href="/posts?page={{ page + 1 }}" aria-label="Go to next page">Older &rarr;</a>
+    {% endif %}
     {% else %}
     <span></span>
     {% endif %}

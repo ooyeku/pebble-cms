@@ -8,6 +8,8 @@ use axum::response::{IntoResponse, Json, Response};
 use serde::Deserialize;
 use std::sync::Arc;
 
+const MAX_API_PAGE: usize = 10_000;
+
 #[derive(Deserialize)]
 pub struct PaginationParams {
     pub page: Option<usize>,
@@ -21,13 +23,18 @@ fn paginate(
     default_size: usize,
     max_size: usize,
 ) -> (usize, usize, usize) {
-    let page = page.unwrap_or(1).max(1);
+    let page = page.unwrap_or(1).max(1).min(MAX_API_PAGE);
     let per_page = per_page.unwrap_or(default_size).min(max_size).max(1);
-    let offset = (page - 1) * per_page;
+    let offset = page.saturating_sub(1).saturating_mul(per_page);
     (page, per_page, offset)
 }
 
-fn json_envelope(data: serde_json::Value, total: i64, page: usize, per_page: usize) -> Json<serde_json::Value> {
+fn json_envelope(
+    data: serde_json::Value,
+    total: i64,
+    page: usize,
+    per_page: usize,
+) -> Json<serde_json::Value> {
     Json(serde_json::json!({
         "data": data,
         "meta": {
@@ -71,20 +78,45 @@ pub async fn list_posts(
             Ok(posts) => {
                 let total = posts.len() as i64;
                 let paginated: Vec<_> = posts.into_iter().skip(offset).take(per_page).collect();
-                json_envelope(serde_json::to_value(&paginated).unwrap_or_default(), total, page, per_page).into_response()
+                json_envelope(
+                    serde_json::to_value(&paginated).unwrap_or_default(),
+                    total,
+                    page,
+                    per_page,
+                )
+                .into_response()
             }
             Err(e) => {
                 tracing::error!("API list_posts by tag error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Internal server error"})),
+                )
+                    .into_response()
             }
         }
     } else {
-        let total = content::count_content(&state.db, Some(ContentType::Post), Some(ContentStatus::Published)).unwrap_or(0);
+        let total = content::count_content(
+            &state.db,
+            Some(ContentType::Post),
+            Some(ContentStatus::Published),
+        )
+        .unwrap_or(0);
         match content::list_published_content(&state.db, ContentType::Post, per_page, offset) {
-            Ok(posts) => json_envelope(serde_json::to_value(&posts).unwrap_or_default(), total, page, per_page).into_response(),
+            Ok(posts) => json_envelope(
+                serde_json::to_value(&posts).unwrap_or_default(),
+                total,
+                page,
+                per_page,
+            )
+            .into_response(),
             Err(e) => {
                 tracing::error!("API list_posts error: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": "Internal server error"})),
+                )
+                    .into_response()
             }
         }
     }
@@ -97,13 +129,20 @@ pub async fn get_post(
     Path(slug): Path<String>,
 ) -> Response {
     match content::get_content_by_slug(&state.db, &slug) {
-        Ok(Some(post)) if post.content.content_type == ContentType::Post && post.content.status == ContentStatus::Published => {
+        Ok(Some(post))
+            if post.content.content_type == ContentType::Post
+                && post.content.status == ContentStatus::Published =>
+        {
             json_single(serde_json::to_value(&post).unwrap_or_default()).into_response()
         }
         Ok(_) => not_found("Post not found"),
         Err(e) => {
             tracing::error!("API get_post error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -120,13 +159,28 @@ pub async fn list_pages(
     drop(config);
 
     let (page, per_page, offset) = paginate(params.page, params.per_page, default_size, max_size);
-    let total = content::count_content(&state.db, Some(ContentType::Page), Some(ContentStatus::Published)).unwrap_or(0);
+    let total = content::count_content(
+        &state.db,
+        Some(ContentType::Page),
+        Some(ContentStatus::Published),
+    )
+    .unwrap_or(0);
 
     match content::list_published_content(&state.db, ContentType::Page, per_page, offset) {
-        Ok(pages) => json_envelope(serde_json::to_value(&pages).unwrap_or_default(), total, page, per_page).into_response(),
+        Ok(pages) => json_envelope(
+            serde_json::to_value(&pages).unwrap_or_default(),
+            total,
+            page,
+            per_page,
+        )
+        .into_response(),
         Err(e) => {
             tracing::error!("API list_pages error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -138,30 +192,44 @@ pub async fn get_page(
     Path(slug): Path<String>,
 ) -> Response {
     match content::get_content_by_slug(&state.db, &slug) {
-        Ok(Some(page)) if page.content.content_type == ContentType::Page && page.content.status == ContentStatus::Published => {
+        Ok(Some(page))
+            if page.content.content_type == ContentType::Page
+                && page.content.status == ContentStatus::Published =>
+        {
             json_single(serde_json::to_value(&page).unwrap_or_default()).into_response()
         }
         Ok(_) => not_found("Page not found"),
         Err(e) => {
             tracing::error!("API get_page error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
 
 /// GET /api/v1/tags
-pub async fn list_tags(
-    State(state): State<Arc<AppState>>,
-    _auth: ApiTokenAuth,
-) -> Response {
+pub async fn list_tags(State(state): State<Arc<AppState>>, _auth: ApiTokenAuth) -> Response {
     match tags::list_tags_with_counts(&state.db) {
         Ok(tags) => {
             let total = tags.len() as i64;
-            json_envelope(serde_json::to_value(&tags).unwrap_or_default(), total, 1, total as usize).into_response()
+            json_envelope(
+                serde_json::to_value(&tags).unwrap_or_default(),
+                total,
+                1,
+                total as usize,
+            )
+            .into_response()
         }
         Err(e) => {
             tracing::error!("API list_tags error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -184,7 +252,11 @@ pub async fn get_tag(
         Ok(None) => not_found("Tag not found"),
         Err(e) => {
             tracing::error!("API get_tag error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -204,12 +276,20 @@ pub async fn list_series_api(
     let total = series::count_series(&state.db).unwrap_or(0);
 
     match series::list_series(&state.db, per_page, offset) {
-        Ok(all_series) => {
-            json_envelope(serde_json::to_value(&all_series).unwrap_or_default(), total, page, per_page).into_response()
-        }
+        Ok(all_series) => json_envelope(
+            serde_json::to_value(&all_series).unwrap_or_default(),
+            total,
+            page,
+            per_page,
+        )
+        .into_response(),
         Err(e) => {
             tracing::error!("API list_series error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -225,7 +305,11 @@ pub async fn get_series_api(
         Ok(None) => not_found("Series not found"),
         Err(e) => {
             tracing::error!("API get_series error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -245,21 +329,26 @@ pub async fn list_media_api(
     let total = media::count_media(&state.db).unwrap_or(0);
 
     match media::list_media(&state.db, per_page, offset) {
-        Ok(media_list) => {
-            json_envelope(serde_json::to_value(&media_list).unwrap_or_default(), total, page, per_page).into_response()
-        }
+        Ok(media_list) => json_envelope(
+            serde_json::to_value(&media_list).unwrap_or_default(),
+            total,
+            page,
+            per_page,
+        )
+        .into_response(),
         Err(e) => {
             tracing::error!("API list_media error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Internal server error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            )
+                .into_response()
         }
     }
 }
 
 /// GET /api/v1/site
-pub async fn site_info(
-    State(state): State<Arc<AppState>>,
-    _auth: ApiTokenAuth,
-) -> Response {
+pub async fn site_info(State(state): State<Arc<AppState>>, _auth: ApiTokenAuth) -> Response {
     let config = state.config();
     let data = serde_json::json!({
         "title": config.site.title,
@@ -271,4 +360,18 @@ pub async fn site_info(
     });
     drop(config);
     json_single(data).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{paginate, MAX_API_PAGE};
+
+    #[test]
+    fn paginate_clamps_huge_pages_before_offset_math() {
+        let (page, per_page, offset) = paginate(Some(usize::MAX), Some(100), 20, 50);
+
+        assert_eq!(page, MAX_API_PAGE);
+        assert_eq!(per_page, 50);
+        assert_eq!(offset, (MAX_API_PAGE - 1) * 50);
+    }
 }

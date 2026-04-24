@@ -54,11 +54,41 @@ pub fn list_tags_with_counts(db: &Database) -> Result<Vec<TagWithCount>> {
     let conn = db.get()?;
     let mut stmt = conn.prepare(
         r#"
-        SELECT t.id, t.name, t.slug, t.created_at, COUNT(ct.content_id) as count
+        SELECT t.id, t.name, t.slug, t.created_at, COUNT(c.id) as count
         FROM tags t
         LEFT JOIN content_tags ct ON t.id = ct.tag_id
         LEFT JOIN content c ON ct.content_id = c.id AND c.status = 'published'
         GROUP BY t.id
+        ORDER BY count DESC, t.name
+        "#,
+    )?;
+    let tags = stmt
+        .query_map([], |row| {
+            Ok(TagWithCount {
+                tag: Tag {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    slug: row.get(2)?,
+                    created_at: row.get(3)?,
+                },
+                count: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(tags)
+}
+
+pub fn list_published_tags_with_counts(db: &Database) -> Result<Vec<TagWithCount>> {
+    let conn = db.get()?;
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT t.id, t.name, t.slug, t.created_at, COUNT(c.id) as count
+        FROM tags t
+        JOIN content_tags ct ON t.id = ct.tag_id
+        JOIN content c ON ct.content_id = c.id
+        WHERE c.status = 'published'
+        GROUP BY t.id
+        HAVING count > 0
         ORDER BY count DESC, t.name
         "#,
     )?;

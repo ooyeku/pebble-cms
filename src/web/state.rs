@@ -288,17 +288,39 @@ impl AppState {
         {
             doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
         }
-        if let Some(ref v) = new_config.theme.custom.primary_color {
-            doc["theme"]["custom"]["primary_color"] = toml_edit::value(v);
-        }
-        if let Some(ref v) = new_config.theme.custom.accent_color {
-            doc["theme"]["custom"]["accent_color"] = toml_edit::value(v);
-        }
-        if let Some(ref v) = new_config.theme.custom.background_color {
-            doc["theme"]["custom"]["background_color"] = toml_edit::value(v);
-        }
-        if let Some(ref v) = new_config.theme.custom.text_color {
-            doc["theme"]["custom"]["text_color"] = toml_edit::value(v);
+        if let Some(custom_table) = doc["theme"]["custom"].as_table_mut() {
+            match new_config.theme.custom.primary_color.as_deref() {
+                Some(v) => {
+                    custom_table["primary_color"] = toml_edit::value(v);
+                }
+                None => {
+                    custom_table.remove("primary_color");
+                }
+            }
+            match new_config.theme.custom.accent_color.as_deref() {
+                Some(v) => {
+                    custom_table["accent_color"] = toml_edit::value(v);
+                }
+                None => {
+                    custom_table.remove("accent_color");
+                }
+            }
+            match new_config.theme.custom.background_color.as_deref() {
+                Some(v) => {
+                    custom_table["background_color"] = toml_edit::value(v);
+                }
+                None => {
+                    custom_table.remove("background_color");
+                }
+            }
+            match new_config.theme.custom.text_color.as_deref() {
+                Some(v) => {
+                    custom_table["text_color"] = toml_edit::value(v);
+                }
+                None => {
+                    custom_table.remove("text_color");
+                }
+            }
         }
 
         // Handle homepage section
@@ -527,4 +549,100 @@ fn filesizeformat_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
     };
 
     Ok(Value::String(formatted))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppState;
+    use crate::{Config, Database};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_path(name: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{}_{}", name, unique))
+    }
+
+    #[test]
+    fn update_config_removes_cleared_theme_values_from_disk() {
+        let config_path = unique_path("pebble_state_config.toml");
+        let upload_dir = unique_path("pebble_state_uploads");
+        fs::create_dir_all(&upload_dir).unwrap();
+
+        let config_content = format!(
+            r##"
+[site]
+title = "Test Site"
+description = "A test site"
+url = "http://localhost:3000"
+
+[server]
+host = "127.0.0.1"
+port = 3000
+
+[database]
+path = "data/pebble.db"
+
+[content]
+posts_per_page = 10
+excerpt_length = 200
+
+[media]
+upload_dir = "{}"
+
+[theme]
+name = "default"
+
+[theme.custom]
+primary_color = "#112233"
+accent_color = "#445566"
+background_color = "#ffffff"
+text_color = "#000000"
+
+[auth]
+session_lifetime = "7d"
+"##,
+            upload_dir.display()
+        );
+        fs::write(&config_path, config_content).unwrap();
+
+        let config = Config::load(&config_path).unwrap();
+        let db = Database::open_memory(
+            config_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("state_test_config_clear"),
+        )
+        .unwrap();
+        db.migrate().unwrap();
+
+        let state = AppState::new(config.clone(), config_path.clone(), db, false).unwrap();
+
+        let mut new_config = config;
+        new_config.theme.custom.primary_color = None;
+        new_config.theme.custom.accent_color = None;
+        new_config.theme.custom.background_color = None;
+        new_config.theme.custom.text_color = None;
+
+        state.update_config(new_config).unwrap();
+
+        let reloaded = Config::load(&config_path).unwrap();
+        assert!(reloaded.theme.custom.primary_color.is_none());
+        assert!(reloaded.theme.custom.accent_color.is_none());
+        assert!(reloaded.theme.custom.background_color.is_none());
+        assert!(reloaded.theme.custom.text_color.is_none());
+
+        let saved = fs::read_to_string(&config_path).unwrap();
+        assert!(!saved.contains("primary_color"));
+        assert!(!saved.contains("accent_color"));
+        assert!(!saved.contains("background_color"));
+        assert!(!saved.contains("text_color"));
+
+        fs::remove_file(&config_path).ok();
+        fs::remove_dir_all(&upload_dir).ok();
+    }
 }

@@ -264,7 +264,10 @@ pub async fn run(config_path: &Path) -> Result<()> {
                         results.push(CheckResult {
                             name: "Media directory".into(),
                             status: CheckStatus::Warn,
-                            detail: format!("{} exists but is not writable", config.media.upload_dir),
+                            detail: format!(
+                                "{} exists but is not writable",
+                                config.media.upload_dir
+                            ),
                         });
                     }
                 }
@@ -279,7 +282,10 @@ pub async fn run(config_path: &Path) -> Result<()> {
             results.push(CheckResult {
                 name: "Media directory".into(),
                 status: CheckStatus::Warn,
-                detail: format!("{} does not exist. It will be created on first upload", config.media.upload_dir),
+                detail: format!(
+                    "{} does not exist. It will be created on first upload",
+                    config.media.upload_dir
+                ),
             });
         }
     }
@@ -343,7 +349,10 @@ pub async fn run(config_path: &Path) -> Result<()> {
                 results.push(CheckResult {
                     name: format!("Port ({})", config.server.port),
                     status: CheckStatus::Warn,
-                    detail: format!("{} is in use. Use --port to specify an alternative", test_addr),
+                    detail: format!(
+                        "{} is in use. Use --port to specify an alternative",
+                        test_addr
+                    ),
                 });
             }
         }

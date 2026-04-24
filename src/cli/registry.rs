@@ -88,7 +88,11 @@ fn init_site(
     fs::create_dir_all(&db_dir)?;
 
     let db_path = db_dir.join("pebble.db");
-    let db = crate::Database::open(db_path.to_str().ok_or_else(|| anyhow::anyhow!("Database path contains invalid UTF-8"))?)?;
+    let db = crate::Database::open(
+        db_path
+            .to_str()
+            .ok_or_else(|| anyhow::anyhow!("Database path contains invalid UTF-8"))?,
+    )?;
     crate::Database::migrate(&db)?;
 
     let media_dir = site_path.join("data").join("media");
@@ -173,11 +177,7 @@ fn list_sites(registry: &Registry) {
             .port
             .map(|p| p.to_string())
             .unwrap_or_else(|| "-".to_string());
-        let title = if site.title.len() > 28 {
-            format!("{}...", &site.title[..25])
-        } else {
-            site.title.clone()
-        };
+        let title = truncate_title_for_list(&site.title);
         println!(
             "{:<20} {:<12} {:<8} {:<30}",
             site.name,
@@ -185,6 +185,14 @@ fn list_sites(registry: &Registry) {
             port_str,
             title
         );
+    }
+}
+
+fn truncate_title_for_list(title: &str) -> String {
+    if title.chars().count() > 28 {
+        format!("{}...", title.chars().take(25).collect::<String>())
+    } else {
+        title.to_string()
     }
 }
 
@@ -251,7 +259,9 @@ async fn serve_site(
     let child = Command::new(&exe)
         .args([
             "--config",
-            config_path.to_str().ok_or_else(|| anyhow::anyhow!("Config path contains invalid UTF-8"))?,
+            config_path
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("Config path contains invalid UTF-8"))?,
             mode,
             "-H",
             host,
@@ -762,4 +772,18 @@ fn edit_site_config(config_path: &std::path::Path) -> Result<()> {
     println!("Config saved and validated successfully");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_title_for_list;
+
+    #[test]
+    fn truncate_title_for_list_is_unicode_safe() {
+        let title = "Pebble ".to_string() + &"🚀".repeat(30);
+        let truncated = truncate_title_for_list(&title);
+
+        assert!(truncated.ends_with("..."));
+        assert_eq!(truncated.chars().count(), 28);
+    }
 }

@@ -36,7 +36,14 @@ async fn main() -> anyhow::Result<()> {
             include_media,
             format,
         }) => {
-            pebble_cms::cli::export::run(&cli.config, &output, include_drafts, include_media, &format).await?;
+            pebble_cms::cli::export::run(
+                &cli.config,
+                &output,
+                include_drafts,
+                include_media,
+                &format,
+            )
+            .await?;
         }
         Some(Commands::Import { path, overwrite }) => {
             pebble_cms::cli::import::run(&cli.config, &path, overwrite).await?;

@@ -29,10 +29,7 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
     let xml_content = std::fs::read_to_string(file)?;
     let items = parse_wxr(&xml_content)?;
 
-    tracing::info!(
-        "Found {} items in WordPress export",
-        items.len()
-    );
+    tracing::info!("Found {} items in WordPress export", items.len());
 
     let mut posts_imported = 0;
     let mut pages_imported = 0;
@@ -169,7 +166,8 @@ fn parse_wxr(xml: &str) -> Result<Vec<WxrItem>> {
 
                     // Check for tag categories
                     if tag_name == "category" {
-                        let domain = e.attributes()
+                        let domain = e
+                            .attributes()
                             .filter_map(|a| a.ok())
                             .find(|a| a.key.as_ref() == b"domain")
                             .and_then(|a| String::from_utf8(a.value.to_vec()).ok());

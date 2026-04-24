@@ -37,8 +37,7 @@ pub fn update_series(
 ) -> Result<()> {
     let conn = db.get()?;
 
-    let current = get_series_by_id(db, id)?
-        .ok_or_else(|| anyhow::anyhow!("Series not found"))?;
+    let current = get_series_by_id(db, id)?.ok_or_else(|| anyhow::anyhow!("Series not found"))?;
 
     let title = title.unwrap_or(&current.title);
     let slug = slug.filter(|s| !s.is_empty()).unwrap_or(&current.slug);
@@ -84,8 +83,7 @@ pub fn get_series_by_slug(db: &Database, slug: &str) -> Result<Option<Series>> {
 
 pub fn count_series(db: &Database) -> Result<i64> {
     let conn = db.get()?;
-    let count: i64 =
-        conn.query_row("SELECT COUNT(*) FROM content_series", [], |row| row.get(0))?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM content_series", [], |row| row.get(0))?;
     Ok(count)
 }
 
@@ -98,6 +96,33 @@ pub fn get_series_with_items(db: &Database, slug: &str) -> Result<Option<SeriesW
         }
         None => Ok(None),
     }
+}
+
+pub fn list_published_series_items(db: &Database, series_id: i64) -> Result<Vec<SeriesItem>> {
+    let conn = db.get()?;
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT si.id, si.content_id, si.position, c.title, c.slug, c.status
+        FROM series_items si
+        JOIN content c ON si.content_id = c.id
+        WHERE si.series_id = ? AND c.status = 'published'
+        ORDER BY si.position ASC
+        "#,
+    )?;
+    let items = stmt
+        .query_map([series_id], |row| {
+            Ok(SeriesItem {
+                id: row.get(0)?,
+                content_id: row.get(1)?,
+                position: row.get(2)?,
+                title: row.get(3)?,
+                slug: row.get(4)?,
+                status: row.get(5)?,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+    Ok(items)
 }
 
 pub fn list_series(db: &Database, limit: usize, offset: usize) -> Result<Vec<SeriesWithItems>> {
@@ -199,45 +224,42 @@ pub fn get_series_navigation(db: &Database, content_id: i64) -> Result<Option<Se
         )
         .ok();
 
-    let (series_id, position) = match row {
+    let (series_id, _position) = match row {
         Some(r) => r,
         None => return Ok(None),
     };
 
-    let series = get_series_by_id(db, series_id)?
-        .ok_or_else(|| anyhow::anyhow!("Series not found"))?;
+    let series =
+        get_series_by_id(db, series_id)?.ok_or_else(|| anyhow::anyhow!("Series not found"))?;
 
     // Only show navigation for published series
     if series.status != "published" {
         return Ok(None);
     }
 
-    let items = list_series_items(db, series_id)?;
+    let items = list_published_series_items(db, series_id)?;
     let total_items = items.len();
+    let Some(current_index) = items.iter().position(|i| i.content_id == content_id) else {
+        return Ok(None);
+    };
 
-    let prev = items
-        .iter()
-        .filter(|i| i.position < position && i.status == "published")
-        .max_by_key(|i| i.position)
-        .map(|i| SeriesNavItem {
+    let prev = current_index.checked_sub(1).and_then(|idx| {
+        items.get(idx).map(|i| SeriesNavItem {
             title: i.title.clone(),
             slug: i.slug.clone(),
-            position: i.position,
-        });
+            position: idx as i32,
+        })
+    });
 
-    let next = items
-        .iter()
-        .filter(|i| i.position > position && i.status == "published")
-        .min_by_key(|i| i.position)
-        .map(|i| SeriesNavItem {
-            title: i.title.clone(),
-            slug: i.slug.clone(),
-            position: i.position,
-        });
+    let next = items.get(current_index + 1).map(|i| SeriesNavItem {
+        title: i.title.clone(),
+        slug: i.slug.clone(),
+        position: (current_index + 1) as i32,
+    });
 
     Ok(Some(SeriesNavigation {
         series,
-        current_position: position,
+        current_position: current_index as i32,
         total_items,
         prev,
         next,
@@ -257,7 +279,7 @@ pub fn list_published_series(db: &Database) -> Result<Vec<SeriesWithItems>> {
 
     let mut result = Vec::new();
     for s in series_list {
-        let items = list_series_items(db, s.id)?;
+        let items = list_published_series_items(db, s.id)?;
         result.push(SeriesWithItems { series: s, items });
     }
     Ok(result)
@@ -265,9 +287,8 @@ pub fn list_published_series(db: &Database) -> Result<Vec<SeriesWithItems>> {
 
 fn renumber_positions(db: &Database, series_id: i64) -> Result<()> {
     let conn = db.get()?;
-    let mut stmt = conn.prepare(
-        "SELECT content_id FROM series_items WHERE series_id = ? ORDER BY position ASC",
-    )?;
+    let mut stmt = conn
+        .prepare("SELECT content_id FROM series_items WHERE series_id = ? ORDER BY position ASC")?;
     let ids: Vec<i64> = stmt
         .query_map([series_id], |row| row.get(0))?
         .filter_map(|r| r.ok())
@@ -296,8 +317,8 @@ fn row_to_series(row: &rusqlite::Row) -> rusqlite::Result<Series> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{ContentStatus, ContentType, CreateContent};
     use crate::services::content;
-    use crate::models::{ContentType, ContentStatus, CreateContent};
     use std::sync::atomic::{AtomicU64, Ordering};
 
     static TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -312,7 +333,14 @@ mod tests {
     #[test]
     fn test_create_and_list_series() {
         let db = setup_test_db();
-        let id = create_series(&db, "Rust Tutorial", None, "A multi-part series", "published").unwrap();
+        let id = create_series(
+            &db,
+            "Rust Tutorial",
+            None,
+            "A multi-part series",
+            "published",
+        )
+        .unwrap();
         assert!(id > 0);
 
         let series = get_series_by_id(&db, id).unwrap().unwrap();
@@ -348,7 +376,8 @@ mod tests {
                 },
                 None,
                 200,
-            ).unwrap();
+            )
+            .unwrap();
             post_ids.push(id);
         }
 
@@ -405,7 +434,8 @@ mod tests {
                 },
                 None,
                 200,
-            ).unwrap();
+            )
+            .unwrap();
             ids.push(id);
             add_item_to_series(&db, series_id, id).unwrap();
         }
@@ -422,5 +452,131 @@ mod tests {
         let items = list_series_items(&db, series_id).unwrap();
         assert_eq!(items[0].content_id, ids[2]);
         assert_eq!(items[1].content_id, ids[0]);
+    }
+
+    #[test]
+    fn test_list_published_series_items_excludes_unpublished_posts() {
+        let db = setup_test_db();
+        let series_id = create_series(&db, "Visible Parts", None, "", "published").unwrap();
+
+        let published_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Published Part".to_string(),
+                slug: Some("published-part".to_string()),
+                content_type: ContentType::Post,
+                body_markdown: "Visible".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        let draft_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Draft Part".to_string(),
+                slug: Some("draft-part".to_string()),
+                content_type: ContentType::Post,
+                body_markdown: "Hidden".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Draft,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        add_item_to_series(&db, series_id, published_id).unwrap();
+        add_item_to_series(&db, series_id, draft_id).unwrap();
+
+        let items = list_published_series_items(&db, series_id).unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].content_id, published_id);
+    }
+
+    #[test]
+    fn test_series_navigation_counts_only_published_items() {
+        let db = setup_test_db();
+        let series_id = create_series(&db, "Mixed Visibility", None, "", "published").unwrap();
+
+        let draft_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Draft Prelude".to_string(),
+                slug: Some("draft-prelude".to_string()),
+                content_type: ContentType::Post,
+                body_markdown: "Hidden".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Draft,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        let first_published_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Visible Part One".to_string(),
+                slug: Some("visible-part-one".to_string()),
+                content_type: ContentType::Post,
+                body_markdown: "Visible".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        let second_published_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Visible Part Two".to_string(),
+                slug: Some("visible-part-two".to_string()),
+                content_type: ContentType::Post,
+                body_markdown: "Visible".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        add_item_to_series(&db, series_id, draft_id).unwrap();
+        add_item_to_series(&db, series_id, first_published_id).unwrap();
+        add_item_to_series(&db, series_id, second_published_id).unwrap();
+
+        let nav = get_series_navigation(&db, first_published_id)
+            .unwrap()
+            .expect("Published item should have navigation");
+        assert_eq!(nav.current_position, 0);
+        assert_eq!(nav.total_items, 2);
+        assert!(nav.prev.is_none());
+        assert_eq!(nav.next.unwrap().slug, "visible-part-two");
     }
 }

@@ -1,5 +1,5 @@
 use pebble_cms::models::{ContentStatus, ContentType, UserRole};
-use pebble_cms::services::{auth, content, database, search, settings, tags};
+use pebble_cms::services::{auth, content, database, search, settings, tags, versions};
 use pebble_cms::Database;
 
 fn create_test_db() -> Database {
@@ -297,6 +297,84 @@ mod tag_integration_tests {
     }
 
     #[test]
+    fn test_list_tags_with_counts_excludes_unpublished_content() {
+        let db = create_test_db();
+
+        let input = pebble_cms::models::CreateContent {
+            title: "Draft Tagged Post".to_string(),
+            slug: None,
+            content_type: ContentType::Post,
+            body_markdown: "Hidden content".to_string(),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Draft,
+            scheduled_at: None,
+            tags: vec!["Hidden".to_string()],
+            metadata: None,
+        };
+        content::create_content(&db, input, None, 200).unwrap();
+
+        let tags_with_counts = tags::list_tags_with_counts(&db).unwrap();
+        let hidden = tags_with_counts
+            .into_iter()
+            .find(|tag| tag.tag.slug == "hidden")
+            .expect("Tag should exist");
+        assert_eq!(hidden.count, 0);
+    }
+
+    #[test]
+    fn test_public_tag_counts_hide_draft_only_tags() {
+        let db = create_test_db();
+
+        content::create_content(
+            &db,
+            pebble_cms::models::CreateContent {
+                title: "Draft Tagged Post".to_string(),
+                slug: None,
+                content_type: ContentType::Post,
+                body_markdown: "Hidden content".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Draft,
+                scheduled_at: None,
+                tags: vec!["Hidden".to_string()],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        content::create_content(
+            &db,
+            pebble_cms::models::CreateContent {
+                title: "Published Tagged Post".to_string(),
+                slug: None,
+                content_type: ContentType::Post,
+                body_markdown: "Visible content".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec!["Visible".to_string()],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        let tags_with_counts = tags::list_published_tags_with_counts(&db).unwrap();
+        assert!(tags_with_counts.iter().all(|tag| tag.tag.slug != "hidden"));
+
+        let visible = tags_with_counts
+            .iter()
+            .find(|tag| tag.tag.slug == "visible")
+            .expect("Published tag should be listed");
+        assert_eq!(visible.count, 1);
+    }
+
+    #[test]
     fn test_update_tag() {
         let db = create_test_db();
 
@@ -467,6 +545,51 @@ mod content_integration_tests {
             content::count_content(&db, Some(ContentType::Post), Some(ContentStatus::Published))
                 .unwrap();
         assert_eq!(published_count, 1);
+    }
+
+    #[test]
+    fn test_list_content_for_author_filters_rows() {
+        let db = create_test_db();
+
+        let author_one = auth::create_user(
+            &db,
+            "author1",
+            "author1@example.com",
+            TEST_PASSWORD,
+            UserRole::Author,
+        )
+        .unwrap();
+        let author_two = auth::create_user(
+            &db,
+            "author2",
+            "author2@example.com",
+            TEST_PASSWORD,
+            UserRole::Author,
+        )
+        .unwrap();
+
+        let author_one_post = create_test_post("Author One Post");
+        content::create_content(&db, author_one_post, Some(author_one), 200).unwrap();
+
+        let author_two_post = create_test_post("Author Two Post");
+        content::create_content(&db, author_two_post, Some(author_two), 200).unwrap();
+
+        let author_posts = content::list_content_for_author(
+            &db,
+            Some(ContentType::Post),
+            None,
+            Some(author_one),
+            10,
+            0,
+        )
+        .unwrap();
+        assert_eq!(author_posts.len(), 1);
+        assert_eq!(author_posts[0].title, "Author One Post");
+
+        let count =
+            content::count_content_for_author(&db, Some(ContentType::Post), None, Some(author_one))
+                .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[test]
@@ -678,6 +801,76 @@ mod content_integration_tests {
         assert_eq!(page.content.metadata["custom_html"], "<div>Hello</div>");
         assert_eq!(page.content.metadata["meta_title"], "Custom Title");
     }
+
+    #[test]
+    fn test_update_content_can_clear_metadata_fields() {
+        let db = create_test_db();
+
+        let custom_metadata = serde_json::json!({
+            "use_custom_code": "only",
+            "custom_html": "<script>custom()</script>",
+            "custom_css": ".page { color: red; }",
+            "custom_js": "alert('old')",
+            "meta_title": "Old Meta Title",
+            "canonical_url": "https://example.com/old"
+        });
+
+        let content_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Clearable Metadata".to_string(),
+                slug: None,
+                content_type: ContentType::Page,
+                body_markdown: "Page body".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: Some(custom_metadata),
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        content::update_content(
+            &db,
+            content_id,
+            pebble_cms::models::UpdateContent {
+                title: None,
+                slug: None,
+                body_markdown: None,
+                excerpt: None,
+                featured_image: None,
+                status: None,
+                scheduled_at: None,
+                tags: None,
+                metadata: Some(serde_json::json!({
+                    "use_custom_code": null,
+                    "custom_html": null,
+                    "custom_css": null,
+                    "custom_js": null,
+                    "meta_title": null,
+                    "canonical_url": null
+                })),
+            },
+            200,
+            None,
+            50,
+        )
+        .unwrap();
+
+        let page = content::get_content_by_id(&db, content_id)
+            .unwrap()
+            .expect("Content should exist");
+        assert_eq!(page.content.metadata["use_custom_code"], "none");
+        assert_eq!(page.content.metadata["custom_html"], "");
+        assert_eq!(page.content.metadata["custom_css"], "");
+        assert_eq!(page.content.metadata["custom_js"], "");
+        assert!(page.content.metadata.get("meta_title").is_none());
+        assert!(page.content.metadata.get("canonical_url").is_none());
+    }
 }
 
 mod settings_integration_tests {
@@ -888,6 +1081,163 @@ mod search_integration_tests {
         // Search with multiple terms (OR logic)
         let results = search::search_content(&db, "javascript web", 10).unwrap();
         assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn test_search_punctuation_only_returns_empty_results() {
+        let db = create_test_db();
+        let results = search::search_content(&db, "!!! ???", 10).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_excludes_published_snippets() {
+        let db = create_test_db();
+
+        content::create_content(
+            &db,
+            CreateContent {
+                title: "Reusable Snippet".to_string(),
+                slug: None,
+                content_type: ContentType::Snippet,
+                body_markdown: "SnippetOnlyKeyword".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+        search::rebuild_fts_index(&db).unwrap();
+
+        let results = search::search_content(&db, "SnippetOnlyKeyword", 10).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_search_indexes_tag_changes_immediately() {
+        let db = create_test_db();
+
+        let content_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Tagged Search Post".to_string(),
+                slug: None,
+                content_type: ContentType::Post,
+                body_markdown: "Body without tag words".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec!["FreshTag".to_string()],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        let results = search::search_content(&db, "FreshTag", 10).unwrap();
+        assert_eq!(results.len(), 1);
+
+        content::update_content(
+            &db,
+            content_id,
+            pebble_cms::models::UpdateContent {
+                title: None,
+                slug: None,
+                body_markdown: None,
+                excerpt: None,
+                featured_image: None,
+                status: None,
+                scheduled_at: None,
+                tags: Some(vec!["RenamedTag".to_string()]),
+                metadata: None,
+            },
+            200,
+            None,
+            50,
+        )
+        .unwrap();
+
+        assert!(search::search_content(&db, "FreshTag", 10)
+            .unwrap()
+            .is_empty());
+        let renamed_results = search::search_content(&db, "RenamedTag", 10).unwrap();
+        assert_eq!(renamed_results.len(), 1);
+    }
+}
+
+mod version_integration_tests {
+    use super::*;
+    use pebble_cms::models::{CreateContent, UpdateContent};
+
+    fn create_post(title: &str) -> CreateContent {
+        CreateContent {
+            title: title.to_string(),
+            slug: None,
+            content_type: ContentType::Post,
+            body_markdown: format!("Original body for {}", title),
+            excerpt: None,
+            featured_image: None,
+            status: ContentStatus::Draft,
+            scheduled_at: None,
+            tags: vec![],
+            metadata: None,
+        }
+    }
+
+    #[test]
+    fn test_diff_versions_rejects_unrelated_content() {
+        let db = create_test_db();
+
+        let first_id = content::create_content(&db, create_post("First"), None, 200).unwrap();
+        let second_id = content::create_content(&db, create_post("Second"), None, 200).unwrap();
+
+        content::update_content(
+            &db,
+            first_id,
+            UpdateContent {
+                title: Some("First Updated".to_string()),
+                ..Default::default()
+            },
+            200,
+            None,
+            50,
+        )
+        .unwrap();
+
+        content::update_content(
+            &db,
+            second_id,
+            UpdateContent {
+                title: Some("Second Updated".to_string()),
+                ..Default::default()
+            },
+            200,
+            None,
+            50,
+        )
+        .unwrap();
+
+        let first_version_id = versions::list_versions(&db, first_id, 10, 0)
+            .unwrap()
+            .into_iter()
+            .next()
+            .expect("First version should exist")
+            .id;
+        let second_version_id = versions::list_versions(&db, second_id, 10, 0)
+            .unwrap()
+            .into_iter()
+            .next()
+            .expect("Second version should exist")
+            .id;
+
+        assert!(versions::diff_versions(&db, first_version_id, second_version_id).is_err());
     }
 }
 

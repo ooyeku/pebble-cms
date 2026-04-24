@@ -627,6 +627,12 @@ session_lifetime = "7d"
             let query = build_fts_query("hello    world");
             assert_eq!(query, "\"hello\"* OR \"world\"*");
         }
+
+        #[test]
+        fn test_build_fts_query_punctuation_only() {
+            let query = build_fts_query("!!! ???");
+            assert_eq!(query, "");
+        }
     }
 
     mod media_service_tests {

@@ -72,7 +72,10 @@ pub async fn serve(
         ))
         .layer(middleware::from_fn(security::apply_security_headers))
         .layer(CompressionLayer::new())
-        .layer(TimeoutLayer::with_status_code(axum::http::StatusCode::GATEWAY_TIMEOUT, std::time::Duration::from_secs(30)))
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::GATEWAY_TIMEOUT,
+            std::time::Duration::from_secs(30),
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
@@ -119,7 +122,10 @@ pub async fn serve_production(
         ))
         .layer(middleware::from_fn(security::apply_security_headers))
         .layer(CompressionLayer::new())
-        .layer(TimeoutLayer::with_status_code(axum::http::StatusCode::GATEWAY_TIMEOUT, std::time::Duration::from_secs(30)))
+        .layer(TimeoutLayer::with_status_code(
+            axum::http::StatusCode::GATEWAY_TIMEOUT,
+            std::time::Duration::from_secs(30),
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

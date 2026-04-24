@@ -8,10 +8,6 @@ use std::path::Path;
 use std::sync::Arc;
 use tera::Context;
 
-/// Maximum number of content items to fetch for static site generation.
-/// This is intentionally high to ensure all content is included in the build.
-const MAX_BUILD_CONTENT: usize = 10000;
-
 pub async fn run(config_path: &Path, output_dir: &Path, base_url: Option<String>) -> Result<()> {
     let config = Config::load(config_path)?;
     let db = crate::Database::open(&config.database.path)?;
@@ -48,6 +44,7 @@ fn make_context(state: &AppState) -> Context {
     ctx.insert("theme", &config.theme);
     ctx.insert("homepage_config", &config.homepage);
     ctx.insert("production_mode", &true);
+    ctx.insert("static_mode", &true);
     ctx.insert("user", &None::<()>);
     if config.theme.custom.has_customizations() {
         ctx.insert("theme_custom_css", &config.theme.custom.to_css_variables());
@@ -105,8 +102,7 @@ fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<(
 }
 
 fn build_posts(state: &AppState, output_dir: &Path) -> Result<()> {
-    let posts =
-        content::list_published_content(&state.db, ContentType::Post, MAX_BUILD_CONTENT, 0)?;
+    let posts = content::list_all_published_content(&state.db, ContentType::Post)?;
     let posts_dir = output_dir.join("posts");
     fs::create_dir_all(&posts_dir)?;
 
@@ -126,8 +122,7 @@ fn build_posts(state: &AppState, output_dir: &Path) -> Result<()> {
 }
 
 fn build_pages(state: &AppState, output_dir: &Path) -> Result<()> {
-    let pages =
-        content::list_published_content(&state.db, ContentType::Page, MAX_BUILD_CONTENT, 0)?;
+    let pages = content::list_all_published_content(&state.db, ContentType::Page)?;
 
     for page in &pages {
         let mut ctx = make_context(state);
@@ -135,7 +130,7 @@ fn build_pages(state: &AppState, output_dir: &Path) -> Result<()> {
 
         let html = state.templates.render("public/page.html", &ctx)?;
 
-        let page_dir = output_dir.join(&page.content.slug);
+        let page_dir = output_dir.join("pages").join(&page.content.slug);
         fs::create_dir_all(&page_dir)?;
         fs::write(page_dir.join("index.html"), html)?;
     }
@@ -148,7 +143,7 @@ fn build_tags(state: &AppState, output_dir: &Path) -> Result<()> {
     let tags_dir = output_dir.join("tags");
     fs::create_dir_all(&tags_dir)?;
 
-    let all_tags = tags::list_tags_with_counts(&state.db)?;
+    let all_tags = tags::list_published_tags_with_counts(&state.db)?;
 
     let mut ctx = make_context(state);
     ctx.insert("tags", &all_tags);
@@ -176,8 +171,7 @@ fn build_search(state: &AppState, output_dir: &Path) -> Result<()> {
     let search_dir = output_dir.join("search");
     fs::create_dir_all(&search_dir)?;
 
-    let posts =
-        content::list_published_content(&state.db, ContentType::Post, MAX_BUILD_CONTENT, 0)?;
+    let posts = content::list_all_published_content(&state.db, ContentType::Post)?;
 
     let search_index: Vec<serde_json::Value> = posts
         .iter()
@@ -214,14 +208,11 @@ fn generate_static_search_page(state: &AppState) -> Result<String> {
 <script>
 (function() {
     let searchIndex = null;
-    const form = document.querySelector('.search-form');
+    const form = document.querySelector('#search-form');
+    if (!form) return;
     const input = form.querySelector('input[name="q"]');
-    const resultsSection = document.querySelector('.post-list') || document.createElement('section');
-
-    if (!document.querySelector('.post-list')) {
-        resultsSection.className = 'post-list';
-        form.after(resultsSection);
-    }
+    const resultsSection = document.querySelector('#search-results');
+    if (!input || !resultsSection) return;
 
     fetch('/search/index.json')
         .then(r => r.json())
@@ -254,19 +245,26 @@ fn generate_static_search_page(state: &AppState) -> Result<String> {
         );
 
         if (results.length === 0) {
-            resultsSection.innerHTML = '<p style="color: var(--text-muted);">No results found for "' + query + '"</p><div class="empty-state"><p>Try a different search term.</p></div>';
+            resultsSection.innerHTML = '<div class="results-header" role="status"><span class="results-count">0 results for </span><span class="results-query">"' + escapeHtml(query) + '"</span></div><div class="empty-state"><p>Try a different search term.</p></div>';
             return;
         }
 
-        let html = '<p style="color: var(--text-muted); margin-bottom: 1.5rem;">' + results.length + ' result' + (results.length !== 1 ? 's' : '') + ' for "' + query + '"</p>';
+        let html = '<div class="results-header" role="status"><span class="results-count">' + results.length + ' result' + (results.length !== 1 ? 's' : '') + ' for </span><span class="results-query">"' + escapeHtml(query) + '"</span></div><div class="results-list">';
         results.forEach(post => {
-            html += '<article class="post-card"><h2><a href="/posts/' + post.slug + '">' + post.title + '</a></h2>';
+            html += '<article class="search-result search-result--post"><a href="/posts/' + encodeURIComponent(post.slug) + '" class="result-link"><span class="result-type">post</span><h2 class="result-title">' + escapeHtml(post.title) + '</h2>';
             if (post.excerpt) {
-                html += '<p class="post-excerpt">' + post.excerpt + '</p>';
+                html += '<p class="result-excerpt">' + escapeHtml(post.excerpt) + '</p>';
             }
-            html += '</article>';
+            html += '</a></article>';
         });
+        html += '</div>';
         resultsSection.innerHTML = html;
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function(ch) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+        });
     }
 })();
 </script>
@@ -322,7 +320,7 @@ fn generate_rss(
             site_url,
             post.content.slug,
             pub_date,
-            excerpt
+            cdata_escape(excerpt)
         ));
     }
 
@@ -387,8 +385,7 @@ fn generate_sitemap(state: &AppState, site_url: &str) -> Result<String> {
         site_url
     ));
 
-    let posts =
-        content::list_published_content(&state.db, ContentType::Post, MAX_BUILD_CONTENT, 0)?;
+    let posts = content::list_all_published_content(&state.db, ContentType::Post)?;
     for post in posts {
         urls.push_str(&format!(
             "<url><loc>{}/posts/{}</loc><lastmod>{}</lastmod><changefreq>weekly</changefreq></url>\n",
@@ -398,11 +395,10 @@ fn generate_sitemap(state: &AppState, site_url: &str) -> Result<String> {
         ));
     }
 
-    let pages =
-        content::list_published_content(&state.db, ContentType::Page, MAX_BUILD_CONTENT, 0)?;
+    let pages = content::list_all_published_content(&state.db, ContentType::Page)?;
     for page in pages {
         urls.push_str(&format!(
-            "<url><loc>{}/{}</loc><lastmod>{}</lastmod><changefreq>monthly</changefreq></url>\n",
+            "<url><loc>{}/pages/{}</loc><lastmod>{}</lastmod><changefreq>monthly</changefreq></url>\n",
             site_url,
             page.content.slug,
             page.content
@@ -413,7 +409,7 @@ fn generate_sitemap(state: &AppState, site_url: &str) -> Result<String> {
         ));
     }
 
-    let all_tags = tags::list_tags_with_counts(&state.db)?;
+    let all_tags = tags::list_published_tags_with_counts(&state.db)?;
     urls.push_str(&format!(
         "<url><loc>{}/tags</loc><changefreq>weekly</changefreq></url>\n",
         site_url
@@ -465,4 +461,21 @@ fn xml_escape(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
+}
+
+fn cdata_escape(s: &str) -> String {
+    s.replace("]]>", "]]]]><![CDATA[>")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::cdata_escape;
+
+    #[test]
+    fn cdata_escape_splits_cdata_terminators() {
+        assert_eq!(
+            cdata_escape("excerpt ]]> tail"),
+            "excerpt ]]]]><![CDATA[> tail"
+        );
+    }
 }

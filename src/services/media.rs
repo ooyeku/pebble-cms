@@ -2,6 +2,8 @@ use crate::models::Media;
 use crate::services::image as img_service;
 use crate::Database;
 use anyhow::{bail, Result};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::path::Path;
 use uuid::Uuid;
 
@@ -19,6 +21,23 @@ pub const ALLOWED_MIME_TYPES: &[&str] = &[
     "audio/ogg",
 ];
 
+static SVG_NUMERIC_ENTITY: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"&#(x[0-9a-fA-F]+|\d+);?").expect("valid SVG entity regex"));
+static SVG_DANGEROUS_TAG: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"<\s*/?\s*(script|foreignobject|iframe|object|embed|link|meta|base)\b")
+        .expect("valid SVG tag regex")
+});
+static SVG_EVENT_ATTR: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\s+on[a-z0-9_-]+\s*=").expect("valid SVG event regex"));
+static SVG_DANGEROUS_URI: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"\b(href|xlink:href|src)\s*=\s*['"]?\s*(javascript|vbscript|data)\s*:"#)
+        .expect("valid SVG URI regex")
+});
+static SVG_DANGEROUS_CSS_URL: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"url\s*\(\s*['"]?\s*(javascript|vbscript|data)\s*:"#)
+        .expect("valid SVG CSS URL regex")
+});
+
 fn detect_mime_type(data: &[u8], claimed_mime: &str) -> Option<String> {
     if let Some(kind) = infer::get(data) {
         return Some(kind.mime_type().to_string());
@@ -34,32 +53,45 @@ fn detect_mime_type(data: &[u8], claimed_mime: &str) -> Option<String> {
     None
 }
 
+fn normalize_svg_for_checks(content: &str) -> String {
+    let decoded = SVG_NUMERIC_ENTITY
+        .replace_all(content, |caps: &regex::Captures| {
+            let raw = &caps[1];
+            let code = raw
+                .strip_prefix('x')
+                .or_else(|| raw.strip_prefix('X'))
+                .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+                .or_else(|| raw.parse::<u32>().ok());
+
+            code.and_then(char::from_u32)
+                .map(|ch| ch.to_string())
+                .unwrap_or_else(|| caps[0].to_string())
+        })
+        .to_string();
+
+    decoded
+        .to_lowercase()
+        .replace("&colon;", ":")
+        .replace("&tab;", "\t")
+        .replace("&newline;", "\n")
+        .replace("&#x09;", "\t")
+        .replace("&#x0a;", "\n")
+        .replace("&#x0d;", "\r")
+}
+
 fn sanitize_svg(data: &[u8]) -> Result<Vec<u8>> {
-    let content = String::from_utf8_lossy(data);
+    let content = std::str::from_utf8(data)?;
+    let normalized = normalize_svg_for_checks(content);
 
-    let dangerous_patterns = [
-        "<script",
-        "javascript:",
-        "onload=",
-        "onerror=",
-        "onclick=",
-        "onmouseover=",
-        "onfocus=",
-        "onblur=",
-        "onchange=",
-        "onsubmit=",
-        "eval(",
-        "expression(",
-        "url(data:",
-        "xlink:href=\"javascript",
-        "xlink:href='javascript",
-    ];
-
-    let lower_content = content.to_lowercase();
-    for pattern in dangerous_patterns {
-        if lower_content.contains(pattern) {
-            bail!("SVG contains potentially dangerous content: {}", pattern);
-        }
+    if SVG_DANGEROUS_TAG.is_match(&normalized)
+        || SVG_EVENT_ATTR.is_match(&normalized)
+        || SVG_DANGEROUS_URI.is_match(&normalized)
+        || SVG_DANGEROUS_CSS_URL.is_match(&normalized)
+        || normalized.contains("<?xml-stylesheet")
+        || normalized.contains("expression(")
+        || normalized.contains("-moz-binding")
+    {
+        bail!("SVG contains potentially dangerous content");
     }
 
     Ok(data.to_vec())
@@ -145,16 +177,11 @@ pub fn upload_media(
                     }
 
                     // Generate responsive srcset variants (400w, 800w, 1200w, 1600w)
-                    if let Ok(variants) =
-                        img_service::generate_srcset_variants(&optimized.original)
+                    if let Ok(variants) = img_service::generate_srcset_variants(&optimized.original)
                     {
                         for variant in variants {
-                            let variant_name =
-                                format!("{}{}.webp", base_uuid, variant.suffix);
-                            let _ = std::fs::write(
-                                upload_dir.join(&variant_name),
-                                &variant.data,
-                            );
+                            let variant_name = format!("{}{}.webp", base_uuid, variant.suffix);
+                            let _ = std::fs::write(upload_dir.join(&variant_name), &variant.data);
                         }
                     }
 
@@ -280,10 +307,7 @@ pub fn delete_media(db: &Database, upload_dir: &Path, id: i64) -> Result<()> {
         .rsplit_once('.')
         .map(|(n, _)| n)
         .unwrap_or(&filename);
-    let thumb_path = upload_dir.join(format!("{}-thumb.webp", base_name));
-    if thumb_path.exists() {
-        std::fs::remove_file(thumb_path)?;
-    }
+    remove_generated_derivatives(upload_dir, base_name)?;
 
     conn.execute("DELETE FROM media WHERE id = ?", [id])?;
     Ok(())
@@ -293,4 +317,115 @@ pub fn update_media_alt(db: &Database, id: i64, alt_text: &str) -> Result<()> {
     let conn = db.get()?;
     conn.execute("UPDATE media SET alt_text = ? WHERE id = ?", (alt_text, id))?;
     Ok(())
+}
+
+fn remove_generated_derivatives(upload_dir: &Path, base_name: &str) -> Result<()> {
+    let derivative_prefix = format!("{}-", base_name);
+    let entries = match std::fs::read_dir(upload_dir) {
+        Ok(entries) => entries,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err.into()),
+    };
+
+    for entry in entries {
+        let entry = entry?;
+        let Some(file_name) = entry.file_name().to_str().map(str::to_string) else {
+            continue;
+        };
+
+        if file_name.starts_with(&derivative_prefix) && file_name.ends_with(".webp") {
+            let path = entry.path();
+            if path.is_file() {
+                std::fs::remove_file(path)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{count_media, delete_media, sanitize_svg, upload_media};
+    use crate::Database;
+    use image::{DynamicImage, ImageFormat};
+    use std::io::Cursor;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_name(prefix: &str) -> String {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        format!("{}_{}", prefix, unique)
+    }
+
+    #[test]
+    fn delete_media_removes_generated_variants() {
+        let db = Database::open_memory(&unique_name("media_delete_variants")).unwrap();
+        db.migrate().unwrap();
+
+        let upload_dir = std::env::temp_dir().join(unique_name("media_uploads"));
+        std::fs::create_dir_all(&upload_dir).unwrap();
+
+        let image = DynamicImage::new_rgba8(800, 600);
+        let mut buffer = Cursor::new(Vec::new());
+        image.write_to(&mut buffer, ImageFormat::Png).unwrap();
+        let data = buffer.into_inner();
+
+        let media =
+            upload_media(&db, &upload_dir, "example.png", "image/png", &data, None).unwrap();
+
+        let base_name = media
+            .filename
+            .rsplit_once('.')
+            .map(|(name, _)| name.to_string())
+            .unwrap();
+
+        let derivative_count_before = std::fs::read_dir(&upload_dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter_map(|entry| entry.file_name().into_string().ok())
+            .filter(|name| name.starts_with(&format!("{}-", base_name)) && name.ends_with(".webp"))
+            .count();
+        assert!(derivative_count_before > 0);
+
+        delete_media(&db, &upload_dir, media.id).unwrap();
+
+        let derivative_count_after = std::fs::read_dir(&upload_dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .filter_map(|entry| entry.file_name().into_string().ok())
+            .filter(|name| name.starts_with(&format!("{}-", base_name)) && name.ends_with(".webp"))
+            .count();
+        assert_eq!(derivative_count_after, 0);
+
+        std::fs::remove_dir_all(&upload_dir).ok();
+    }
+
+    #[test]
+    fn sanitize_svg_rejects_obfuscated_script_vectors() {
+        assert!(sanitize_svg(br#"<svg onload = "alert(1)"></svg>"#).is_err());
+        assert!(sanitize_svg(br#"<svg><a href="java&#x73;cript:alert(1)">x</a></svg>"#).is_err());
+    }
+
+    #[test]
+    fn delete_media_removes_row_when_upload_dir_is_missing() {
+        let db = Database::open_memory(&unique_name("media_delete_missing_dir")).unwrap();
+        db.migrate().unwrap();
+        let upload_dir = std::env::temp_dir().join(unique_name("missing_media_uploads"));
+
+        let conn = db.get().unwrap();
+        conn.execute(
+            "INSERT INTO media (filename, original_name, mime_type, size_bytes) VALUES (?1, ?2, ?3, ?4)",
+            ("stale.pdf", "stale.pdf", "application/pdf", 12_i64),
+        )
+        .unwrap();
+        let media_id = conn.last_insert_rowid();
+        drop(conn);
+
+        assert!(!upload_dir.exists());
+        delete_media(&db, &upload_dir, media_id).unwrap();
+        assert_eq!(count_media(&db).unwrap(), 0);
+    }
 }

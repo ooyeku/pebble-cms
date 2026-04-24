@@ -172,9 +172,21 @@ impl CustomThemeOptions {
 
 impl ThemeConfig {
     pub const AVAILABLE_THEMES: [&'static str; 15] = [
-        "default", "minimal", "magazine", "brutalist", "neon",
-        "serif", "ocean", "midnight", "botanical", "monochrome",
-        "coral", "terminal", "nordic", "sunset", "typewriter",
+        "default",
+        "minimal",
+        "magazine",
+        "brutalist",
+        "neon",
+        "serif",
+        "ocean",
+        "midnight",
+        "botanical",
+        "monochrome",
+        "coral",
+        "terminal",
+        "nordic",
+        "sunset",
+        "typewriter",
     ];
 
     pub fn validate(&self) -> Result<()> {

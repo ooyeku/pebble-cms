@@ -39,6 +39,10 @@ fn clamp_page(page: usize) -> usize {
     page.max(1).min(MAX_PAGE)
 }
 
+fn truncate_query(query: &str, max_chars: usize) -> String {
+    query.chars().take(max_chars).collect()
+}
+
 pub async fn index(
     State(state): State<Arc<AppState>>,
     OptionalUser(user): OptionalUser,
@@ -148,7 +152,7 @@ pub async fn tags_page(
     State(state): State<Arc<AppState>>,
     OptionalUser(user): OptionalUser,
 ) -> AppResult<Html<String>> {
-    let tags_list = tags::list_tags_with_counts(&state.db)?;
+    let tags_list = tags::list_published_tags_with_counts(&state.db)?;
 
     let mut ctx = make_context(&state, &user);
     ctx.insert("tags", &tags_list);
@@ -174,6 +178,11 @@ pub async fn tag(
     match tag {
         Some(t) => {
             let posts = tags::get_posts_by_tag(&state.db, &slug)?;
+            if posts.is_empty() {
+                let ctx = make_context(&state, &user);
+                let html = state.templates.render("public/404.html", &ctx)?;
+                return Ok((StatusCode::NOT_FOUND, Html(html)).into_response());
+            }
 
             let mut ctx = make_context(&state, &user);
             ctx.insert("tag", &t);
@@ -203,8 +212,8 @@ pub async fn search(
     let results = match &query.q {
         Some(q) if !q.is_empty() => {
             // Limit query length to prevent expensive FTS queries
-            let q = &q[..q.len().min(200)];
-            search::search_content(&state.db, q, 50)?
+            let q = truncate_query(q, 200);
+            search::search_content(&state.db, &q, 50)?
         }
         _ => vec![],
     };
@@ -242,7 +251,7 @@ pub async fn rss_feed(State(state): State<Arc<AppState>>) -> AppResult<Response>
             html_escape(&post.content.title),
             site.url,
             post.content.slug,
-            post.content.excerpt.as_deref().unwrap_or(""),
+            cdata_escape(post.content.excerpt.as_deref().unwrap_or("")),
             pub_date,
             site.url,
             post.content.slug
@@ -381,9 +390,9 @@ pub async fn json_feed(State(state): State<Arc<AppState>>) -> AppResult<Response
 }
 
 pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> {
-    let posts = content::list_published_content(&state.db, ContentType::Post, 1000, 0)?;
-    let pages = content::list_published_content(&state.db, ContentType::Page, 100, 0)?;
-    let tags_list = tags::list_tags_with_counts(&state.db)?;
+    let posts = content::list_all_published_content(&state.db, ContentType::Post)?;
+    let pages = content::list_all_published_content(&state.db, ContentType::Page)?;
+    let tags_list = tags::list_published_tags_with_counts(&state.db)?;
     let config = state.config();
     let site = &config.site;
 
@@ -422,10 +431,7 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
     <priority>0.8</priority>{}
   </url>
 "#,
-            site.url,
-            post.content.slug,
-            post.content.updated_at,
-            image_tag
+            site.url, post.content.slug, post.content.updated_at, image_tag
         ));
     }
 
@@ -438,9 +444,7 @@ pub async fn sitemap(State(state): State<Arc<AppState>>) -> AppResult<Response> 
     <priority>0.6</priority>
   </url>
 "#,
-            site.url,
-            page.content.slug,
-            page.content.updated_at
+            site.url, page.content.slug, page.content.updated_at
         ));
     }
 
@@ -485,11 +489,8 @@ pub async fn series(
 
     match s {
         Some(s) if s.status == "published" => {
-            let items = series::list_series_items(&state.db, s.id)?;
-            let series_with = crate::models::SeriesWithItems {
-                series: s,
-                items,
-            };
+            let items = series::list_published_series_items(&state.db, s.id)?;
+            let series_with = crate::models::SeriesWithItems { series: s, items };
 
             let mut ctx = make_context(&state, &user);
             ctx.insert("series", &series_with);
@@ -502,6 +503,26 @@ pub async fn series(
             let html = state.templates.render("public/404.html", &ctx)?;
             Ok((StatusCode::NOT_FOUND, Html(html)).into_response())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{cdata_escape, truncate_query};
+
+    #[test]
+    fn truncate_query_preserves_utf8_boundaries() {
+        let input = "😀".repeat(250);
+        let truncated = truncate_query(&input, 200);
+        assert_eq!(truncated.chars().count(), 200);
+    }
+
+    #[test]
+    fn cdata_escape_splits_cdata_terminators() {
+        assert_eq!(
+            cdata_escape("safe ]]> unsafe"),
+            "safe ]]]]><![CDATA[> unsafe"
+        );
     }
 }
 
@@ -518,6 +539,9 @@ pub async fn tag_rss_feed(
     };
 
     let posts = tags::get_posts_by_tag(&state.db, &slug)?;
+    if posts.is_empty() {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    }
     let config = state.config();
     let site = &config.site;
 
@@ -542,7 +566,7 @@ pub async fn tag_rss_feed(
             html_escape(&post.content.title),
             site.url,
             post.content.slug,
-            post.content.excerpt.as_deref().unwrap_or(""),
+            cdata_escape(post.content.excerpt.as_deref().unwrap_or("")),
             pub_date,
             site.url,
             post.content.slug,
@@ -589,6 +613,10 @@ fn html_escape(s: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+fn cdata_escape(s: &str) -> String {
+    s.replace("]]>", "]]]]><![CDATA[>")
 }
 
 /// Convert an ISO 8601 / SQLite datetime string to RFC 822 format for RSS.

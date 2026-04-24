@@ -8,6 +8,7 @@ use crate::Database;
 use anyhow::{bail, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
+use rusqlite::types::Value;
 
 static SNIPPET_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r#"\[snippet\s+slug="([^"]+)"\]"#).expect("Invalid snippet regex pattern")
@@ -141,6 +142,7 @@ pub fn create_content(
 
     let content_id = tx.last_insert_rowid();
 
+    let has_tags = !input.tags.is_empty();
     for tag_name in input.tags {
         let tag_slug = generate_slug(&tag_name);
         tx.execute(
@@ -151,6 +153,10 @@ pub fn create_content(
             "INSERT OR IGNORE INTO content_tags (content_id, tag_id) SELECT ?, id FROM tags WHERE slug = ?",
             (content_id, &tag_slug),
         )?;
+    }
+
+    if has_tags {
+        rebuild_content_fts(&tx)?;
     }
 
     tx.commit()?;
@@ -222,7 +228,11 @@ pub fn update_content(
     if let Some(input_meta) = input.metadata {
         if let (Some(base), Some(updates)) = (metadata.as_object_mut(), input_meta.as_object()) {
             for (key, value) in updates {
-                base.insert(key.clone(), value.clone());
+                if value.is_null() {
+                    base.remove(key);
+                } else {
+                    base.insert(key.clone(), value.clone());
+                }
             }
         }
     }
@@ -297,6 +307,7 @@ pub fn update_content(
                 (id, &tag_slug),
             )?;
         }
+        rebuild_content_fts(&tx)?;
     }
 
     tx.commit()?;
@@ -308,6 +319,25 @@ pub fn update_content(
         }
     }
 
+    Ok(())
+}
+
+fn rebuild_content_fts(conn: &rusqlite::Connection) -> Result<()> {
+    conn.execute(
+        "INSERT INTO content_fts(content_fts) VALUES('delete-all')",
+        [],
+    )?;
+    conn.execute(
+        r#"
+        INSERT INTO content_fts(rowid, title, body, tags)
+        SELECT c.id, c.title, c.body_markdown,
+               COALESCE((SELECT GROUP_CONCAT(t.name, ' ') FROM tags t
+                         JOIN content_tags ct ON t.id = ct.tag_id
+                         WHERE ct.content_id = c.id), '')
+        FROM content c
+        "#,
+        [],
+    )?;
     Ok(())
 }
 
@@ -357,35 +387,45 @@ pub fn list_content(
     limit: usize,
     offset: usize,
 ) -> Result<Vec<ContentSummary>> {
+    list_content_for_author(db, content_type, status, None, limit, offset)
+}
+
+pub fn list_content_for_author(
+    db: &Database,
+    content_type: Option<ContentType>,
+    status: Option<ContentStatus>,
+    author_id: Option<i64>,
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<ContentSummary>> {
     let conn = db.get()?;
 
     let mut sql = String::from(
         "SELECT id, slug, title, content_type, excerpt, status, scheduled_at, published_at, created_at FROM content WHERE 1=1",
     );
-    let mut params: Vec<String> = Vec::new();
+    let mut params: Vec<Value> = Vec::new();
 
     if let Some(ct) = content_type {
         sql.push_str(" AND content_type = ?");
-        params.push(ct.to_string());
+        params.push(Value::Text(ct.to_string()));
     }
     if let Some(s) = status {
         sql.push_str(" AND status = ?");
-        params.push(s.to_string());
+        params.push(Value::Text(s.to_string()));
+    }
+    if let Some(aid) = author_id {
+        sql.push_str(" AND author_id = ?");
+        params.push(Value::Integer(aid));
     }
 
     sql.push_str(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+    params.push(Value::Integer(limit as i64));
+    params.push(Value::Integer(offset as i64));
 
     let mut stmt = conn.prepare(&sql)?;
 
-    let param_refs: Vec<&dyn rusqlite::ToSql> = params
-        .iter()
-        .map(|s| s as &dyn rusqlite::ToSql)
-        .chain(std::iter::once(&limit as &dyn rusqlite::ToSql))
-        .chain(std::iter::once(&offset as &dyn rusqlite::ToSql))
-        .collect();
-
     let content = stmt
-        .query_map(param_refs.as_slice(), |row| {
+        .query_map(rusqlite::params_from_iter(params.iter()), |row| {
             Ok(ContentSummary {
                 id: row.get(0)?,
                 slug: row.get(1)?,
@@ -428,27 +468,57 @@ pub fn list_published_content(
     enrich_content_batch(db, content)
 }
 
+pub fn list_all_published_content(
+    db: &Database,
+    content_type: ContentType,
+) -> Result<Vec<ContentWithTags>> {
+    let conn = db.get()?;
+    let mut stmt = conn.prepare(
+        "SELECT id, slug, title, content_type, body_markdown, body_html, excerpt, featured_image, status, scheduled_at, published_at, author_id, metadata, created_at, updated_at
+         FROM content WHERE content_type = ? AND status = 'published' ORDER BY published_at DESC",
+    )?;
+
+    let content = stmt
+        .query_map([content_type.to_string()], row_to_content)?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    enrich_content_batch(db, content)
+}
+
 pub fn count_content(
     db: &Database,
     content_type: Option<ContentType>,
     status: Option<ContentStatus>,
 ) -> Result<i64> {
+    count_content_for_author(db, content_type, status, None)
+}
+
+pub fn count_content_for_author(
+    db: &Database,
+    content_type: Option<ContentType>,
+    status: Option<ContentStatus>,
+    author_id: Option<i64>,
+) -> Result<i64> {
     let conn = db.get()?;
     let mut sql = String::from("SELECT COUNT(*) FROM content WHERE 1=1");
-    let mut params: Vec<String> = Vec::new();
+    let mut params: Vec<Value> = Vec::new();
 
     if let Some(ct) = content_type {
         sql.push_str(" AND content_type = ?");
-        params.push(ct.to_string());
+        params.push(Value::Text(ct.to_string()));
     }
     if let Some(s) = status {
         sql.push_str(" AND status = ?");
-        params.push(s.to_string());
+        params.push(Value::Text(s.to_string()));
+    }
+    if let Some(aid) = author_id {
+        sql.push_str(" AND author_id = ?");
+        params.push(Value::Integer(aid));
     }
 
-    let param_refs: Vec<&dyn rusqlite::ToSql> =
-        params.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
-    let count: i64 = conn.query_row(&sql, param_refs.as_slice(), |row| row.get(0))?;
+    let count: i64 = conn.query_row(&sql, rusqlite::params_from_iter(params.iter()), |row| {
+        row.get(0)
+    })?;
     Ok(count)
 }
 
