@@ -1,5 +1,5 @@
 use crate::models::{ContentStatus, ContentType};
-use crate::services::{content, settings, tags};
+use crate::services::{content, series, settings, tags};
 use crate::web::AppState;
 use crate::Config;
 use anyhow::Result;
@@ -29,7 +29,9 @@ pub async fn run(config_path: &Path, output_dir: &Path, base_url: Option<String>
     build_posts(&state, output_dir)?;
     build_pages(&state, output_dir)?;
     build_tags(&state, output_dir)?;
+    build_series(&state, output_dir)?;
     build_search(&state, output_dir)?;
+    copy_static_assets(&state, output_dir)?;
     build_feeds(&state, output_dir, &site_url)?;
     copy_media(&config, output_dir)?;
 
@@ -167,23 +169,44 @@ fn build_tags(state: &AppState, output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+fn build_series(state: &AppState, output_dir: &Path) -> Result<()> {
+    let series_dir = output_dir.join("series");
+    fs::create_dir_all(&series_dir)?;
+
+    let all_series = series::list_series(&state.db, 10_000, 0)?;
+    let mut built = 0usize;
+    for series_with_items in all_series {
+        if series_with_items.series.status != "published" {
+            continue;
+        }
+
+        let items = series::list_published_series_items(&state.db, series_with_items.series.id)?;
+        let series_with_items = crate::models::SeriesWithItems {
+            series: series_with_items.series,
+            items,
+        };
+
+        let mut ctx = make_context(state);
+        ctx.insert("series", &series_with_items);
+
+        let html = state.templates.render("public/series.html", &ctx)?;
+        let page_dir = series_dir.join(&series_with_items.series.slug);
+        fs::create_dir_all(&page_dir)?;
+        fs::write(page_dir.join("index.html"), html)?;
+        built += 1;
+    }
+
+    tracing::info!("Built {} series pages", built);
+    Ok(())
+}
+
 fn build_search(state: &AppState, output_dir: &Path) -> Result<()> {
     let search_dir = output_dir.join("search");
     fs::create_dir_all(&search_dir)?;
 
     let posts = content::list_all_published_content(&state.db, ContentType::Post)?;
-
-    let search_index: Vec<serde_json::Value> = posts
-        .iter()
-        .map(|post| {
-            serde_json::json!({
-                "slug": post.content.slug,
-                "title": post.content.title,
-                "excerpt": post.content.excerpt,
-                "body": post.content.body_markdown,
-            })
-        })
-        .collect();
+    let pages = content::list_all_published_content(&state.db, ContentType::Page)?;
+    let search_index = collect_static_search_entries(&posts, &pages);
 
     fs::write(
         search_dir.join("index.json"),
@@ -193,8 +216,40 @@ fn build_search(state: &AppState, output_dir: &Path) -> Result<()> {
     let search_html = generate_static_search_page(state)?;
     fs::write(search_dir.join("index.html"), search_html)?;
 
-    tracing::info!("Built search page with {} indexed posts", posts.len());
+    tracing::info!(
+        "Built search page with {} indexed posts/pages",
+        search_index.len()
+    );
     Ok(())
+}
+
+fn collect_static_search_entries(
+    posts: &[crate::models::ContentWithTags],
+    pages: &[crate::models::ContentWithTags],
+) -> Vec<serde_json::Value> {
+    posts
+        .iter()
+        .map(|post| {
+            serde_json::json!({
+                "kind": "post",
+                "slug": post.content.slug,
+                "url": format!("/posts/{}", post.content.slug),
+                "title": post.content.title,
+                "excerpt": post.content.excerpt,
+                "body": post.content.body_markdown,
+            })
+        })
+        .chain(pages.iter().map(|page| {
+            serde_json::json!({
+                "kind": "page",
+                "slug": page.content.slug,
+                "url": format!("/pages/{}", page.content.slug),
+                "title": page.content.title,
+                "excerpt": page.content.excerpt,
+                "body": page.content.body_markdown,
+            })
+        }))
+        .collect()
 }
 
 fn generate_static_search_page(state: &AppState) -> Result<String> {
@@ -251,7 +306,7 @@ fn generate_static_search_page(state: &AppState) -> Result<String> {
 
         let html = '<div class="results-header" role="status"><span class="results-count">' + results.length + ' result' + (results.length !== 1 ? 's' : '') + ' for </span><span class="results-query">"' + escapeHtml(query) + '"</span></div><div class="results-list">';
         results.forEach(post => {
-            html += '<article class="search-result search-result--post"><a href="/posts/' + encodeURIComponent(post.slug) + '" class="result-link"><span class="result-type">post</span><h2 class="result-title">' + escapeHtml(post.title) + '</h2>';
+            html += '<article class="search-result search-result--' + escapeHtml(post.kind || 'post') + '"><a href="' + escapeHtml(post.url || ('/posts/' + encodeURIComponent(post.slug))) + '" class="result-link"><span class="result-type">' + escapeHtml(post.kind || 'post') + '</span><h2 class="result-title">' + escapeHtml(post.title) + '</h2>';
             if (post.excerpt) {
                 html += '<p class="result-excerpt">' + escapeHtml(post.excerpt) + '</p>';
             }
@@ -455,6 +510,18 @@ fn copy_media(config: &Config, output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+fn copy_static_assets(state: &AppState, output_dir: &Path) -> Result<()> {
+    let js_dir = output_dir.join("js");
+    fs::create_dir_all(&js_dir)?;
+
+    for (filename, content) in &state.static_assets {
+        fs::write(js_dir.join(filename), content)?;
+    }
+
+    tracing::info!("Copied {} static JS assets", state.static_assets.len());
+    Ok(())
+}
+
 fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -469,7 +536,37 @@ fn cdata_escape(s: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::cdata_escape;
+    use super::{cdata_escape, collect_static_search_entries};
+    use crate::models::{Content, ContentStatus, ContentType, ContentWithTags, Tag, UserSummary};
+
+    fn content_item(
+        id: i64,
+        slug: &str,
+        title: &str,
+        content_type: ContentType,
+    ) -> ContentWithTags {
+        ContentWithTags {
+            content: Content {
+                id,
+                slug: slug.to_string(),
+                title: title.to_string(),
+                content_type,
+                body_markdown: format!("{title} body"),
+                body_html: format!("<p>{title}</p>"),
+                excerpt: Some(format!("{title} excerpt")),
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                published_at: Some("2026-01-01T00:00:00Z".to_string()),
+                author_id: None,
+                metadata: serde_json::json!({}),
+                created_at: "2026-01-01 00:00:00".to_string(),
+                updated_at: "2026-01-01 00:00:00".to_string(),
+            },
+            tags: Vec::<Tag>::new(),
+            author: Option::<UserSummary>::None,
+        }
+    }
 
     #[test]
     fn cdata_escape_splits_cdata_terminators() {
@@ -477,5 +574,18 @@ mod tests {
             cdata_escape("excerpt ]]> tail"),
             "excerpt ]]]]><![CDATA[> tail"
         );
+    }
+
+    #[test]
+    fn static_search_entries_include_posts_and_pages() {
+        let post = content_item(1, "post-one", "Post One", ContentType::Post);
+        let page = content_item(2, "about", "About", ContentType::Page);
+
+        let entries = collect_static_search_entries(&[post], &[page]);
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0]["kind"], "post");
+        assert_eq!(entries[1]["kind"], "page");
+        assert_eq!(entries[1]["url"], "/pages/about");
     }
 }

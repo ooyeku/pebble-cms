@@ -41,6 +41,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/posts", post(handlers::admin::create_post))
         .route("/admin/posts/:id/edit", get(handlers::admin::edit_post))
         .route("/admin/posts/:id", post(handlers::admin::update_post))
+        .route("/admin/posts/:id", delete(handlers::admin::delete_post))
         .route(
             "/admin/posts/:id/delete",
             post(handlers::admin::delete_post),
@@ -67,6 +68,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/pages", post(handlers::admin::create_page))
         .route("/admin/pages/:id/edit", get(handlers::admin::edit_page))
         .route("/admin/pages/:id", post(handlers::admin::update_page))
+        .route("/admin/pages/:id", delete(handlers::admin::delete_page))
         .route(
             "/admin/pages/:id/delete",
             post(handlers::admin::delete_page),
@@ -97,6 +99,7 @@ pub fn admin_routes() -> Router<Arc<AppState>> {
         .route("/admin/tags", get(handlers::admin::tags))
         .route("/admin/tags", post(handlers::admin::create_tag))
         .route("/admin/tags/:id", post(handlers::admin::update_tag))
+        .route("/admin/tags/:id", delete(handlers::admin::delete_tag))
         .route("/admin/tags/:id/delete", post(handlers::admin::delete_tag))
         .route("/admin/settings", get(handlers::admin::settings))
         .route("/admin/settings", post(handlers::admin::save_settings))

@@ -120,9 +120,10 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
             }
         };
 
+        let scheduled_at = ghost_schedule_timestamp(post);
         let status = match ghost_status {
             "published" => ContentStatus::Published,
-            "scheduled" => ContentStatus::Scheduled,
+            "scheduled" if scheduled_at.is_some() => ContentStatus::Scheduled,
             _ => ContentStatus::Draft,
         };
 
@@ -165,7 +166,7 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
             content_type: content_type.clone(),
             body_markdown: markdown,
             status,
-            scheduled_at: None,
+            scheduled_at,
             excerpt: post
                 .get("custom_excerpt")
                 .and_then(|v| v.as_str())
@@ -201,6 +202,17 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
         skipped
     );
     Ok(())
+}
+
+fn ghost_schedule_timestamp(post: &Value) -> Option<String> {
+    ["published_at", "publish_at", "scheduled_at"]
+        .iter()
+        .find_map(|field| {
+            post.get(field)
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string())
+        })
 }
 
 /// Extract plain text from Ghost's mobiledoc format.
@@ -280,4 +292,22 @@ fn extract_mobiledoc_text(mobiledoc_str: &str) -> String {
     }
 
     parts.join("\n\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ghost_schedule_timestamp;
+
+    #[test]
+    fn ghost_schedule_timestamp_reads_known_ghost_fields() {
+        let post = serde_json::json!({
+            "status": "scheduled",
+            "published_at": "2026-07-01T12:00:00.000Z"
+        });
+
+        assert_eq!(
+            ghost_schedule_timestamp(&post),
+            Some("2026-07-01T12:00:00.000Z".to_string())
+        );
+    }
 }

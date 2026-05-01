@@ -2,7 +2,7 @@ use crate::web::state::AppState;
 use axum::body::Body;
 use axum::extract::{ConnectInfo, State};
 use axum::http::header::HeaderValue;
-use axum::http::{header, Method, Request, Response, StatusCode};
+use axum::http::{header, HeaderMap, Method, Request, Response, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum_extra::extract::CookieJar;
@@ -54,18 +54,16 @@ impl RateLimiter {
         let mut attempts = self.attempts.write().unwrap_or_else(|e| e.into_inner());
 
         let entry = attempts.entry(key.to_string()).or_default();
-        entry.retain(|t| now.duration_since(*t) < self.window);
-
         if entry.len() >= self.max_attempts {
-            let oldest = entry.first().copied();
-            if let Some(oldest_time) = oldest {
-                if now.duration_since(oldest_time) < self.lockout {
+            if let Some(last_attempt) = entry.last().copied() {
+                if now.duration_since(last_attempt) < self.lockout {
                     return false;
                 }
                 entry.clear();
             }
         }
 
+        entry.retain(|t| now.duration_since(*t) < self.window);
         true
     }
 
@@ -148,6 +146,63 @@ pub async fn apply_security_headers(request: Request<Body>, next: Next) -> Respo
     response
 }
 
+fn same_origin(headers: &HeaderMap) -> bool {
+    let Some(host) = headers.get(header::HOST).and_then(|v| v.to_str().ok()) else {
+        return false;
+    };
+
+    if let Some(origin) = headers.get(header::ORIGIN).and_then(|v| v.to_str().ok()) {
+        return origin
+            .strip_prefix("http://")
+            .or_else(|| origin.strip_prefix("https://"))
+            .is_some_and(|origin_host| origin_host == host);
+    }
+
+    if let Some(referer) = headers.get(header::REFERER).and_then(|v| v.to_str().ok()) {
+        return referer.starts_with(&format!("http://{host}/"))
+            || referer.starts_with(&format!("https://{host}/"));
+    }
+
+    false
+}
+
+/// Middleware that rejects cross-site admin writes. Browser form posts are
+/// checked with Origin/Referer; script-driven HTMX/fetch requests can also send
+/// an X-CSRF-Token matching the _csrf cookie.
+pub async fn csrf_middleware(
+    State(state): State<Arc<AppState>>,
+    request: Request<Body>,
+    next: Next,
+) -> Response<Body> {
+    let method = request.method().clone();
+    let path = request.uri().path().to_string();
+    let is_write = method == Method::POST || method == Method::DELETE;
+    let is_protected_path = path.starts_with("/admin") || path.starts_with("/htmx");
+    let has_own_csrf = path == "/admin/login" || path == "/admin/setup";
+
+    if !is_write || !is_protected_path || has_own_csrf {
+        return next.run(request).await;
+    }
+
+    let cookies = CookieJar::from_headers(request.headers());
+    let cookie_token = cookies.get("_csrf").map(|c| c.value().to_string());
+    let header_token = request
+        .headers()
+        .get("x-csrf-token")
+        .and_then(|v| v.to_str().ok());
+
+    let token_valid = match (header_token, cookie_token.as_deref()) {
+        (Some(form_token), Some(cookie_token)) => state.csrf.validate(form_token, cookie_token),
+        _ => false,
+    };
+
+    if token_valid || same_origin(request.headers()) {
+        next.run(request).await
+    } else {
+        (StatusCode::FORBIDDEN, "Invalid form submission").into_response()
+    }
+}
+
 /// Middleware that rate-limits write operations (POST/DELETE) on admin endpoints.
 /// Keyed by session cookie so legitimate multi-user setups aren't penalized.
 pub async fn write_rate_limit_middleware(
@@ -190,4 +245,22 @@ pub async fn write_rate_limit_middleware(
 
     state.write_rate_limiter.record_attempt(&key);
     next.run(request).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RateLimiter;
+    use std::time::Duration;
+
+    #[test]
+    fn lockout_remains_active_after_attempt_window_expires() {
+        let limiter = RateLimiter::new(2, Duration::from_millis(30), Duration::from_millis(120));
+
+        limiter.record_attempt("login:1");
+        limiter.record_attempt("login:1");
+
+        assert!(!limiter.check("login:1"));
+        std::thread::sleep(Duration::from_millis(45));
+        assert!(!limiter.check("login:1"));
+    }
 }

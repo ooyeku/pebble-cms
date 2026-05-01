@@ -6,7 +6,18 @@ use std::path::Path;
 
 pub type DbPool = Pool<SqliteConnectionManager>;
 
-pub const MIGRATION_COUNT: i32 = 10;
+pub const MIGRATION_COUNT: i32 = 11;
+
+const FILE_CONNECTION_PRAGMAS: &str = "PRAGMA journal_mode=WAL;
+ PRAGMA foreign_keys=ON;
+ PRAGMA busy_timeout=5000;
+ PRAGMA journal_size_limit=67108864;
+ PRAGMA synchronous=NORMAL;
+ PRAGMA mmap_size=134217728;
+ PRAGMA cache_size=-65536;";
+
+const MEMORY_CONNECTION_PRAGMAS: &str = "PRAGMA foreign_keys=ON;
+ PRAGMA busy_timeout=5000;";
 
 pub struct Database {
     pool: DbPool,
@@ -33,27 +44,9 @@ impl Database {
             }
         }
 
-        let manager = SqliteConnectionManager::file(path);
+        let manager = SqliteConnectionManager::file(path)
+            .with_init(|conn| conn.execute_batch(FILE_CONNECTION_PRAGMAS));
         let pool = Pool::builder().max_size(pool_size).build(manager)?;
-
-        let conn = pool.get()?;
-        // Production-safe SQLite tuning:
-        // - WAL mode: concurrent reads during writes
-        // - foreign_keys: enforce referential integrity
-        // - busy_timeout: wait up to 5s instead of failing immediately on lock contention
-        // - journal_size_limit: cap WAL file at 64MB to prevent unbounded growth
-        // - synchronous=NORMAL: safe with WAL, much faster than FULL
-        // - mmap_size: 128MB memory-mapped I/O for faster reads
-        // - cache_size: ~64MB page cache (negative = KB)
-        conn.execute_batch(
-            "PRAGMA journal_mode=WAL;
-             PRAGMA foreign_keys=ON;
-             PRAGMA busy_timeout=5000;
-             PRAGMA journal_size_limit=67108864;
-             PRAGMA synchronous=NORMAL;
-             PRAGMA mmap_size=134217728;
-             PRAGMA cache_size=-65536;",
-        )?;
 
         Ok(Self { pool })
     }
@@ -68,14 +61,12 @@ impl Database {
 
     pub fn open_memory(name: &str) -> Result<Self> {
         let uri = format!("file:{}?mode=memory&cache=shared", name);
-        let manager = SqliteConnectionManager::file(&uri);
+        let manager = SqliteConnectionManager::file(&uri)
+            .with_init(|conn| conn.execute_batch(MEMORY_CONNECTION_PRAGMAS));
         let pool = Pool::builder()
             .max_size(5)
             .connection_timeout(std::time::Duration::from_secs(5))
             .build(manager)?;
-
-        let conn = pool.get()?;
-        conn.execute_batch("PRAGMA foreign_keys=ON;")?;
 
         Ok(Self { pool })
     }
@@ -90,7 +81,7 @@ impl Database {
         Ok(())
     }
 
-    /// Returns the status of all 10 migrations as (version, Option<applied_at>).
+    /// Returns the status of all migrations as (version, Option<applied_at>).
     /// Pending migrations have `None` for applied_at.
     pub fn get_migration_status(&self) -> Result<Vec<(i32, Option<String>)>> {
         let conn = self.get()?;
@@ -103,8 +94,8 @@ impl Database {
             );",
         )?;
 
-        let total_migrations = 10;
-        let mut result = Vec::with_capacity(total_migrations);
+        let total_migrations = MIGRATION_COUNT;
+        let mut result = Vec::with_capacity(total_migrations as usize);
 
         for version in 1..=total_migrations as i32 {
             let applied_at: Option<String> = conn
@@ -172,6 +163,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
         (8, include_str!("migrations/008_preview_tokens.sql")),
         (9, include_str!("migrations/009_content_series.sql")),
         (10, include_str!("migrations/010_api_and_webhooks.sql")),
+        (11, include_str!("migrations/011_restore_fts_triggers.sql")),
     ];
 
     for (version, sql) in migrations {
@@ -200,6 +192,60 @@ fn get_rollback_sql(version: i32) -> Result<&'static str> {
         8 => Ok(include_str!("migrations/008_rollback.sql")),
         9 => Ok(include_str!("migrations/009_rollback.sql")),
         10 => Ok(include_str!("migrations/010_rollback.sql")),
+        11 => Ok(include_str!("migrations/011_rollback.sql")),
         _ => anyhow::bail!("No rollback SQL for migration version {}", version),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Database;
+
+    fn unique_name(prefix: &str) -> String {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        format!("{}_{}", prefix, nanos)
+    }
+
+    #[test]
+    fn migrations_leave_content_fts_triggers_installed() {
+        let db = Database::open_memory(&unique_name("fts_triggers")).unwrap();
+        db.migrate().unwrap();
+
+        let conn = db.get().unwrap();
+        for trigger in [
+            "content_fts_insert",
+            "content_fts_update",
+            "content_fts_delete",
+        ] {
+            let exists: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'trigger' AND name = ?1",
+                    [trigger],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(exists, 1, "missing trigger {trigger}");
+        }
+    }
+
+    #[test]
+    fn pooled_connections_all_enforce_foreign_keys() {
+        let db = Database::open_memory(&unique_name("pool_pragmas")).unwrap();
+
+        let first = db.get().unwrap();
+        let second = db.get().unwrap();
+
+        let first_fk: i64 = first
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .unwrap();
+        let second_fk: i64 = second
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(first_fk, 1);
+        assert_eq!(second_fk, 1);
     }
 }

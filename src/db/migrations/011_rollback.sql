@@ -1,0 +1,2 @@
+-- Rollback migration 011: no-op.
+-- FTS triggers are part of migration 002 and should remain installed.

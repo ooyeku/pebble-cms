@@ -1,6 +1,6 @@
-# Pebble CMS -- Complete Usage Guide
+# Pebble CMS -- Usage Guide
 
-Everything you need to set up, configure, and run a Pebble site. This guide covers every feature, command, and configuration option.
+Everything you need to set up, configure, and run a Pebble site. This guide covers the main features, commands, and configuration options.
 
 ---
 
@@ -38,7 +38,6 @@ Everything you need to set up, configure, and run a Pebble site. This guide cove
   - [Theme Customization](#theme-customization)
   - [Authentication](#authentication)
   - [Homepage](#homepage)
-  - [Audit](#audit)
   - [API](#api)
   - [Backup](#backup)
 - [Writing Content](#writing-content)
@@ -589,17 +588,6 @@ posts_columns = 2                   # Grid columns (1-4)
 show_pages = true                   # Show pages section
 pages_layout = "grid"               # "grid" or "list"
 
-sections_order = ["hero", "pages", "posts"]  # Order of homepage sections
-```
-
-### Audit
-
-```toml
-[audit]
-enabled = true                 # Enable audit logging
-retention_days = 90            # How long to keep audit records
-log_auth_events = true         # Log login/logout events
-log_content_views = false      # Log content view events
 ```
 
 ### API
@@ -880,10 +868,10 @@ The snippet's rendered Markdown replaces the shortcode at display time.
 
 | Type | Formats | Size Limit |
 |------|---------|------------|
-| Images | JPEG, PNG, GIF, WebP, SVG | 50 MB |
-| Video | MP4, WebM | 50 MB |
-| Audio | MP3, OGG | 50 MB |
-| Documents | PDF | 50 MB |
+| Images | JPEG, PNG, GIF, WebP, SVG | Configured by `media.max_upload_size` |
+| Video | MP4, WebM | Configured by `media.max_upload_size` |
+| Audio | MP3, OGG | Configured by `media.max_upload_size` |
+| Documents | PDF | Configured by `media.max_upload_size` |
 
 ### Uploading Media
 
@@ -1231,14 +1219,13 @@ Click **Restore** on any version to revert the content to that state. This creat
 
 ### What Is Logged
 
-All admin actions are recorded:
+Key admin actions are recorded:
 - Content creation, updates, and deletion
 - User creation and deletion
-- Settings changes
 - Token creation and revocation
 - Webhook management
 - Bulk operations
-- Login and logout events (if enabled)
+- Login and logout events
 
 Each log entry includes: timestamp, user, action, category, affected entity, and metadata.
 
@@ -1386,7 +1373,8 @@ public/
     index.html                  Posts listing (page 1)
     page/2/index.html           Posts listing (page 2, etc.)
     my-post/index.html          Individual posts
-  my-page/index.html            Individual pages
+  pages/
+    my-page/index.html          Individual pages
   tags/
     index.html                  All tags listing
     my-tag/index.html           Posts filtered by tag
@@ -1549,7 +1537,7 @@ Pebble sets security headers on all responses:
 
 ### CSRF Protection
 
-All admin forms include CSRF tokens. Requests without a valid token are rejected with a 403 response.
+Admin write requests are protected by same-origin checks. Login and setup forms use explicit CSRF tokens, and script-driven requests can also send an `X-CSRF-Token` header matching the `_csrf` cookie. Cross-origin writes without trusted request metadata or a valid token are rejected with a 403 response.
 
 ### SVG Sanitization
 
@@ -1662,7 +1650,7 @@ This prompts for a new password interactively.
 
 Check that:
 1. The `media.upload_dir` directory exists and is writable
-2. The file is under the 50 MB size limit
+2. The file is under the configured `media.max_upload_size` limit
 3. The file type is in the supported list (JPEG, PNG, GIF, WebP, SVG, MP4, WebM, MP3, OGG, PDF)
 4. You haven't exceeded the upload rate limit (20 uploads per 60 seconds)
 

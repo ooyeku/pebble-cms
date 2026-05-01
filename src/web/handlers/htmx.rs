@@ -46,7 +46,8 @@ pub async fn search(
     for result in results {
         html.push_str(&format!(
             r#"<li><a href="/posts/{}">{}</a></li>"#,
-            result.slug, result.title
+            escape_html(&result.slug),
+            escape_html(&result.title)
         ));
     }
     html.push_str("</ul>");
@@ -61,6 +62,7 @@ pub struct TagQuery {
 
 pub async fn tag_autocomplete(
     State(state): State<Arc<AppState>>,
+    CurrentUser(_user): CurrentUser,
     Query(query): Query<TagQuery>,
 ) -> AppResult<Html<String>> {
     let all_tags = tags::list_tags(&state.db)?;
@@ -81,10 +83,33 @@ pub async fn tag_autocomplete(
     for tag in filtered {
         html.push_str(&format!(
             r#"<li><button type="button" class="tag-suggestion" data-tag="{}">{}</button></li>"#,
-            tag.name, tag.name
+            escape_html(&tag.name),
+            escape_html(&tag.name)
         ));
     }
     html.push_str("</ul>");
 
     Ok(Html(html))
+}
+
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::escape_html;
+
+    #[test]
+    fn escape_html_escapes_text_and_attribute_delimiters() {
+        assert_eq!(
+            escape_html(r#"<script>"&'</script>"#),
+            "&lt;script&gt;&quot;&amp;&#39;&lt;/script&gt;"
+        );
+    }
 }

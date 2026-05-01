@@ -8,6 +8,7 @@ use std::time::Duration;
 pub async fn run(config_path: &Path, host: &str, port: u16) -> Result<()> {
     let config = Config::load(config_path)?;
     let db = Database::open(&config.database.path)?;
+    db.migrate()?;
 
     if let Ok(count) = search::rebuild_fts_index(&db) {
         tracing::info!("Search index rebuilt: {} documents indexed", count);

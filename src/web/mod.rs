@@ -68,6 +68,10 @@ pub async fn serve(
         ))
         .layer(middleware::from_fn_with_state(
             state.clone(),
+            security::csrf_middleware,
+        ))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
             analytics_middleware,
         ))
         .layer(middleware::from_fn(security::apply_security_headers))

@@ -43,6 +43,7 @@ fn show_status(db: &Database) -> Result<()> {
         "Preview tokens",
         "Content series",
         "API tokens and webhooks",
+        "Restore full-text search triggers",
     ];
 
     for (version, applied_at) in &statuses {
@@ -120,6 +121,7 @@ fn rollback(db: &Database, steps: u32, force: bool) -> Result<()> {
         "Preview tokens",
         "Content series",
         "API tokens and webhooks",
+        "Restore full-text search triggers",
     ];
 
     println!("\n  The following migrations will be rolled back:\n");

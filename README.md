@@ -37,7 +37,7 @@ Most CMS platforms ask you to manage a database server, a runtime, a package man
 
 **Import and export freely.** Bring your WordPress or Ghost site with one command. Export to Hugo or Zola at any time. Your content is never locked in.
 
-**Opinionated defaults, full control.** Fifteen built-in themes. Automatic image optimization with responsive WebP variants. Syntax-highlighted code blocks. RSS feeds. Sitemaps. Analytics. Audit logging. Content versioning. All included, all configurable, all without plugins.
+**Opinionated defaults, practical control.** Fifteen built-in themes. Automatic image optimization with responsive WebP variants. Syntax-highlighted code blocks. RSS feeds. Sitemaps. Analytics. Audit logging. Content versioning. All included, many options configurable, all without plugins.
 
 ---
 
@@ -142,7 +142,7 @@ Every theme can be customized with your own colors, fonts, and spacing via `pebb
 - **Rich Markdown editor** with toolbar, keyboard shortcuts (Ctrl+B/I/K), and live preview
 - **Auto-save drafts** to local storage -- never lose work
 - **SEO metadata** -- custom meta titles, descriptions, and canonical URLs per page
-- **Tag management** with autocomplete
+- **Tag management** for organizing posts
 - **Media library** with upload, browse, and delete
 - **User management** with three roles: Admin, Author, Viewer
 - **Database dashboard** -- view stats, run vacuum and analyze operations
@@ -179,10 +179,10 @@ HTTP callbacks on content events. Trigger CI/CD rebuilds, Slack notifications, o
 
 - **Argon2 password hashing**
 - **Rate limiting** on all write endpoints (login, content, uploads, settings)
-- **CSRF protection** on all admin forms
+- **CSRF protection** on admin write routes
 - **Content Security Policy** headers on every response
 - **HttpOnly, Secure, SameSite=Strict** session cookies
-- **Audit logging** -- every admin action is recorded with user, timestamp, and details
+- **Audit logging** -- key admin actions are recorded with user, timestamp, and details
 - **SVG sanitization** -- uploaded SVGs are checked for script injection
 - **Path traversal protection** in backup restore
 
@@ -300,7 +300,7 @@ retention_count = 7
 directory = "./backups"
 ```
 
-See [docs/usage.md](docs/usage.md) for the complete configuration reference with all available options.
+See [docs/usage.md](docs/usage.md) for usage details and the main configuration options.
 
 ---
 
@@ -354,7 +354,7 @@ pebble (single binary)
 
 ## Documentation
 
-- **[Full Usage Guide](docs/usage.md)** -- comprehensive reference for every feature, command, and configuration option
+- **[Usage Guide](docs/usage.md)** -- reference for the main features, commands, and configuration options
 - **[Deployment Guide](docs/deployment.md)** -- systemd, nginx, Caddy, TLS, firewall, and monitoring
 - **[Performance Baseline](docs/performance.md)** -- benchmarking methodology, memory profile, and SQLite tuning
 ---

@@ -38,10 +38,23 @@ pub fn create_backup(config: &Config, output_dir: &Path) -> Result<()> {
 
     let db_path = Path::new(&config.database.path);
     if db_path.exists() {
+        let snapshot_path = output_dir.join(format!("pebble-backup-{}.db.tmp", timestamp));
+        if snapshot_path.exists() {
+            fs::remove_file(&snapshot_path)?;
+        }
+
+        {
+            let db = crate::Database::open(&config.database.path)?;
+            let conn = db.get()?;
+            let snapshot = snapshot_path.to_string_lossy().to_string();
+            conn.execute("VACUUM INTO ?1", [&snapshot])?;
+        }
+
         let mut db_data = Vec::new();
-        File::open(db_path)?.read_to_end(&mut db_data)?;
+        File::open(&snapshot_path)?.read_to_end(&mut db_data)?;
         zip.start_file("pebble.db", options)?;
         zip.write_all(&db_data)?;
+        fs::remove_file(&snapshot_path).ok();
         tracing::info!("Added database: {} bytes", db_data.len());
     }
 
@@ -225,4 +238,104 @@ pub fn enforce_retention(backup_dir: &Path, keep: usize) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::create_backup;
+    use crate::{Config, Database};
+    use std::io::Read;
+
+    fn unique_path(prefix: &str) -> std::path::PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("{}_{}", prefix, nanos))
+    }
+
+    fn test_config(db_path: &std::path::Path, media_dir: &std::path::Path) -> Config {
+        toml::from_str(&format!(
+            r#"
+[site]
+title = "Test"
+description = "Test"
+url = "http://localhost:3000"
+
+[server]
+host = "127.0.0.1"
+port = 3000
+
+[database]
+path = "{}"
+
+[content]
+posts_per_page = 10
+excerpt_length = 200
+
+[media]
+upload_dir = "{}"
+
+[theme]
+name = "default"
+
+[auth]
+session_lifetime = "7d"
+"#,
+            db_path.display(),
+            media_dir.display()
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn backup_includes_committed_wal_changes() {
+        let site_dir = unique_path("pebble_backup_wal");
+        let data_dir = site_dir.join("data");
+        std::fs::create_dir_all(&data_dir).unwrap();
+        let db_path = data_dir.join("pebble.db");
+        let media_dir = data_dir.join("media");
+        let backup_dir = site_dir.join("backups");
+        let config = test_config(&db_path, &media_dir);
+
+        let db = Database::open(db_path.to_str().unwrap()).unwrap();
+        db.migrate().unwrap();
+        let conn = db.get().unwrap();
+        conn.execute(
+            "INSERT INTO content (slug, title, content_type, body_markdown, body_html, status)
+             VALUES ('wal-post', 'WAL Post', 'post', 'body', '<p>body</p>', 'published')",
+            [],
+        )
+        .unwrap();
+
+        create_backup(&config, &backup_dir).unwrap();
+
+        let backup_path = std::fs::read_dir(&backup_dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .find(|path| path.extension().is_some_and(|ext| ext == "zip"))
+            .unwrap();
+        let file = std::fs::File::open(backup_path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut db_file = archive.by_name("pebble.db").unwrap();
+        let mut db_bytes = Vec::new();
+        db_file.read_to_end(&mut db_bytes).unwrap();
+
+        let restored_db_path = site_dir.join("restored.db");
+        std::fs::write(&restored_db_path, db_bytes).unwrap();
+        let restored = rusqlite::Connection::open(restored_db_path).unwrap();
+        let count: i64 = restored
+            .query_row(
+                "SELECT COUNT(*) FROM content WHERE slug = 'wal-post'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        assert_eq!(count, 1);
+        drop(conn);
+        drop(db);
+        std::fs::remove_dir_all(site_dir).ok();
+    }
 }
