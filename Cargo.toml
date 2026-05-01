@@ -1,6 +1,6 @@
 [package]
 name = "pebble-cms"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 rust-version = "1.75"
 description = "A lightweight, single-binary CMS powered by SQLite — 15 themes, REST API, WCAG 2.1 AA, static export"
