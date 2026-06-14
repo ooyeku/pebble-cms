@@ -199,3 +199,71 @@ impl FromRequestParts<Arc<AppState>> for ApiTokenAuth {
         })
     }
 }
+
+/// Rejection for write-scoped API auth: 401 when the token is missing/invalid,
+/// 403 when the token is valid but lacks write permission.
+pub enum ApiWriteAuthError {
+    Unauthorized,
+    Forbidden,
+}
+
+impl IntoResponse for ApiWriteAuthError {
+    fn into_response(self) -> Response {
+        match self {
+            ApiWriteAuthError::Unauthorized => ApiAuthError.into_response(),
+            ApiWriteAuthError::Forbidden => {
+                let body = serde_json::json!({
+                    "error": "Forbidden",
+                    "message": "This API token does not have write permission."
+                });
+                (StatusCode::FORBIDDEN, Json(body)).into_response()
+            }
+        }
+    }
+}
+
+/// Extractor for write-scoped API token auth. Validates the bearer token like
+/// [`ApiTokenAuth`], then requires the token's permission to grant writes.
+#[allow(dead_code)]
+pub struct ApiTokenWrite(pub ApiToken);
+
+impl FromRequestParts<Arc<AppState>> for ApiTokenWrite {
+    type Rejection = ApiWriteAuthError;
+
+    fn from_request_parts<'life0, 'life1, 'async_trait>(
+        parts: &'life0 mut Parts,
+        state: &'life1 Arc<AppState>,
+    ) -> Pin<Box<dyn Future<Output = Result<Self, Self::Rejection>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        let state = state.clone();
+        let headers = parts.headers.clone();
+        Box::pin(async move {
+            if !state.config().api.enabled {
+                return Err(ApiWriteAuthError::Unauthorized);
+            }
+
+            let auth_header = headers
+                .get(header::AUTHORIZATION)
+                .and_then(|v| v.to_str().ok())
+                .ok_or(ApiWriteAuthError::Unauthorized)?;
+
+            let raw_token = auth_header
+                .strip_prefix("Bearer ")
+                .ok_or(ApiWriteAuthError::Unauthorized)?;
+
+            let token = api_token::validate_token(&state.db, raw_token)
+                .map_err(|_| ApiWriteAuthError::Unauthorized)?
+                .ok_or(ApiWriteAuthError::Unauthorized)?;
+
+            if !api_token::can_write(&token.permissions) {
+                return Err(ApiWriteAuthError::Forbidden);
+            }
+
+            Ok(ApiTokenWrite(token))
+        })
+    }
+}

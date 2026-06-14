@@ -128,6 +128,18 @@ pub fn revoke_token(db: &Database, id: i64) -> Result<()> {
     Ok(())
 }
 
+/// Returns true if a token's stored permission string grants write access.
+///
+/// Read-only tokens (the historical default) may call GET endpoints only;
+/// `write`/`admin` tokens may also create, update, and delete content. Spelling
+/// is normalized so existing and future UI values map predictably.
+pub fn can_write(permissions: &str) -> bool {
+    matches!(
+        permissions.trim().to_ascii_lowercase().as_str(),
+        "write" | "read_write" | "readwrite" | "admin"
+    )
+}
+
 fn row_to_token(row: &rusqlite::Row<'_>) -> rusqlite::Result<ApiToken> {
     Ok(ApiToken {
         id: row.get(0)?,
@@ -139,4 +151,23 @@ fn row_to_token(row: &rusqlite::Row<'_>) -> rusqlite::Result<ApiToken> {
         expires_at: row.get(6)?,
         created_at: row.get(7)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::can_write;
+
+    #[test]
+    fn can_write_recognizes_write_scopes() {
+        for p in ["write", "read_write", "readwrite", "admin", "  Write  ", "ADMIN"] {
+            assert!(can_write(p), "expected write access for {p:?}");
+        }
+    }
+
+    #[test]
+    fn can_write_rejects_read_only() {
+        for p in ["read", "", "readonly", "none", "viewer"] {
+            assert!(!can_write(p), "expected no write access for {p:?}");
+        }
+    }
 }

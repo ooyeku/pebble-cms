@@ -160,11 +160,33 @@ Built-in, privacy-respecting analytics. No third-party scripts. No cookies.
 
 ### API
 
-A read-only JSON API at `/api/v1/` for headless CMS use cases, mobile apps, or integrations.
+A JSON API at `/api/v1/` for headless CMS use cases, mobile apps, or integrations.
 
-- Token-authenticated with `Bearer` header
-- Endpoints for posts, pages, tags, series, media, and site info
-- Paginated responses with consistent JSON envelope
+- Token-authenticated with `Bearer` header; tokens are scoped **read** or **read & write**
+- **Read** endpoints for posts, pages, tags, series, media, and site info
+- **Write** endpoints for posts and pages — create, update, and delete (require a write-scoped token)
+- Paginated responses with a consistent JSON envelope
+
+Write endpoints (require a token with the **Read & Write** permission):
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/api/v1/posts` | Create a post |
+| `PUT` | `/api/v1/posts/:slug` | Update a post by slug |
+| `DELETE` | `/api/v1/posts/:slug` | Delete a post by slug |
+| `POST` | `/api/v1/pages` | Create a page |
+| `PUT` | `/api/v1/pages/:slug` | Update a page by slug |
+| `DELETE` | `/api/v1/pages/:slug` | Delete a page by slug |
+
+```bash
+# Create a published post
+curl -X POST https://example.com/api/v1/posts \
+  -H "Authorization: Bearer pb_..." \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Hello", "body_markdown": "# Hi there", "status": "published", "tags": ["news"]}'
+```
+
+A read-only token receives `403 Forbidden` on write endpoints; a missing or invalid token receives `401 Unauthorized`. Create and update bodies accept the same fields as the admin editor (`title`, `slug`, `body_markdown`, `excerpt`, `featured_image`, `status`, `scheduled_at`, `tags`, `metadata`); update is a partial — only the fields you send change.
 
 ### Webhooks
 

@@ -2592,7 +2592,12 @@ pub async fn create_token(
         return Ok(e);
     }
 
-    let permissions = form.permissions.as_deref().unwrap_or("read");
+    // Normalize to a canonical scope so only known values are persisted.
+    let permissions = if api_token::can_write(form.permissions.as_deref().unwrap_or("read")) {
+        "write"
+    } else {
+        "read"
+    };
     let expires_at = form.expires_days.and_then(|days| {
         if days > 0 {
             Some(

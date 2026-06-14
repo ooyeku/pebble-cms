@@ -218,10 +218,26 @@ pub fn api_routes() -> Router<Arc<AppState>> {
             get(handlers::admin::analytics_content_stats),
         )
         // REST API v1
-        .route("/api/v1/posts", get(handlers::api::list_posts))
-        .route("/api/v1/posts/:slug", get(handlers::api::get_post))
-        .route("/api/v1/pages", get(handlers::api::list_pages))
-        .route("/api/v1/pages/:slug", get(handlers::api::get_page))
+        .route(
+            "/api/v1/posts",
+            get(handlers::api::list_posts).post(handlers::api::create_post),
+        )
+        .route(
+            "/api/v1/posts/:slug",
+            get(handlers::api::get_post)
+                .put(handlers::api::update_post)
+                .delete(handlers::api::delete_post),
+        )
+        .route(
+            "/api/v1/pages",
+            get(handlers::api::list_pages).post(handlers::api::create_page),
+        )
+        .route(
+            "/api/v1/pages/:slug",
+            get(handlers::api::get_page)
+                .put(handlers::api::update_page)
+                .delete(handlers::api::delete_page),
+        )
         .route("/api/v1/tags", get(handlers::api::list_tags))
         .route("/api/v1/tags/:slug", get(handlers::api::get_tag))
         .route("/api/v1/series", get(handlers::api::list_series_api))
