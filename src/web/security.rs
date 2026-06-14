@@ -196,6 +196,10 @@ pub async fn csrf_middleware(
         _ => false,
     };
 
+    // A request is accepted if it proves same-origin intent EITHER by carrying a
+    // valid double-submit CSRF token (script-driven HTMX/fetch clients) OR by
+    // presenting a same-origin Origin/Referer header (browser form posts). The
+    // admin UI relies on the latter, so requiring both would reject every write.
     if token_valid || same_origin(request.headers()) {
         next.run(request).await
     } else {

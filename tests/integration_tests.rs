@@ -633,6 +633,38 @@ mod content_integration_tests {
     }
 
     #[test]
+    fn test_delete_content_removes_fts_entry() {
+        let db = create_test_db();
+
+        let content_id = content::create_content(
+            &db,
+            CreateContent {
+                title: "Search Delete Test".to_string(),
+                slug: None,
+                content_type: ContentType::Post,
+                body_markdown: "UniqueDeleteKeyword".to_string(),
+                excerpt: None,
+                featured_image: None,
+                status: ContentStatus::Published,
+                scheduled_at: None,
+                tags: vec![],
+                metadata: None,
+            },
+            None,
+            200,
+        )
+        .unwrap();
+
+        assert_eq!(search::search_content(&db, "UniqueDeleteKeyword", 10).unwrap().len(), 1);
+
+        content::delete_content(&db, content_id).unwrap();
+
+        assert!(search::search_content(&db, "UniqueDeleteKeyword", 10)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
     fn test_create_page() {
         let db = create_test_db();
 
@@ -1238,6 +1270,29 @@ mod version_integration_tests {
             .id;
 
         assert!(versions::diff_versions(&db, first_version_id, second_version_id).is_err());
+    }
+
+    #[test]
+    fn test_failed_update_does_not_create_version() {
+        let db = create_test_db();
+
+        let content_id = content::create_content(&db, create_post("Version Guard"), None, 200).unwrap();
+
+        let err = content::update_content(
+            &db,
+            content_id,
+            UpdateContent {
+                slug: Some("Invalid Slug!".to_string()),
+                ..Default::default()
+            },
+            200,
+            None,
+            50,
+        )
+        .expect_err("invalid update should fail");
+
+        assert!(err.to_string().contains("Invalid slug"));
+        assert_eq!(versions::count_versions(&db, content_id).unwrap(), 0);
     }
 }
 

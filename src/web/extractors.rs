@@ -124,23 +124,9 @@ where
         Self: 'async_trait,
     {
         let ip = parts
-            .headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
-            .or_else(|| {
-                parts
-                    .headers
-                    .get("x-real-ip")
-                    .and_then(|v| v.to_str().ok())
-                    .map(|s| s.to_string())
-            })
-            .or_else(|| {
-                parts
-                    .extensions
-                    .get::<ConnectInfo<SocketAddr>>()
-                    .map(|ci| ci.0.ip().to_string())
-            });
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ci| ci.0.ip().to_string());
 
         // Extract User Agent
         let user_agent = parts

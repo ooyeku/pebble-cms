@@ -212,7 +212,7 @@ pub async fn get_page(
 
 /// GET /api/v1/tags
 pub async fn list_tags(State(state): State<Arc<AppState>>, _auth: ApiTokenAuth) -> Response {
-    match tags::list_tags_with_counts(&state.db) {
+    match tags::list_published_tags_with_counts(&state.db) {
         Ok(tags) => {
             let total = tags.len() as i64;
             json_envelope(

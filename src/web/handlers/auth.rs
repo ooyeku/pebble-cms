@@ -14,21 +14,7 @@ use std::sync::Arc;
 use tera::Context;
 use time::Duration;
 
-fn get_client_ip(headers: &HeaderMap, addr: Option<SocketAddr>) -> String {
-    if let Some(forwarded) = headers.get("x-forwarded-for") {
-        if let Ok(s) = forwarded.to_str() {
-            if let Some(ip) = s.split(',').next() {
-                return ip.trim().to_string();
-            }
-        }
-    }
-
-    if let Some(real_ip) = headers.get("x-real-ip") {
-        if let Ok(s) = real_ip.to_str() {
-            return s.to_string();
-        }
-    }
-
+fn get_client_ip(_headers: &HeaderMap, addr: Option<SocketAddr>) -> String {
     addr.map(|a| a.ip().to_string())
         .unwrap_or_else(|| "unknown".to_string())
 }
@@ -72,7 +58,11 @@ pub async fn login(
     jar: CookieJar,
     Form(form): Form<LoginForm>,
 ) -> AppResult<Response> {
-    let client_key = get_client_ip(&headers, connect_info.map(|c| c.0));
+    let client_ip = get_client_ip(&headers, connect_info.map(|c| c.0));
+    // Rate-limit per (IP, username). Using the real socket IP keeps the limiter
+    // spoof-resistant, and including the username prevents a single shared proxy
+    // IP from locking out every account at once (global-lockout DoS).
+    let rate_limit_key = format!("login:{}:{}", client_ip, form.username.trim().to_lowercase());
     let csrf_cookie = get_csrf_cookie(&jar);
 
     let new_csrf = state.csrf.generate();
@@ -83,7 +73,7 @@ pub async fn login(
         .max_age(Duration::hours(1))
         .build();
 
-    if !state.rate_limiter.check(&client_key) {
+    if !state.rate_limiter.check(&rate_limit_key) {
         let mut ctx = Context::new();
         ctx.insert(
             "error",
@@ -122,7 +112,7 @@ pub async fn login(
 
     match auth::authenticate(&state.db, &form.username, &form.password)? {
         Some(user) => {
-            state.rate_limiter.clear(&client_key);
+            state.rate_limiter.clear(&rate_limit_key);
 
             if let Some(old_session) = jar.get("session") {
                 let _ = auth::delete_session(&state.db, old_session.value());
@@ -143,7 +133,7 @@ pub async fn login(
             // Log successful login
             let audit_ctx = AuditContext::new()
                 .with_user(user.id, &user.username, &format!("{:?}", user.role))
-                .with_request(Some(client_key), user_agent);
+                .with_request(Some(client_ip), user_agent);
             let _ = audit::log(
                 &state.db,
                 &audit_ctx,
@@ -157,10 +147,10 @@ pub async fn login(
             Ok((jar.add(session_cookie), Redirect::to("/admin")).into_response())
         }
         None => {
-            state.rate_limiter.record_attempt(&client_key);
+            state.rate_limiter.record_attempt(&rate_limit_key);
 
             // Log failed login
-            let audit_ctx = AuditContext::new().with_request(Some(client_key), user_agent);
+            let audit_ctx = AuditContext::new().with_request(Some(client_ip), user_agent);
             let _ = audit::log(
                 &state.db,
                 &audit_ctx,

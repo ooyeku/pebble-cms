@@ -1,7 +1,7 @@
 //! Content series service — ordered groups of posts (e.g., multi-part tutorials).
 
 use crate::models::{Series, SeriesItem, SeriesNavItem, SeriesNavigation, SeriesWithItems};
-use crate::services::slug::generate_slug;
+use crate::services::slug::{generate_slug, validate_slug};
 use crate::Database;
 use anyhow::{bail, Result};
 
@@ -19,6 +19,9 @@ pub fn create_series(
         .filter(|s| !s.is_empty())
         .map(String::from)
         .unwrap_or_else(|| generate_slug(title));
+    if !validate_slug(&slug) {
+        bail!("Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only");
+    }
     let conn = db.get()?;
     conn.execute(
         "INSERT INTO content_series (title, slug, description, status) VALUES (?, ?, ?, ?)",
@@ -41,6 +44,9 @@ pub fn update_series(
 
     let title = title.unwrap_or(&current.title);
     let slug = slug.filter(|s| !s.is_empty()).unwrap_or(&current.slug);
+    if !validate_slug(slug) {
+        bail!("Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only");
+    }
     let description = description.unwrap_or(&current.description);
     let status = status.unwrap_or(&current.status);
 

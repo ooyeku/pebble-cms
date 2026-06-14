@@ -171,12 +171,6 @@ pub fn update_content(
     user_id: Option<i64>,
     version_retention: usize,
 ) -> Result<()> {
-    // Create a version snapshot BEFORE applying changes
-    if let Err(e) = super::versions::create_version(db, id, user_id) {
-        tracing::warn!("Failed to create version snapshot: {}", e);
-        // Continue with update even if versioning fails
-    }
-
     let renderer = MarkdownRenderer::new();
     let mut conn = db.get()?;
 
@@ -274,6 +268,15 @@ pub fn update_content(
 
     let tx = conn.transaction()?;
 
+    // Snapshot the current (pre-update) state within the same transaction so the
+    // version is atomic with the update and reuses the held connection (avoids a
+    // second pool checkout). create_version was already gated behind validation
+    // above, so a failed update never leaves an orphan snapshot.
+    if let Err(e) = super::versions::create_version_with_conn(&tx, id, user_id) {
+        tracing::warn!("Failed to create version snapshot: {}", e);
+        // Continue with update even if versioning fails
+    }
+
     tx.execute(
         r#"
         UPDATE content SET slug = ?, title = ?, body_markdown = ?, body_html = ?, excerpt = ?, featured_image = ?, status = ?, scheduled_at = ?, published_at = ?, metadata = ?
@@ -312,6 +315,10 @@ pub fn update_content(
 
     tx.commit()?;
 
+    // Release the pooled connection before the retention cleanup, which checks
+    // out its own connection — holding both at once risks pool exhaustion.
+    drop(conn);
+
     // Cleanup old versions based on retention policy
     if version_retention > 0 {
         if let Err(e) = super::versions::cleanup_old_versions(db, id, version_retention) {
@@ -342,8 +349,14 @@ fn rebuild_content_fts(conn: &rusqlite::Connection) -> Result<()> {
 }
 
 pub fn delete_content(db: &Database, id: i64) -> Result<()> {
-    let conn = db.get()?;
-    conn.execute("DELETE FROM content WHERE id = ?", [id])?;
+    {
+        let mut conn = db.get()?;
+        let tx = conn.transaction()?;
+        tx.execute("DELETE FROM content WHERE id = ?", [id])?;
+        rebuild_content_fts(&tx)?;
+        tx.commit()?;
+    }
+    // conn is released above before cleanup_orphaned_tags checks out its own.
     let _ = crate::services::tags::cleanup_orphaned_tags(db);
     Ok(())
 }

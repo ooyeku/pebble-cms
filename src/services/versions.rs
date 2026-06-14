@@ -67,7 +67,20 @@ pub enum DiffLineType {
 /// Call this BEFORE applying updates to preserve the previous state.
 pub fn create_version(db: &Database, content_id: i64, user_id: Option<i64>) -> Result<i64> {
     let conn = db.get()?;
+    create_version_with_conn(&conn, content_id, user_id)
+}
 
+/// Create a version snapshot using an existing connection or transaction.
+///
+/// Callers that already hold a pooled connection MUST use this instead of
+/// [`create_version`] to avoid acquiring a second connection from the pool (which
+/// can exhaust the pool and stall writes under concurrency). Passing a `&Transaction`
+/// (which derefs to `&Connection`) also makes the snapshot atomic with the update.
+pub fn create_version_with_conn(
+    conn: &Connection,
+    content_id: i64,
+    user_id: Option<i64>,
+) -> Result<i64> {
     // Fetch current content state
     let (title, slug, body_markdown, excerpt, featured_image, metadata): (
         String,

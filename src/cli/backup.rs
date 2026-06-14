@@ -3,9 +3,48 @@ use crate::Config;
 use anyhow::Result;
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
 use zip::write::SimpleFileOptions;
 use zip::{ZipArchive, ZipWriter};
+
+fn safe_archive_path(base: &Path, archive_name: &str) -> Option<PathBuf> {
+    let path = Path::new(archive_name);
+    if path.is_absolute() {
+        return None;
+    }
+
+    let mut candidate = base.to_path_buf();
+    for component in path.components() {
+        match component {
+            Component::Normal(part) => candidate.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => return None,
+        }
+    }
+
+    Some(candidate)
+}
+
+fn extract_file_atomically<R: Read>(reader: &mut R, destination: &Path) -> Result<()> {
+    let parent = destination.parent().unwrap_or(Path::new("."));
+    fs::create_dir_all(parent)?;
+
+    let mut temp_name = destination
+        .file_name()
+        .map(|name| name.to_os_string())
+        .unwrap_or_default();
+    temp_name.push(".tmp");
+    let temp_path = parent.join(temp_name);
+
+    {
+        let mut outfile = File::create(&temp_path)?;
+        std::io::copy(reader, &mut outfile)?;
+        outfile.sync_all()?;
+    }
+
+    fs::rename(&temp_path, destination)?;
+    Ok(())
+}
 
 pub async fn run(config_path: &Path, command: BackupCommand) -> Result<()> {
     let config = Config::load(config_path)?;
@@ -120,36 +159,37 @@ fn restore_backup(archive_path: &Path, config: &Config) -> Result<()> {
             continue;
         }
 
-        if name.contains("..") {
-            tracing::warn!("Skipping suspicious path in archive: {}", name);
-            continue;
-        }
-
-        let (outpath, canonical_base) = if name == "pebble.db" {
-            (db_path.to_path_buf(), &canonical_db_dir)
-        } else if name.starts_with("media/") {
-            let filename = name.strip_prefix("media/").unwrap_or(&name);
-            if filename.contains('/') || filename.contains('\\') {
-                tracing::warn!("Skipping nested media path: {}", name);
-                continue;
+        let outpath = if name == "pebble.db" {
+            db_path.to_path_buf()
+        } else if let Some(relative) = name.strip_prefix("media/") {
+            match safe_archive_path(media_dir, relative) {
+                Some(path) => path,
+                None => {
+                    tracing::warn!("Skipping suspicious path in archive: {}", name);
+                    continue;
+                }
             }
-            (media_dir.join(filename), &canonical_media_dir)
         } else {
             continue;
         };
 
-        if let Some(parent) = outpath.parent() {
-            fs::create_dir_all(parent)?;
-        }
+        let canonical_parent = outpath
+            .parent()
+            .and_then(|parent| parent.canonicalize().ok())
+            .unwrap_or_else(|| canonical_media_dir.clone());
+        let file_name = match outpath.file_name() {
+            Some(file_name) => file_name,
+            None => {
+                tracing::warn!("Skipping invalid output path for archive entry: {}", name);
+                continue;
+            }
+        };
+        let canonical_outpath = canonical_parent.join(file_name);
 
-        let canonical_outpath = if outpath.exists() {
-            outpath.canonicalize()?
-        } else if let Some(parent) = outpath.parent() {
-            parent
-                .canonicalize()?
-                .join(outpath.file_name().unwrap_or_default())
+        let canonical_base = if name == "pebble.db" {
+            &canonical_db_dir
         } else {
-            continue;
+            &canonical_media_dir
         };
 
         if !canonical_outpath.starts_with(canonical_base) {
@@ -157,8 +197,7 @@ fn restore_backup(archive_path: &Path, config: &Config) -> Result<()> {
             continue;
         }
 
-        let mut outfile = File::create(&outpath)?;
-        std::io::copy(&mut file, &mut outfile)?;
+        extract_file_atomically(&mut file, &outpath)?;
         tracing::info!("Restored: {}", outpath.display());
     }
 
@@ -242,7 +281,7 @@ pub fn enforce_retention(backup_dir: &Path, keep: usize) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::create_backup;
+    use super::{create_backup, restore_backup};
     use crate::{Config, Database};
     use std::io::Read;
 
@@ -336,6 +375,54 @@ session_lifetime = "7d"
         assert_eq!(count, 1);
         drop(conn);
         drop(db);
+        std::fs::remove_dir_all(site_dir).ok();
+    }
+
+    #[test]
+    fn restore_places_media_at_upload_dir_root() {
+        let site_dir = unique_path("pebble_restore_media");
+        let data_dir = site_dir.join("data");
+        std::fs::create_dir_all(&data_dir).unwrap();
+        let db_path = data_dir.join("pebble.db");
+        let media_dir = data_dir.join("media");
+        std::fs::create_dir_all(&media_dir).unwrap();
+        let backup_dir = site_dir.join("backups");
+        let config = test_config(&db_path, &media_dir);
+
+        // Seed a database and a single media file.
+        let db = Database::open(db_path.to_str().unwrap()).unwrap();
+        db.migrate().unwrap();
+        drop(db);
+        std::fs::write(media_dir.join("photo.png"), b"img-bytes").unwrap();
+
+        create_backup(&config, &backup_dir).unwrap();
+
+        // Wipe media to simulate restoring onto a clean target.
+        std::fs::remove_dir_all(&media_dir).unwrap();
+
+        let backup_path = std::fs::read_dir(&backup_dir)
+            .unwrap()
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .find(|path| path.extension().is_some_and(|ext| ext == "zip"))
+            .unwrap();
+
+        restore_backup(&backup_path, &config).unwrap();
+
+        // Media must land at <upload_dir>/photo.png — NOT nested under an extra media/ dir.
+        assert!(
+            media_dir.join("photo.png").exists(),
+            "media restored to the wrong location"
+        );
+        assert!(
+            !media_dir.join("media").exists(),
+            "media incorrectly nested under an extra media/ directory"
+        );
+        assert_eq!(
+            std::fs::read(media_dir.join("photo.png")).unwrap(),
+            b"img-bytes"
+        );
+
         std::fs::remove_dir_all(site_dir).ok();
     }
 }
