@@ -159,7 +159,14 @@ mod tests {
 
     #[test]
     fn can_write_recognizes_write_scopes() {
-        for p in ["write", "read_write", "readwrite", "admin", "  Write  ", "ADMIN"] {
+        for p in [
+            "write",
+            "read_write",
+            "readwrite",
+            "admin",
+            "  Write  ",
+            "ADMIN",
+        ] {
             assert!(can_write(p), "expected write access for {p:?}");
         }
     }

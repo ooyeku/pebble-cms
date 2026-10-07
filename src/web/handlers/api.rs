@@ -408,7 +408,11 @@ fn created_response(state: &Arc<AppState>, id: i64) -> Response {
             json_single(serde_json::to_value(&item).unwrap_or_default()),
         )
             .into_response(),
-        _ => (StatusCode::CREATED, json_single(serde_json::json!({ "id": id }))).into_response(),
+        _ => (
+            StatusCode::CREATED,
+            json_single(serde_json::json!({ "id": id })),
+        )
+            .into_response(),
     }
 }
 
@@ -464,11 +468,20 @@ fn update_content_api(
 
     let (excerpt_length, version_retention) = {
         let config = state.config();
-        (config.content.excerpt_length, config.content.version_retention)
+        (
+            config.content.excerpt_length,
+            config.content.version_retention,
+        )
     };
 
-    match content::update_content(&state.db, id, input, excerpt_length, actor_id, version_retention)
-    {
+    match content::update_content(
+        &state.db,
+        id,
+        input,
+        excerpt_length,
+        actor_id,
+        version_retention,
+    ) {
         Ok(()) => match content::get_content_by_id(&state.db, id) {
             Ok(Some(item)) => {
                 json_single(serde_json::to_value(&item).unwrap_or_default()).into_response()
@@ -573,8 +586,8 @@ mod write_api_tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use std::path::PathBuf;
-    use std::sync::Arc;
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
     use std::time::{SystemTime, UNIX_EPOCH};
     use tower::ServiceExt;
 
@@ -670,7 +683,9 @@ enabled = true
         };
         let resp = app.clone().oneshot(req).await.unwrap();
         let status = resp.status();
-        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json = if bytes.is_empty() {
             serde_json::Value::Null
         } else {
@@ -682,10 +697,15 @@ enabled = true
     #[tokio::test]
     async fn create_requires_a_write_scoped_token() {
         let h = setup();
-        let body = serde_json::json!({"title": "Hello", "body_markdown": "# Hi", "status": "published"});
+        let body =
+            serde_json::json!({"title": "Hello", "body_markdown": "# Hi", "status": "published"});
 
         let (status, _) = send(&h.app, "POST", "/api/v1/posts", None, Some(body.clone())).await;
-        assert_eq!(status, StatusCode::UNAUTHORIZED, "no token must be rejected");
+        assert_eq!(
+            status,
+            StatusCode::UNAUTHORIZED,
+            "no token must be rejected"
+        );
 
         let (status, _) = send(
             &h.app,
@@ -736,8 +756,14 @@ enabled = true
         assert_eq!(status, StatusCode::OK);
         assert_eq!(json["data"]["title"], "First (edited)");
 
-        let (status, json) =
-            send(&h.app, "GET", "/api/v1/posts/first", Some(&h.read_token), None).await;
+        let (status, json) = send(
+            &h.app,
+            "GET",
+            "/api/v1/posts/first",
+            Some(&h.read_token),
+            None,
+        )
+        .await;
         assert_eq!(status, StatusCode::OK);
         assert_eq!(json["data"]["title"], "First (edited)");
 
@@ -751,8 +777,14 @@ enabled = true
         .await;
         assert_eq!(status, StatusCode::NO_CONTENT);
 
-        let (status, _) =
-            send(&h.app, "GET", "/api/v1/posts/first", Some(&h.read_token), None).await;
+        let (status, _) = send(
+            &h.app,
+            "GET",
+            "/api/v1/posts/first",
+            Some(&h.read_token),
+            None,
+        )
+        .await;
         assert_eq!(status, StatusCode::NOT_FOUND, "deleted post must be gone");
     }
 
@@ -764,7 +796,9 @@ enabled = true
             "POST",
             "/api/v1/posts",
             Some(&h.write_token),
-            Some(serde_json::json!({"title": "Bad", "slug": "Invalid Slug!", "body_markdown": "x"})),
+            Some(
+                serde_json::json!({"title": "Bad", "slug": "Invalid Slug!", "body_markdown": "x"}),
+            ),
         )
         .await;
         assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -799,8 +833,14 @@ enabled = true
         .await;
         assert_eq!(status, StatusCode::NOT_FOUND);
 
-        let (status, _) =
-            send(&h.app, "GET", "/api/v1/pages/about", Some(&h.read_token), None).await;
+        let (status, _) = send(
+            &h.app,
+            "GET",
+            "/api/v1/pages/about",
+            Some(&h.read_token),
+            None,
+        )
+        .await;
         assert_eq!(status, StatusCode::OK, "page must still exist");
     }
 }

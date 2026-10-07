@@ -20,7 +20,9 @@ pub fn create_series(
         .map(String::from)
         .unwrap_or_else(|| generate_slug(title));
     if !validate_slug(&slug) {
-        bail!("Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only");
+        bail!(
+            "Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only"
+        );
     }
     let conn = db.get()?;
     conn.execute(
@@ -45,7 +47,9 @@ pub fn update_series(
     let title = title.unwrap_or(&current.title);
     let slug = slug.filter(|s| !s.is_empty()).unwrap_or(&current.slug);
     if !validate_slug(slug) {
-        bail!("Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only");
+        bail!(
+            "Invalid slug: must be 1-200 characters, lowercase letters, numbers, and hyphens only"
+        );
     }
     let description = description.unwrap_or(&current.description);
     let status = status.unwrap_or(&current.status);
