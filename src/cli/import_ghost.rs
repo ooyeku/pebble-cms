@@ -163,7 +163,7 @@ pub async fn run(config_path: &Path, file: &Path, overwrite: bool) -> Result<()>
         let input = CreateContent {
             title,
             slug: Some(slug.clone()),
-            content_type: content_type.clone(),
+            content_type,
             body_markdown: markdown,
             status,
             scheduled_at,

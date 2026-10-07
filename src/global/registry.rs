@@ -5,16 +5,12 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum SiteStatus {
+    #[default]
     Stopped,
     Running,
     Deploying,
-}
-
-impl Default for SiteStatus {
-    fn default() -> Self {
-        Self::Stopped
-    }
 }
 
 impl std::fmt::Display for SiteStatus {

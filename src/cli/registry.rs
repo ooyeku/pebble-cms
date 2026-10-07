@@ -688,7 +688,7 @@ fn set_site_config_value(config_path: &std::path::Path, key: &str, value: &str) 
             }
             if !doc["theme"]
                 .as_table()
-                .map_or(false, |t| t.contains_key("custom"))
+                .is_some_and(|t| t.contains_key("custom"))
             {
                 doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
             }

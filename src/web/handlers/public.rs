@@ -36,7 +36,7 @@ fn default_page() -> usize {
 }
 
 fn clamp_page(page: usize) -> usize {
-    page.max(1).min(MAX_PAGE)
+    page.clamp(1, MAX_PAGE)
 }
 
 fn truncate_query(query: &str, max_chars: usize) -> String {
@@ -81,7 +81,7 @@ pub async fn posts(
         Some(ContentType::Post),
         Some(crate::models::ContentStatus::Published),
     )?;
-    let total_pages = (total as usize + per_page - 1) / per_page;
+    let total_pages = (total as usize).div_ceil(per_page);
 
     let mut ctx = make_context(&state, &user);
     ctx.insert("posts", &posts);
@@ -506,26 +506,6 @@ pub async fn series(
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{cdata_escape, truncate_query};
-
-    #[test]
-    fn truncate_query_preserves_utf8_boundaries() {
-        let input = "😀".repeat(250);
-        let truncated = truncate_query(&input, 200);
-        assert_eq!(truncated.chars().count(), 200);
-    }
-
-    #[test]
-    fn cdata_escape_splits_cdata_terminators() {
-        assert_eq!(
-            cdata_escape("safe ]]> unsafe"),
-            "safe ]]]]><![CDATA[> unsafe"
-        );
-    }
-}
-
 /// RSS feed scoped to a single tag: /tags/:slug/feed.xml
 pub async fn tag_rss_feed(
     State(state): State<Arc<AppState>>,
@@ -717,5 +697,25 @@ pub async fn draft_preview(
             let html = state.templates.render("public/404.html", &ctx)?;
             Ok((StatusCode::NOT_FOUND, Html(html)).into_response())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{cdata_escape, truncate_query};
+
+    #[test]
+    fn truncate_query_preserves_utf8_boundaries() {
+        let input = "😀".repeat(250);
+        let truncated = truncate_query(&input, 200);
+        assert_eq!(truncated.chars().count(), 200);
+    }
+
+    #[test]
+    fn cdata_escape_splits_cdata_terminators() {
+        assert_eq!(
+            cdata_escape("safe ]]> unsafe"),
+            "safe ]]]]><![CDATA[> unsafe"
+        );
     }
 }

@@ -39,7 +39,7 @@ fn export_pebble(
         Some(ContentStatus::Published)
     };
 
-    let posts = content::list_content(db, Some(ContentType::Post), status.clone(), 10000, 0)?;
+    let posts = content::list_content(db, Some(ContentType::Post), status, 10000, 0)?;
     let pages = content::list_content(db, Some(ContentType::Page), status, 10000, 0)?;
 
     tracing::info!("Exporting {} posts and {} pages", posts.len(), pages.len());
@@ -130,7 +130,7 @@ fn export_hugo(
         Some(ContentStatus::Published)
     };
 
-    let posts = content::list_content(db, Some(ContentType::Post), status.clone(), 10000, 0)?;
+    let posts = content::list_content(db, Some(ContentType::Post), status, 10000, 0)?;
     let pages = content::list_content(db, Some(ContentType::Page), status, 10000, 0)?;
 
     tracing::info!(
@@ -246,7 +246,7 @@ fn export_zola(
         Some(ContentStatus::Published)
     };
 
-    let posts = content::list_content(db, Some(ContentType::Post), status.clone(), 10000, 0)?;
+    let posts = content::list_content(db, Some(ContentType::Post), status, 10000, 0)?;
     let pages = content::list_content(db, Some(ContentType::Page), status, 10000, 0)?;
 
     tracing::info!(

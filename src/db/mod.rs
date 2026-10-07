@@ -97,7 +97,7 @@ impl Database {
         let total_migrations = MIGRATION_COUNT;
         let mut result = Vec::with_capacity(total_migrations as usize);
 
-        for version in 1..=total_migrations as i32 {
+        for version in 1..=total_migrations {
             let applied_at: Option<String> = conn
                 .query_row(
                     "SELECT applied_at FROM schema_migrations WHERE version = ?1",

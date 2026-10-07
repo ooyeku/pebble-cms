@@ -1,3 +1,7 @@
+// Role guards return a full `Response` as the error so handlers can `?` them;
+// boxing it would only add noise at every call site.
+#![allow(clippy::result_large_err)]
+
 use crate::models::{
     ContentStatus, ContentType, ContentWithTags, CreateContent, UpdateContent, User, UserRole,
 };
@@ -92,7 +96,7 @@ fn content_author_filter(user: &User) -> Option<i64> {
 }
 
 fn admin_page_offset(page: usize, per_page: usize) -> (usize, usize) {
-    let page = page.max(1).min(MAX_ADMIN_PAGE);
+    let page = page.clamp(1, MAX_ADMIN_PAGE);
     let offset = page.saturating_sub(1).saturating_mul(per_page);
     (page, offset)
 }
@@ -174,7 +178,7 @@ pub async fn posts(
     )?;
     let total =
         content::count_content_for_author(&state.db, Some(ContentType::Post), None, author_id)?;
-    let total_pages = ((total as usize) + per_page - 1) / per_page;
+    let total_pages = (total as usize).div_ceil(per_page);
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("posts", &posts);
@@ -509,7 +513,7 @@ pub async fn pages(
     )?;
     let total =
         content::count_content_for_author(&state.db, Some(ContentType::Page), None, author_id)?;
-    let total_pages = ((total as usize) + per_page - 1) / per_page;
+    let total_pages = (total as usize).div_ceil(per_page);
 
     let mut ctx = make_admin_context(&state, &user);
     ctx.insert("pages", &pages);
@@ -1790,7 +1794,7 @@ pub async fn audit_logs(
     let filter = audit::AuditFilter::from(params);
     let logs = audit::list_logs(&state.db, &filter, per_page, offset)?;
     let total = audit::count_logs(&state.db, &filter)?;
-    let total_pages = ((total as usize + per_page - 1) / per_page).max(1);
+    let total_pages = (total as usize).div_ceil(per_page).max(1);
     let summary = audit::get_summary(&state.db, 7)?;
 
     // Get filter options

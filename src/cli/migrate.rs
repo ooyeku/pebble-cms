@@ -29,7 +29,7 @@ fn show_status(db: &Database) -> Result<()> {
     let statuses = db.get_migration_status()?;
 
     println!("\n  Migration Status\n");
-    println!("  {:<10} {:<45} {}", "Version", "Description", "Applied");
+    println!("  {:<10} {:<45} Applied", "Version", "Description");
     println!("  {}", "-".repeat(80));
 
     let descriptions = [

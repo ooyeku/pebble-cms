@@ -86,7 +86,7 @@ fn import_content_dir(
         let path = entry.path();
 
         if path.extension().map(|e| e == "md").unwrap_or(false) {
-            match import_markdown_file(db, &path, content_type.clone(), overwrite, excerpt_length) {
+            match import_markdown_file(db, &path, content_type, overwrite, excerpt_length) {
                 Ok(true) => imported += 1,
                 Ok(false) => skipped += 1,
                 Err(e) => {
@@ -141,7 +141,7 @@ fn import_markdown_file(
     let input = CreateContent {
         title,
         slug: Some(slug.clone()),
-        content_type: content_type.clone(),
+        content_type,
         body_markdown: body.to_string(),
         status,
         scheduled_at: None,

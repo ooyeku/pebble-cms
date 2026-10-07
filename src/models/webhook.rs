@@ -20,7 +20,7 @@ impl Webhook {
 
     /// Check whether this webhook is subscribed to a given event.
     pub fn handles_event(&self, event: &str) -> bool {
-        self.event_list().iter().any(|e| *e == event)
+        self.event_list().contains(&event)
     }
 }
 
