@@ -170,7 +170,7 @@ cargo build --release
 
 The release build enables LTO, strips debug symbols, and produces a compact binary.
 
-**Requirements**: Rust 1.75 or later.
+**Requirements**: Rust 1.88 or later.
 
 ### Creating Your First Site
 

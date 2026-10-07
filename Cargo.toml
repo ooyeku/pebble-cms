@@ -2,7 +2,7 @@
 name = "pebble-cms"
 version = "1.2.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.88"
 description = "A lightweight, single-binary CMS powered by SQLite — 15 themes, REST API, WCAG 2.1 AA, static export"
 license = "MIT"
 repository = "https://github.com/ooyeku/pebble-cms"
@@ -84,7 +84,7 @@ whoami = "1"
 
 # API & Integrations
 reqwest = { version = "0.12", features = ["json"], default-features = false, optional = true }
-quick-xml = { version = "0.37", features = ["serialize"] }
+quick-xml = { version = "0.42", features = ["serialize"] }
 hmac = "0.12"
 
 [features]
