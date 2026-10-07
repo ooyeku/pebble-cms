@@ -62,7 +62,11 @@ pub async fn login(
     // Rate-limit per (IP, username). Using the real socket IP keeps the limiter
     // spoof-resistant, and including the username prevents a single shared proxy
     // IP from locking out every account at once (global-lockout DoS).
-    let rate_limit_key = format!("login:{}:{}", client_ip, form.username.trim().to_lowercase());
+    let rate_limit_key = format!(
+        "login:{}:{}",
+        client_ip,
+        form.username.trim().to_lowercase()
+    );
     let csrf_cookie = get_csrf_cookie(&jar);
 
     let new_csrf = state.csrf.generate();

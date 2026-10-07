@@ -655,7 +655,12 @@ mod content_integration_tests {
         )
         .unwrap();
 
-        assert_eq!(search::search_content(&db, "UniqueDeleteKeyword", 10).unwrap().len(), 1);
+        assert_eq!(
+            search::search_content(&db, "UniqueDeleteKeyword", 10)
+                .unwrap()
+                .len(),
+            1
+        );
 
         content::delete_content(&db, content_id).unwrap();
 
@@ -1276,7 +1281,8 @@ mod version_integration_tests {
     fn test_failed_update_does_not_create_version() {
         let db = create_test_db();
 
-        let content_id = content::create_content(&db, create_post("Version Guard"), None, 200).unwrap();
+        let content_id =
+            content::create_content(&db, create_post("Version Guard"), None, 200).unwrap();
 
         let err = content::update_content(
             &db,
