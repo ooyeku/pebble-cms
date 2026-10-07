@@ -1,5 +1,5 @@
-/// Simple HTML-to-Markdown converter for importing content from WordPress/Ghost.
-/// Handles common HTML elements without requiring a full DOM parser.
+//! Simple HTML-to-Markdown converter for importing content from WordPress/Ghost.
+//! Handles common HTML elements without requiring a full DOM parser.
 
 pub fn convert(html: &str) -> String {
     let mut result = html.to_string();

@@ -96,11 +96,11 @@ pub fn create_version_with_conn(
     )?;
 
     // Fetch current tags
-    let tags = get_content_tags(&conn, content_id)?;
+    let tags = get_content_tags(conn, content_id)?;
     let tags_json = serde_json::to_string(&tags)?;
 
     // Get next version number
-    let version_number = next_version_number(&conn, content_id)?;
+    let version_number = next_version_number(conn, content_id)?;
 
     // Insert version
     conn.execute(

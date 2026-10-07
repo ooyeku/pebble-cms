@@ -23,8 +23,8 @@ fn paginate(
     default_size: usize,
     max_size: usize,
 ) -> (usize, usize, usize) {
-    let page = page.unwrap_or(1).max(1).min(MAX_API_PAGE);
-    let per_page = per_page.unwrap_or(default_size).min(max_size).max(1);
+    let page = page.unwrap_or(1).clamp(1, MAX_API_PAGE);
+    let per_page = per_page.unwrap_or(default_size).clamp(1, max_size.max(1));
     let offset = page.saturating_sub(1).saturating_mul(per_page);
     (page, per_page, offset)
 }

@@ -236,7 +236,7 @@ impl AppState {
             markdown: MarkdownRenderer::new(),
             media_dir,
             production_mode,
-            csrf: Arc::new(CsrfManager::default()),
+            csrf: Arc::new(CsrfManager),
             rate_limiter: Arc::new(RateLimiter::default()),
             upload_rate_limiter: Arc::new(RateLimiter::new(
                 20,
@@ -284,7 +284,7 @@ impl AppState {
         // Handle theme.custom
         if !doc["theme"]
             .as_table()
-            .map_or(false, |t| t.contains_key("custom"))
+            .is_some_and(|t| t.contains_key("custom"))
         {
             doc["theme"]["custom"] = toml_edit::Item::Table(toml_edit::Table::new());
         }
@@ -490,9 +490,7 @@ fn strip_markdown_filter(value: &Value, _args: &HashMap<String, Value>) -> tera:
         })
         .map(|line| {
             let trimmed = line.trim_start();
-            if trimmed.starts_with("- ") {
-                trimmed.chars().skip(2).collect()
-            } else if trimmed.starts_with("> ") {
+            if trimmed.starts_with("- ") || trimmed.starts_with("> ") {
                 trimmed.chars().skip(2).collect()
             } else if trimmed.starts_with('|') && trimmed.ends_with('|') {
                 // Strip table row: extract cell contents

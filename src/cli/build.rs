@@ -61,7 +61,7 @@ fn build_index(state: &AppState, output_dir: &Path, _site_url: &str) -> Result<(
         Some(ContentType::Post),
         Some(ContentStatus::Published),
     )?;
-    let total_pages = ((total as usize) + posts_per_page - 1) / posts_per_page;
+    let total_pages = (total as usize).div_ceil(posts_per_page);
     let homepage_settings = settings::get_homepage_settings(&state.db).unwrap_or_default();
     let pages = content::list_published_content(&state.db, ContentType::Page, 100, 0)?;
 

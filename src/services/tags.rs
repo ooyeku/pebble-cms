@@ -229,10 +229,8 @@ pub fn get_posts_by_tag(
         ))
     })?;
 
-    for row in tag_rows {
-        if let Ok((content_id, tag)) = row {
-            tags_by_content.entry(content_id).or_default().push(tag);
-        }
+    for (content_id, tag) in tag_rows.flatten() {
+        tags_by_content.entry(content_id).or_default().push(tag);
     }
 
     // Batch fetch all authors
@@ -264,10 +262,8 @@ pub fn get_posts_by_tag(
             })
         })?;
 
-        for row in author_rows {
-            if let Ok(author) = row {
-                authors_by_id.insert(author.id, author);
-            }
+        for author in author_rows.flatten() {
+            authors_by_id.insert(author.id, author);
         }
     }
 

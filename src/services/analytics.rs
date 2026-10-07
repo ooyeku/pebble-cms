@@ -277,6 +277,16 @@ pub struct DateRange {
     pub end: String,
 }
 
+/// Row from `analytics_content`: pageviews, sessions, first/last viewed, referrers JSON, bounce rate.
+type CachedContentStats = (
+    i64,
+    i64,
+    Option<String>,
+    Option<String>,
+    String,
+    Option<f64>,
+);
+
 pub struct Analytics {
     db: Database,
     config: AnalyticsConfig,
@@ -400,7 +410,7 @@ impl Analytics {
             }
 
             // Sort by count and keep top 10
-            referrers.sort_by(|a, b| b.1.cmp(&a.1));
+            referrers.sort_by_key(|r| std::cmp::Reverse(r.1));
             referrers.truncate(10);
 
             let referrers_json = serde_json::to_string(&referrers)?;
@@ -597,12 +607,13 @@ impl Analytics {
             LIMIT 20
             "#,
         )?;
-        for row in stmt.query_map([&cutoff], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })? {
-            if let Ok((device, count)) = row {
-                devices.insert(device, count);
-            }
+        for (device, count) in stmt
+            .query_map([&cutoff], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .flatten()
+        {
+            devices.insert(device, count);
         }
 
         let mut browsers: HashMap<String, i64> = HashMap::new();
@@ -616,12 +627,13 @@ impl Analytics {
             LIMIT 50
             "#,
         )?;
-        for row in stmt.query_map([&cutoff], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })? {
-            if let Ok((browser, count)) = row {
-                browsers.insert(browser, count);
-            }
+        for (browser, count) in stmt
+            .query_map([&cutoff], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .flatten()
+        {
+            browsers.insert(browser, count);
         }
 
         let mut stmt = conn.prepare(
@@ -802,14 +814,7 @@ impl Analytics {
         let conn = self.db.get()?;
 
         // Try to get from analytics_content first
-        let cached: Option<(
-            i64,
-            i64,
-            Option<String>,
-            Option<String>,
-            String,
-            Option<f64>,
-        )> = conn
+        let cached: Option<CachedContentStats> = conn
             .query_row(
                 r#"
                 SELECT total_pageviews, unique_sessions, first_viewed_at, last_viewed_at,
@@ -1167,12 +1172,13 @@ impl Analytics {
             GROUP BY referrer_domain
             "#,
         )?;
-        for row in stmt.query_map([&start, &end], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })? {
-            if let Ok((domain, count)) = row {
-                referrers.insert(domain, count);
-            }
+        for (domain, count) in stmt
+            .query_map([&start, &end], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .flatten()
+        {
+            referrers.insert(domain, count);
         }
 
         let mut countries: HashMap<String, i64> = HashMap::new();
@@ -1184,12 +1190,13 @@ impl Analytics {
             GROUP BY country_code
             "#,
         )?;
-        for row in stmt.query_map([&start, &end], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })? {
-            if let Ok((code, count)) = row {
-                countries.insert(code, count);
-            }
+        for (code, count) in stmt
+            .query_map([&start, &end], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .flatten()
+        {
+            countries.insert(code, count);
         }
 
         let mut devices: HashMap<String, i64> = HashMap::new();
@@ -1201,12 +1208,13 @@ impl Analytics {
             GROUP BY device_type
             "#,
         )?;
-        for row in stmt.query_map([&start, &end], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })? {
-            if let Ok((device, count)) = row {
-                devices.insert(device, count);
-            }
+        for (device, count) in stmt
+            .query_map([&start, &end], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .flatten()
+        {
+            devices.insert(device, count);
         }
 
         let mut browsers: HashMap<String, i64> = HashMap::new();
@@ -1218,12 +1226,13 @@ impl Analytics {
             GROUP BY browser_family
             "#,
         )?;
-        for row in stmt.query_map([&start, &end], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
-        })? {
-            if let Ok((browser, count)) = row {
-                browsers.insert(browser, count);
-            }
+        for (browser, count) in stmt
+            .query_map([&start, &end], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
+            })?
+            .flatten()
+        {
+            browsers.insert(browser, count);
         }
 
         // Count views of new content (< 7 days old)

@@ -58,7 +58,7 @@ impl AuditAction {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "create" => Some(Self::Create),
             "update" => Some(Self::Update),
@@ -139,7 +139,7 @@ impl AuditCategory {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s {
             "content" => Some(Self::Content),
             "auth" => Some(Self::Auth),
@@ -187,11 +187,11 @@ pub struct AuditEntry {
 
 impl AuditEntry {
     pub fn action_enum(&self) -> Option<AuditAction> {
-        AuditAction::from_str(&self.action)
+        AuditAction::parse(&self.action)
     }
 
     pub fn category_enum(&self) -> Option<AuditCategory> {
-        AuditCategory::from_str(&self.category)
+        AuditCategory::parse(&self.category)
     }
 
     pub fn is_failure(&self) -> bool {

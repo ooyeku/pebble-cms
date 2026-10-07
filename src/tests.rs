@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
 
     mod slug_tests {
@@ -778,7 +779,7 @@ session_lifetime = "7d"
             // Depending on implementation, this might be valid or invalid
             let result = validate_slug("hello--world");
             // Just ensure it doesn't panic
-            assert!(result == true || result == false);
+            assert!(result || !result);
         }
 
         #[test]
@@ -786,7 +787,7 @@ session_lifetime = "7d"
             // Current implementation allows leading hyphens
             // This test documents the current behavior
             let result = validate_slug("-hello");
-            assert!(result == true || result == false); // Just ensure no panic
+            assert!(result || !result); // Just ensure no panic
         }
 
         #[test]
@@ -794,7 +795,7 @@ session_lifetime = "7d"
             // Current implementation allows trailing hyphens
             // This test documents the current behavior
             let result = validate_slug("hello-");
-            assert!(result == true || result == false); // Just ensure no panic
+            assert!(result || !result); // Just ensure no panic
         }
     }
 
