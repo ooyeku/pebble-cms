@@ -819,4 +819,41 @@ Command reference.
             output
         );
     }
+
+    #[test]
+    fn test_sanitizer_strips_xss_payloads() {
+        let renderer = MarkdownRenderer::new();
+        // Includes payloads for RUSTSEC-2026-0193 (MathML annotation-xml mXSS)
+        // and RUSTSEC-2026-0213 (SVG animate/set) alongside classic vectors.
+        let payloads = [
+            r#"<script>alert(1)</script>"#,
+            r#"<img src=x onerror="alert(1)">"#,
+            r#"<a href="javascript:alert(1)">click</a>"#,
+            r#"<iframe src="javascript:alert(1)"></iframe>"#,
+            r#"<svg><animate attributeName="href" values="javascript:alert(1)"/><a><text>x</text></a></svg>"#,
+            r#"<svg><set attributeName="onmouseover" to="alert(1)"/></svg>"#,
+            r#"<math><annotation-xml encoding="text/html"><style><img src=x onerror=alert(1)></style></annotation-xml></math>"#,
+            r#"<math><mtext><table><mglyph><style><img src=x onerror=alert(1)>"#,
+        ];
+
+        for payload in payloads {
+            let output = renderer.render(payload).to_lowercase();
+            for needle in [
+                "<script",
+                "onerror",
+                "onmouseover",
+                "javascript:",
+                "<svg",
+                "<animate",
+                "<set",
+                "<math",
+                "annotation-xml",
+            ] {
+                assert!(
+                    !output.contains(needle),
+                    "Payload {payload:?} leaked {needle:?}. Output: {output}"
+                );
+            }
+        }
+    }
 }
