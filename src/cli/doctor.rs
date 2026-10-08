@@ -422,7 +422,9 @@ fn check_disk_space(path: &Path) -> Option<u64> {
 
     if result == 0 {
         let stat = unsafe { stat.assume_init() };
-        let available_bytes = u64::from(stat.f_bavail) * stat.f_frsize;
+        // f_bavail is u64 on Linux but u32 on macOS, so the cast is only redundant on some targets
+        #[allow(clippy::unnecessary_cast)]
+        let available_bytes = stat.f_bavail as u64 * stat.f_frsize;
         Some(available_bytes / (1024 * 1024))
     } else {
         None
