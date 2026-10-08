@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn lockout_remains_active_after_attempt_window_expires() {
-        let limiter = RateLimiter::new(2, Duration::from_millis(30), Duration::from_millis(120));
+        let limiter = RateLimiter::new(2, Duration::from_millis(30), Duration::from_secs(60));
 
         limiter.record_attempt("login:1");
         limiter.record_attempt("login:1");
